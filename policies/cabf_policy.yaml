@@ -1,0 +1,29 @@
+metadata:
+  standard: "CA/Browser Forum Baseline Requirements"
+  version: "2026-MVP"
+  terms: "CABF Baseline Requirements policy profile for CertGuard MVP"
+
+terms: []
+
+certificate:
+  max_validity_days: 398
+  require_san: true
+
+key:
+  minimum_rsa_bits: 2048
+
+signature:
+  prohibited_algorithms:
+    - sha1
+    - md5
+
+domains:
+  forbid_internal_names: true
+  blocked_suffixes:
+    - ".local"
+    - ".internal"
+    - ".intranet"
+
+lint:
+  enable_zlint: false
+  fail_on_error: true

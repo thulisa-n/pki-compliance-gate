@@ -1,0 +1,52 @@
+name: Compliance Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  run-compliance:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: pytest -q
+
+      - name: Generate sample certificate
+        run: |
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 90 -nodes \
+            -keyout /tmp/certguard.key \
+            -out /tmp/certguard.pem \
+            -subj "/CN=example.com" \
+            -addext "subjectAltName=DNS:example.com,DNS:www.example.com"
+
+      - name: Run compliance engine
+        run: |
+          python src/main.py \
+            --cert /tmp/certguard.pem \
+            --policy policies/cabf_policy.yaml \
+            --report reports/compliance_report.json \
+            --evidence-dir audit_evidence
+
+      - name: Upload compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: certguard-compliance-artifacts
+          path: |
+            reports/compliance_report.json
+            audit_evidence/policy_checks.json
+            audit_evidence/lint_results.json
