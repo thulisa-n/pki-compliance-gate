@@ -91,6 +91,7 @@ def test_compliant_certificate_passes(tmp_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["compliant"] is True
     assert len(report["checks"]) >= 5
+    assert report_path.with_suffix(".json.seal").exists()
 
 
 def test_internal_domain_fails_policy(tmp_path: Path) -> None:

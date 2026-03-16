@@ -4,7 +4,9 @@ import json
 import subprocess
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
+from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
 from certguard.models import ComplianceReport
@@ -17,6 +19,7 @@ class ComplianceGateEngine:
         self.policy = load_policy(self.policy_path)
         self.parser_agent = X509ParserAgent()
         self.policy_agent = PolicyValidatorAgent()
+        self.evidence_vault_agent = EvidenceVaultAgent()
 
     def evaluate(
         self,
@@ -58,6 +61,9 @@ class ComplianceGateEngine:
         (evidence_dir / "lint_results.json").write_text(
             json.dumps(lint_result, indent=2), encoding="utf-8"
         )
+        seal_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
+        if not seal_result.success:
+            raise ValueError("; ".join(seal_result.errors))
 
         return compliant, report
 

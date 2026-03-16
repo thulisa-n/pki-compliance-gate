@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from certguard.agents.bug_triage import BugTriageAgent
 from certguard.agents.compliance_assurance import ComplianceAssuranceAgent
+from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.remediation import RemediationAgent
 from certguard.agents.standards_watch import StandardsWatchAgent
 
@@ -59,3 +63,18 @@ def test_remediation_agent_returns_actions_for_failed_controls() -> None:
     assert result.success is False
     assert result.data["failed_count"] == 2
     assert len(result.data["actions"]) == 2
+
+
+def test_evidence_vault_agent_seals_report(tmp_path: Path) -> None:
+    report_path = tmp_path / "compliance_report.json"
+    report_path.write_text(json.dumps({"compliant": True}), encoding="utf-8")
+
+    agent = EvidenceVaultAgent()
+    result = agent.run({"report_path": str(report_path)})
+
+    assert result.success is True
+    seal_path = Path(result.data["seal_path"])
+    assert seal_path.exists()
+    manifest = json.loads(seal_path.read_text(encoding="utf-8"))
+    assert manifest["evidence_file"] == "compliance_report.json"
+    assert len(manifest["sha256_fingerprint"]) == 64

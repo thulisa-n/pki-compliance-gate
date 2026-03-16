@@ -36,7 +36,7 @@ This project demonstrates a shift-left compliance model:
 
 ---
 
-## Architecture
+## System Architecture
 
 ```text
 Certificate Input
@@ -58,9 +58,24 @@ Compliance Report      Audit Evidence
 
 ---
 
+## Example Compliance Output
+
+```text
+Certificate: tests/certificates/valid_cert.pem
+Compliant: YES
+- validity_days: PASS (Certificate validity is 90 days (max 398))
+- san_extension: PASS (SAN extension present)
+- rsa_key_size: PASS (RSA key size is 2048 bits (min 2048))
+- signature_algorithm: PASS (Signature algorithm is sha256)
+- internal_domain_check: PASS (No blocked internal domains detected)
+Lint: skipped
+```
+
+---
+
 ## Governance Agents
 
-This project now includes three governance-focused agents for operational readiness:
+This project now includes governance-focused agents for operational readiness:
 
 - **Bug Triage Agent**
   - classifies failed controls by severity
@@ -74,6 +89,9 @@ This project now includes three governance-focused agents for operational readin
 - **Remediation Agent**
   - produces actionable fix steps for failed controls
   - supports heal-and-recheck workflow with assurance verification
+- **Evidence Vault Agent**
+  - seals generated compliance reports using SHA-256 fingerprints
+  - records execution metadata for chain-of-custody and audit integrity
 
 These agents support an automation engineering workflow where controls, evidence, and remediation are all traceable.
 
@@ -93,6 +111,7 @@ These agents support an automation engineering workflow where controls, evidence
   - pass/fail decision with explicit check results
 - **Evidence generation**
   - `reports/compliance_report.json`
+  - `reports/compliance_report.json.seal`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
 - **CI pipeline**
@@ -200,6 +219,17 @@ Field-level policy notes are documented in `policies/README.md`.
 
 ---
 
+## Standards References
+
+This project implements simplified controls informed by:
+
+- CA/Browser Forum Baseline Requirements
+- RFC 5280 (X.509 certificate and CRL profile)
+
+The standards baseline tracker is maintained in `policies/standards_baseline.yaml`.
+
+---
+
 ## CI Pipeline
 
 Workflow: `.github/workflows/compliance.yml`
@@ -229,9 +259,12 @@ Trigger modes:
   - CISA-style chain-of-custody metadata
   - CISSP-aligned identity and access controls for gated actions
   - richer evidence lifecycle and reviewer workflow
+  - compliance dashboard summary for reviewer visibility
+  - signed evidence hash manifest for tamper detection
 - **Phase 4**
   - API/TLS endpoint posture checks for API security workflows
   - policy expansion for endpoint-level controls
+  - additional RFC 5280 checks (including extension profile validation)
 
 ---
 
