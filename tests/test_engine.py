@@ -111,3 +111,34 @@ def test_internal_domain_fails_policy(tmp_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     internal_check = next(item for item in report["checks"] if item["name"] == "internal_domain_check")
     assert internal_check["status"] == "fail"
+
+
+def test_signature_algorithm_allows_sha256_fixture(tmp_path: Path) -> None:
+    cert_path = Path("tests/certificates/valid_cert.pem")
+    policy_path = Path("policies/cabf_policy.yaml")
+    report_path = tmp_path / "report.json"
+    evidence_dir = tmp_path / "audit_evidence"
+
+    engine = ComplianceGateEngine(policy_path=policy_path)
+    compliant, _ = engine.evaluate(cert_path, report_path, evidence_dir)
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    signature_check = next(item for item in report["checks"] if item["name"] == "signature_algorithm")
+    assert signature_check["status"] == "pass"
+    assert compliant is True
+
+
+def test_signature_algorithm_blocks_sha1_fixture(tmp_path: Path) -> None:
+    cert_path = Path("tests/certificates/sha1_cert.pem")
+    policy_path = Path("policies/cabf_policy.yaml")
+    report_path = tmp_path / "report.json"
+    evidence_dir = tmp_path / "audit_evidence"
+
+    engine = ComplianceGateEngine(policy_path=policy_path)
+    compliant, _ = engine.evaluate(cert_path, report_path, evidence_dir)
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    signature_check = next(item for item in report["checks"] if item["name"] == "signature_algorithm")
+    assert signature_check["status"] == "fail"
+    assert "sha1" in signature_check["details"]
+    assert compliant is False

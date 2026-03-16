@@ -127,6 +127,23 @@ audit_evidence/         # policy and lint evidence outputs
 
 ---
 
+## Policy-as-Code Fields
+
+Core policy file: `policies/cabf_policy.yaml`
+
+- `certificate.max_validity_days`
+- `certificate.require_san`
+- `key.minimum_rsa_bits`
+- `signature.prohibited_algorithms`
+- `domains.forbid_internal_names`
+- `domains.blocked_suffixes`
+- `lint.enable_zlint`
+- `lint.fail_on_error`
+
+Field-level policy notes are documented in `policies/README.md`.
+
+---
+
 ## CI Pipeline
 
 Workflow: `.github/workflows/compliance.yml`

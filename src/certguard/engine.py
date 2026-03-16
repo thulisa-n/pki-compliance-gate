@@ -3,19 +3,17 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from typing import Any
-
-import yaml
 
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
 from certguard.models import ComplianceReport
+from certguard.policy import load_policy
 
 
 class ComplianceGateEngine:
     def __init__(self, policy_path: Path) -> None:
         self.policy_path = policy_path
-        self.policy = self._load_policy()
+        self.policy = load_policy(self.policy_path)
         self.parser_agent = X509ParserAgent()
         self.policy_agent = PolicyValidatorAgent()
 
@@ -61,12 +59,6 @@ class ComplianceGateEngine:
         )
 
         return compliant, report
-
-    def _load_policy(self) -> dict[str, Any]:
-        if not self.policy_path.exists():
-            raise FileNotFoundError(f"Policy file not found: {self.policy_path}")
-        with self.policy_path.open("r", encoding="utf-8") as stream:
-            return yaml.safe_load(stream)
 
     def _run_zlint_if_enabled(self, cert_path: Path) -> dict[str, Any]:
         lint_cfg = self.policy.get("lint", {})
