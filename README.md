@@ -268,14 +268,6 @@ Trigger modes:
 
 ---
 
-## Release Guidance
-
-- **Releases:** yes, recommended for milestone snapshots (for example `v0.1.0` now)
-- **Packages:** not needed yet; this is currently an automation engine, not a Python library package
-- **Best practice now:** tag a release with notes, attach CI evidence links, continue issue-driven delivery
-
----
-
 ## Learning Path (Educational Build)
 
 This repo is designed to be educational for automation engineers moving into security compliance.
