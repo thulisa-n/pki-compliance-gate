@@ -317,3 +317,18 @@ This repository is part of a two-repo portfolio strategy:
 Together, they support a transition path:
 
 `QA Automation Engineer -> Security Automation Engineer -> PKI Compliance Engineer`
+
+---
+
+## About the Author
+
+Automation Engineer transitioning into Security and PKI Compliance Engineering.
+
+Currently building:
+
+- CertGuard Engine: PKI compliance gate with policy-as-code, governance agents, and audit evidence
+- QA automation frameworks and CI governance tooling
+
+Focus areas:
+
+Security automation | DevSecOps | PKI compliance engineering
