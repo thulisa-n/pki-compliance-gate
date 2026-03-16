@@ -33,7 +33,11 @@ def test_policy_loader_rejects_wrong_type(tmp_path: Path) -> None:
         "key": {"minimum_rsa_bits": 2048},
         "signature": {"prohibited_algorithms": ["sha1"]},
         "domains": {"forbid_internal_names": True, "blocked_suffixes": [".local"]},
-        "lint": {"enable_zlint": False, "fail_on_error": True},
+        "lint": {
+            "enable_zlint": False,
+            "fail_on_error": True,
+            "fail_severities": ["error", "fatal"],
+        },
     }
     policy_path = tmp_path / "invalid_type.yaml"
     policy_path.write_text(yaml.safe_dump(invalid_policy), encoding="utf-8")

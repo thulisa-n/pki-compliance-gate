@@ -60,7 +60,11 @@ def _write_policy(policy_path: Path) -> None:
             "forbid_internal_names": True,
             "blocked_suffixes": [".local", ".internal", ".intranet"],
         },
-        "lint": {"enable_zlint": False, "fail_on_error": True},
+        "lint": {
+            "enable_zlint": False,
+            "fail_on_error": True,
+            "fail_severities": ["error", "fatal"],
+        },
     }
     policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
 

@@ -27,3 +27,6 @@ domains:
 lint:
   enable_zlint: false
   fail_on_error: true
+  fail_severities:
+    - "error"
+    - "fatal"

@@ -21,5 +21,6 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `domains.blocked_suffixes` (`list[str]`)
 - `lint.enable_zlint` (`bool`)
 - `lint.fail_on_error` (`bool`)
+- `lint.fail_severities` (`list[str]`, for example `["error", "fatal"]`)
 
 The loader performs validation and raises an explicit error when required keys are missing or typed incorrectly.

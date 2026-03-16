@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Weekly regression runs (UTC): Monday and Thursday at 05:00
+    - cron: "0 5 * * 1,4"
+  workflow_dispatch:
 
 jobs:
   run-compliance:

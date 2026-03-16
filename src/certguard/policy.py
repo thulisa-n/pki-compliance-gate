@@ -49,6 +49,8 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     lint = policy["lint"]
     _require_key_type(lint, "enable_zlint", bool, "lint")
     _require_key_type(lint, "fail_on_error", bool, "lint")
+    _require_key_type(lint, "fail_severities", list, "lint")
+    _require_list_of_strings(lint["fail_severities"], "lint.fail_severities")
 
 
 def _require_key_type(
@@ -61,3 +63,9 @@ def _require_key_type(
         raise PolicyValidationError(
             f"Policy key '{section_name}.{key}' must be of type {type_name}."
         )
+
+
+def _require_list_of_strings(values: list[Any], field_name: str) -> None:
+    for value in values:
+        if not isinstance(value, str):
+            raise PolicyValidationError(f"Policy key '{field_name}' must contain only strings.")

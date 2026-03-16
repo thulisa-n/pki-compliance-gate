@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 from certguard.agents.policy_validator import PolicyValidatorAgent
@@ -65,16 +66,76 @@ class ComplianceGateEngine:
         if not lint_cfg.get("enable_zlint", False):
             return {"status": "skipped", "details": "zlint disabled in policy"}
 
-        cmd = ["zlint", str(cert_path)]
+        cmd = ["zlint", "-pretty", str(cert_path)]
         try:
             process = subprocess.run(cmd, capture_output=True, text=True, check=False)
         except FileNotFoundError:
             return {"status": "skipped", "details": "zlint not installed"}
 
-        combined_output = (process.stdout or "") + ("\n" + process.stderr if process.stderr else "")
-        status = "pass" if process.returncode == 0 else "fail"
+        fail_severities = {
+            self._normalize_severity(value)
+            for value in lint_cfg.get("fail_severities", ["error", "fatal"])
+        }
+        fail_on_error = lint_cfg.get("fail_on_error", True)
+        parsed = self._parse_zlint_output(process.stdout or "")
+
+        if parsed["entries"]:
+            matched = [
+                entry for entry in parsed["entries"] if entry["severity"] in fail_severities
+            ]
+            status = "fail" if matched else "pass"
+            details = f"zlint parsed {len(parsed['entries'])} checks"
+        else:
+            status = "fail" if (process.returncode != 0 and fail_on_error) else "pass"
+            details = "zlint output not parseable; fallback to process exit code"
+
+        combined_output = (process.stdout or "") + (
+            "\n" + process.stderr if process.stderr else ""
+        )
         return {
+            "tool": "zlint",
             "status": status,
             "return_code": process.returncode,
-            "details": combined_output.strip(),
+            "details": details,
+            "summary": {
+                "fail_severities": sorted(fail_severities),
+                "counts": parsed["counts"],
+                "matched_failures": [entry["lint"] for entry in matched] if parsed["entries"] else [],
+            },
+            "raw_output": combined_output.strip(),
         }
+
+    def _parse_zlint_output(self, output: str) -> dict[str, Any]:
+        if not output.strip():
+            return {"entries": [], "counts": {}}
+
+        try:
+            payload = json.loads(output)
+        except json.JSONDecodeError:
+            return {"entries": [], "counts": {}}
+
+        entries: list[dict[str, str]] = []
+        blocks = payload.get("results") if isinstance(payload, dict) else None
+        candidates = blocks if isinstance(blocks, dict) else payload
+        if not isinstance(candidates, dict):
+            return {"entries": [], "counts": {}}
+
+        for lint_name, lint_data in candidates.items():
+            if not isinstance(lint_data, dict):
+                continue
+            result = lint_data.get("result")
+            if not isinstance(result, str):
+                continue
+            severity = self._normalize_severity(result)
+            entries.append({"lint": lint_name, "severity": severity})
+
+        counts = dict(Counter(entry["severity"] for entry in entries))
+        return {"entries": entries, "counts": counts}
+
+    def _normalize_severity(self, value: str) -> str:
+        normalized = value.strip().lower()
+        aliases = {
+            "warning": "warn",
+            "not applicable": "na",
+        }
+        return aliases.get(normalized, normalized)

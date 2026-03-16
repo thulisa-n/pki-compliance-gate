@@ -58,7 +58,28 @@ Compliance Report      Audit Evidence
 
 ---
 
-## Current Features (Phase 1)
+## Governance Agents
+
+This project now includes three governance-focused agents for operational readiness:
+
+- **Bug Triage Agent**
+  - classifies failed controls by severity
+  - suggests remediation actions for each failed check
+- **Compliance Assurance Agent**
+  - confirms required controls are present and passing after fixes
+  - validates final compliance state against governance expectations
+- **Standards Watch Agent**
+  - compares current policy to tracked standards baseline
+  - reports policy drift and recommends updates
+- **Remediation Agent**
+  - produces actionable fix steps for failed controls
+  - supports heal-and-recheck workflow with assurance verification
+
+These agents support an automation engineering workflow where controls, evidence, and remediation are all traceable.
+
+---
+
+## Current Features (Phase 1 + Phase 2 Complete, Phase 3 Started)
 
 - **X.509 parsing agent**
   - subject, issuer, validity window, SAN, signature hash, key details
@@ -78,6 +99,10 @@ Compliance Report      Audit Evidence
   - runs tests
   - executes compliance check
   - uploads artifacts
+- **Phase 2 lint controls**
+  - severity-aware zlint parsing
+  - policy-driven fail severities (`lint.fail_severities`)
+  - fallback behavior for non-JSON lint output
 
 ---
 
@@ -112,6 +137,36 @@ Exit code behavior:
 - `0` = compliant
 - `1` = non-compliant
 
+### 4) Run governance agents
+
+```bash
+# Bug triage from latest compliance report
+python src/main.py --mode triage --report-input reports/compliance_report.json
+
+# Assurance confirmation from latest compliance report
+python src/main.py --mode assure --report-input reports/compliance_report.json
+
+# Standards drift watch against baseline
+python src/main.py --mode watch \
+  --policy policies/cabf_policy.yaml \
+  --standards-baseline policies/standards_baseline.yaml \
+  --watch-output reports/standards_watch_report.json
+
+# Remediation plan + healed recheck
+python src/main.py --mode heal \
+  --report-input reports/compliance_report.json \
+  --healed-cert tests/certificates/valid_cert.pem \
+  --healed-report reports/healed_compliance_report.json
+```
+
+Mode summary:
+
+- `evaluate`: run core compliance checks and generate evidence
+- `triage`: classify failed controls by severity and remediation priority
+- `assure`: verify required controls still satisfy governance expectations
+- `watch`: detect policy drift against tracked standards baseline
+- `heal`: generate remediation plan and re-check healed certificate state
+
 ---
 
 ## Project Structure
@@ -139,6 +194,7 @@ Core policy file: `policies/cabf_policy.yaml`
 - `domains.blocked_suffixes`
 - `lint.enable_zlint`
 - `lint.fail_on_error`
+- `lint.fail_severities`
 
 Field-level policy notes are documented in `policies/README.md`.
 
@@ -158,18 +214,53 @@ Pipeline actions:
 
 This creates visible governance evidence directly in GitHub Actions.
 
+Trigger modes:
+
+- push to `main`
+- pull request validation
+- scheduled regression run (twice weekly)
+- manual run (`workflow_dispatch`)
+
 ---
 
 ## Roadmap
 
-- **Phase 2**
-  - zlint enablement with structured severity handling
-  - expanded certificate fixtures for regression checks
-- **Phase 3**
+- **Phase 3 (next)**
   - CISA-style chain-of-custody metadata
   - CISSP-aligned identity and access controls for gated actions
+  - richer evidence lifecycle and reviewer workflow
 - **Phase 4**
   - API/TLS endpoint posture checks for API security workflows
+  - policy expansion for endpoint-level controls
+
+---
+
+## Release Guidance
+
+- **Releases:** yes, recommended for milestone snapshots (for example `v0.1.0` now)
+- **Packages:** not needed yet; this is currently an automation engine, not a Python library package
+- **Best practice now:** tag a release with notes, attach CI evidence links, continue issue-driven delivery
+
+---
+
+## Learning Path (Educational Build)
+
+This repo is designed to be educational for automation engineers moving into security compliance.
+
+1. **Understand the certificate parser output**
+   - run `python src/main.py --cert tests/certificates/valid_cert.pem`
+   - inspect `reports/compliance_report.json`
+2. **Trace policy-to-check mapping**
+   - change one value in `policies/cabf_policy.yaml`
+   - rerun and observe which checks change
+3. **Practice red/green validation**
+   - run against `tests/certificates/sha1_cert.pem` and `tests/certificates/internal_domain_cert.pem`
+   - compare compliant vs non-compliant outputs
+4. **Read audit evidence**
+   - inspect `audit_evidence/policy_checks.json`
+   - inspect `audit_evidence/lint_results.json`
+5. **Use CI as governance evidence**
+   - review workflow artifacts in GitHub Actions for each run
 
 ---
 
