@@ -36,6 +36,14 @@ This project demonstrates a shift-left compliance model:
 
 ---
 
+## Security Context
+
+In certificate authority environments, pre-issuance compliance controls help ensure certificates meet industry standards before they are trusted by browsers and operating systems.
+
+CertGuard Engine simulates this style of control pipeline by converting policy requirements into automated validation checks, governance decisions, and audit evidence outputs.
+
+---
+
 ## System Architecture
 
 ```text
@@ -92,6 +100,8 @@ This project now includes governance-focused agents for operational readiness:
 - **Evidence Vault Agent**
   - seals generated compliance reports using SHA-256 fingerprints
   - records execution metadata for chain-of-custody and audit integrity
+- **Reviewer Summary Agent**
+  - generates markdown summaries for reviewers and PR discussions
 
 These agents support an automation engineering workflow where controls, evidence, and remediation are all traceable.
 
@@ -112,6 +122,7 @@ These agents support an automation engineering workflow where controls, evidence
 - **Evidence generation**
   - `reports/compliance_report.json`
   - `reports/compliance_report.json.seal`
+  - `reports/compliance_summary.md`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
 - **CI pipeline**
@@ -176,6 +187,11 @@ python src/main.py --mode heal \
   --report-input reports/compliance_report.json \
   --healed-cert tests/certificates/valid_cert.pem \
   --healed-report reports/healed_compliance_report.json
+
+# Reviewer-friendly markdown summary
+python src/main.py --mode summary \
+  --report-input reports/compliance_report.json \
+  --summary-output reports/compliance_summary.md
 ```
 
 Mode summary:
@@ -185,6 +201,7 @@ Mode summary:
 - `assure`: verify required controls still satisfy governance expectations
 - `watch`: detect policy drift against tracked standards baseline
 - `heal`: generate remediation plan and re-check healed certificate state
+- `summary`: generate reviewer-friendly markdown compliance summary
 
 ---
 
@@ -250,6 +267,11 @@ Trigger modes:
 - pull request validation
 - scheduled regression run (twice weekly)
 - manual run (`workflow_dispatch`)
+
+Protected workflow control:
+
+- Manual dispatch supports optional `protected_run`
+- Protected mode enforces GitHub Actions + protected ref context checks
 
 ---
 

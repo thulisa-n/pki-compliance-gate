@@ -8,12 +8,19 @@ on:
     # Weekly regression runs (UTC): Monday and Thursday at 05:00
     - cron: "0 5 * * 1,4"
   workflow_dispatch:
+    inputs:
+      protected_run:
+        description: "Enforce protected branch context controls"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   run-compliance:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: src
+      GITHUB_REF_PROTECTED: ${{ github.ref_protected }}
 
     steps:
       - name: Checkout
@@ -38,7 +45,8 @@ jobs:
             -subj "/CN=example.com" \
             -addext "subjectAltName=DNS:example.com,DNS:www.example.com"
 
-      - name: Run compliance engine
+      - name: Run compliance engine (standard)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.protected_run != true }}
         run: |
           python src/main.py \
             --cert /tmp/certguard.pem \
@@ -46,11 +54,30 @@ jobs:
             --report reports/compliance_report.json \
             --evidence-dir audit_evidence
 
+      - name: Run compliance engine (protected mode)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.protected_run == true }}
+        run: |
+          python src/main.py \
+            --cert /tmp/certguard.pem \
+            --policy policies/cabf_policy.yaml \
+            --report reports/compliance_report.json \
+            --evidence-dir audit_evidence \
+            --protected-run
+
+      - name: Generate reviewer summary
+        run: |
+          python src/main.py \
+            --mode summary \
+            --report-input reports/compliance_report.json \
+            --summary-output reports/compliance_summary.md
+
       - name: Upload compliance artifacts
         uses: actions/upload-artifact@v4
         with:
           name: certguard-compliance-artifacts
           path: |
             reports/compliance_report.json
+            reports/compliance_report.json.seal
+            reports/compliance_summary.md
             audit_evidence/policy_checks.json
             audit_evidence/lint_results.json

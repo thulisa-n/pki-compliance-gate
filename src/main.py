@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -9,15 +10,17 @@ import yaml
 from certguard.agents.bug_triage import BugTriageAgent
 from certguard.agents.compliance_assurance import ComplianceAssuranceAgent
 from certguard.agents.remediation import RemediationAgent
+from certguard.agents.reviewer_summary import ReviewerSummaryAgent
 from certguard.agents.standards_watch import StandardsWatchAgent
 from certguard.engine import ComplianceGateEngine
+from certguard.governance import enforce_protected_context
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="CertGuard compliance gate runner")
     parser.add_argument(
         "--mode",
-        choices=["evaluate", "triage", "assure", "watch", "heal"],
+        choices=["evaluate", "triage", "assure", "watch", "heal", "summary"],
         default="evaluate",
         help="Execution mode",
     )
@@ -61,6 +64,16 @@ def parse_args() -> argparse.Namespace:
         default="reports/healed_compliance_report.json",
         help="Output path for healed compliance report JSON",
     )
+    parser.add_argument(
+        "--summary-output",
+        default="reports/compliance_summary.md",
+        help="Path for reviewer-friendly markdown summary output",
+    )
+    parser.add_argument(
+        "--protected-run",
+        action="store_true",
+        help="Require protected GitHub context before execution",
+    )
     return parser.parse_args()
 
 
@@ -76,12 +89,16 @@ def main() -> int:
         return _run_watch(args)
     if args.mode == "heal":
         return _run_heal(args)
+    if args.mode == "summary":
+        return _run_summary(args)
     raise ValueError(f"Unsupported mode: {args.mode}")
 
 
 def _run_evaluate(args: argparse.Namespace) -> int:
     if not args.cert:
         raise ValueError("--cert is required in evaluate mode.")
+    if args.protected_run:
+        enforce_protected_context(os.environ)
     engine = ComplianceGateEngine(policy_path=Path(args.policy))
 
     compliant, report = engine.evaluate(
@@ -156,6 +173,8 @@ def _run_watch(args: argparse.Namespace) -> int:
 
 
 def _run_heal(args: argparse.Namespace) -> int:
+    if args.protected_run:
+        enforce_protected_context(os.environ)
     report = _read_json(Path(args.report_input))
     remediation = RemediationAgent().run({"report": report})
 
@@ -184,6 +203,17 @@ def _run_heal(args: argparse.Namespace) -> int:
     print("Assurance:", "YES" if assurance.success else "NO")
     print(f"Healed report written to {args.healed_report}")
     return 0 if (compliant and assurance.success) else 1
+
+
+def _run_summary(args: argparse.Namespace) -> int:
+    report = _read_json(Path(args.report_input))
+    result = ReviewerSummaryAgent().run(
+        {"report": report, "output_path": args.summary_output}
+    )
+    print("Agent:", result.agent)
+    print("Success:", "YES" if result.success else "NO")
+    print(f"Summary written to {result.data.get('summary_path')}")
+    return 0 if result.success else 1
 
 
 def _read_json(path: Path) -> dict:
