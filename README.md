@@ -119,6 +119,8 @@ These agents support an automation engineering workflow where controls, evidence
   - internal domain suffix blocking
 - **Compliance gate engine**
   - pass/fail decision with explicit check results
+  - compliance score and risk classification output
+  - severity-based exit codes for pipeline-friendly behavior
 - **Evidence generation**
   - `reports/compliance_report.json`
   - `reports/compliance_report.json.seal`
@@ -192,6 +194,12 @@ python src/main.py --mode heal \
 python src/main.py --mode summary \
   --report-input reports/compliance_report.json \
   --summary-output reports/compliance_summary.md
+
+# Explainability output with standards context
+python src/main.py --cert tests/certificates/sha1_cert.pem --explain
+
+# Machine-readable output mode
+python src/main.py --cert tests/certificates/valid_cert.pem --output json
 ```
 
 Mode summary:
@@ -202,6 +210,13 @@ Mode summary:
 - `watch`: detect policy drift against tracked standards baseline
 - `heal`: generate remediation plan and re-check healed certificate state
 - `summary`: generate reviewer-friendly markdown compliance summary
+
+Severity-based exit codes (`evaluate` mode):
+
+- `0` = fully compliant
+- `1` = low severity failures
+- `2` = medium/high severity failures
+- `3` = critical failures
 
 ---
 

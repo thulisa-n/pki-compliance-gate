@@ -74,6 +74,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Require protected GitHub context before execution",
     )
+    parser.add_argument(
+        "--output",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for evaluation results",
+    )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="Show rationale, standards, and recommendations for each check",
+    )
     return parser.parse_args()
 
 
@@ -106,15 +117,27 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         report_path=Path(args.report),
         evidence_dir=Path(args.evidence_dir),
     )
-
-    print("Certificate:", report.certificate)
-    print("Compliant:", "YES" if compliant else "NO")
-    for check in report.checks:
-        print(f"- {check.name}: {check.status.upper()} ({check.details})")
-    print("Lint:", report.lint.get("status"))
-    print(f"Report written to {args.report}")
-    print(f"Evidence written to {args.evidence_dir}")
-    return 0 if compliant else 1
+    if args.output == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print("Certificate:", report.certificate)
+        print("Compliant:", "YES" if compliant else "NO")
+        print(f"Policy Version: {report.policy_version}")
+        print(f"Compliance Score: {report.score}%")
+        print(f"Risk Level: {report.risk_level}")
+        for check in report.checks:
+            print(
+                f"- [{check.category}] {check.name}: {check.status.upper()} "
+                f"({check.details})"
+            )
+            if args.explain:
+                print(f"  Why this matters: {check.rationale}")
+                print(f"  Standard: {check.standard_reference}")
+                print(f"  Recommendation: {check.recommendation}")
+        print("Lint:", report.lint.get("status"))
+        print(f"Report written to {args.report}")
+        print(f"Evidence written to {args.evidence_dir}")
+    return _exit_code_from_report(report)
 
 
 def _run_triage(args: argparse.Namespace) -> int:
@@ -219,6 +242,19 @@ def _run_summary(args: argparse.Namespace) -> int:
 def _read_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as stream:
         return json.load(stream)
+
+
+def _exit_code_from_report(report) -> int:
+    failed = [check for check in report.checks if check.status == "fail"]
+    if not failed:
+        return 0
+
+    severities = {(check.severity or "medium").lower() for check in failed}
+    if "critical" in severities:
+        return 3
+    if "high" in severities or "medium" in severities:
+        return 2
+    return 1
 
 
 if __name__ == "__main__":

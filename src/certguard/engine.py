@@ -48,6 +48,7 @@ class ComplianceGateEngine:
             checks=policy_result.checks,
             parser_data=parser_result.data,
             lint=lint_result,
+            policy_version=self.policy.get("metadata", {}).get("version", "unknown"),
         )
 
         report_path.parent.mkdir(parents=True, exist_ok=True)

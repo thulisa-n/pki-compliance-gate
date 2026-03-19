@@ -92,6 +92,8 @@ def test_compliant_certificate_passes(tmp_path: Path) -> None:
     assert report["compliant"] is True
     assert len(report["checks"]) >= 5
     assert report_path.with_suffix(".json.seal").exists()
+    assert report["score"] == 100.0
+    assert report["risk_level"] == "LOW"
 
 
 def test_internal_domain_fails_policy(tmp_path: Path) -> None:
@@ -147,3 +149,7 @@ def test_signature_algorithm_blocks_sha1_fixture(tmp_path: Path) -> None:
     assert signature_check["status"] == "fail"
     assert "sha1" in signature_check["details"]
     assert compliant is False
+    assert signature_check["standard_reference"] == "CA/B Forum BR 7.1.3"
+    assert signature_check["severity"] == "critical"
+    assert report["risk_level"] == "HIGH"
+    assert report["score"] < 100

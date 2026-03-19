@@ -1,6 +1,7 @@
 metadata:
   standard: "CA/Browser Forum Baseline Requirements"
-  version: "2026-MVP"
+  version: "1.0.0"
+  last_updated: "2026-03-16"
   terms: "CABF Baseline Requirements policy profile for CertGuard MVP"
 
 terms: []
