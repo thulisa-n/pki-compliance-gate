@@ -102,6 +102,10 @@ This project now includes governance-focused agents for operational readiness:
   - records execution metadata for chain-of-custody and audit integrity
 - **Reviewer Summary Agent**
   - generates markdown summaries for reviewers and PR discussions
+- **Trend Snapshot Agent**
+  - creates run-level trend snapshots for governance visibility
+- **API TLS Posture Agent (APISEC)**
+  - evaluates endpoint certificate posture for API-facing security checks
 
 These agents support an automation engineering workflow where controls, evidence, and remediation are all traceable.
 
@@ -125,8 +129,10 @@ These agents support an automation engineering workflow where controls, evidence
   - `reports/compliance_report.json`
   - `reports/compliance_report.json.seal`
   - `reports/compliance_summary.md`
+  - `reports/compliance_trend_snapshot.json`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
+  - `audit_evidence/evidence_manifest.json`
 - **CI pipeline**
   - runs tests
   - executes compliance check
@@ -195,6 +201,14 @@ python src/main.py --mode summary \
   --report-input reports/compliance_report.json \
   --summary-output reports/compliance_summary.md
 
+# Trend snapshot for governance tracking
+python src/main.py --mode trend \
+  --report-input reports/compliance_report.json \
+  --trend-output reports/compliance_trend_snapshot.json
+
+# APISEC endpoint TLS posture check
+python src/main.py --mode apisec --endpoint https://api.example.com
+
 # Explainability output with standards context
 python src/main.py --cert tests/certificates/sha1_cert.pem --explain
 
@@ -210,6 +224,8 @@ Mode summary:
 - `watch`: detect policy drift against tracked standards baseline
 - `heal`: generate remediation plan and re-check healed certificate state
 - `summary`: generate reviewer-friendly markdown compliance summary
+- `trend`: generate compliance trend snapshot JSON
+- `apisec`: evaluate endpoint TLS posture for API security review
 
 Severity-based exit codes (`evaluate` mode):
 
@@ -287,6 +303,11 @@ Protected workflow control:
 
 - Manual dispatch supports optional `protected_run`
 - Protected mode enforces GitHub Actions + protected ref context checks
+
+Fixture matrix validation:
+
+- CI validates multiple fixture scenarios with expected exit-code assertions
+- ensures control behavior remains stable across valid and failure cases
 
 ---
 

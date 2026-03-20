@@ -9,9 +9,11 @@ import yaml
 
 from certguard.agents.bug_triage import BugTriageAgent
 from certguard.agents.compliance_assurance import ComplianceAssuranceAgent
+from certguard.agents.api_tls_posture import ApiTlsPostureAgent
 from certguard.agents.remediation import RemediationAgent
 from certguard.agents.reviewer_summary import ReviewerSummaryAgent
 from certguard.agents.standards_watch import StandardsWatchAgent
+from certguard.agents.trend_snapshot import TrendSnapshotAgent
 from certguard.engine import ComplianceGateEngine
 from certguard.governance import enforce_protected_context
 
@@ -20,7 +22,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="CertGuard compliance gate runner")
     parser.add_argument(
         "--mode",
-        choices=["evaluate", "triage", "assure", "watch", "heal", "summary"],
+        choices=[
+            "evaluate",
+            "triage",
+            "assure",
+            "watch",
+            "heal",
+            "summary",
+            "trend",
+            "apisec",
+        ],
         default="evaluate",
         help="Execution mode",
     )
@@ -85,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show rationale, standards, and recommendations for each check",
     )
+    parser.add_argument("--endpoint", help="API endpoint URL for APISEC mode")
+    parser.add_argument(
+        "--trend-output",
+        default="reports/compliance_trend_snapshot.json",
+        help="Path for trend snapshot JSON",
+    )
     return parser.parse_args()
 
 
@@ -102,6 +119,10 @@ def main() -> int:
         return _run_heal(args)
     if args.mode == "summary":
         return _run_summary(args)
+    if args.mode == "trend":
+        return _run_trend(args)
+    if args.mode == "apisec":
+        return _run_apisec(args)
     raise ValueError(f"Unsupported mode: {args.mode}")
 
 
@@ -237,6 +258,35 @@ def _run_summary(args: argparse.Namespace) -> int:
     print("Success:", "YES" if result.success else "NO")
     print(f"Summary written to {result.data.get('summary_path')}")
     return 0 if result.success else 1
+
+
+def _run_trend(args: argparse.Namespace) -> int:
+    report = _read_json(Path(args.report_input))
+    result = TrendSnapshotAgent().run(
+        {
+            "report": report,
+            "output_path": args.trend_output,
+            "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
+            "trigger": os.getenv("GITHUB_EVENT_NAME", "manual"),
+        }
+    )
+    print("Agent:", result.agent)
+    print("Success:", "YES" if result.success else "NO")
+    print(f"Trend snapshot written to {result.data.get('snapshot_path')}")
+    return 0 if result.success else 1
+
+
+def _run_apisec(args: argparse.Namespace) -> int:
+    if not args.endpoint:
+        raise ValueError("--endpoint is required in apisec mode.")
+    result = ApiTlsPostureAgent().run({"endpoint": args.endpoint})
+    print("Agent:", result.agent)
+    print("Success:", "YES" if result.success else "NO")
+    print(f"Endpoint: {result.data.get('endpoint')}")
+    print(f"Risk Level: {result.data.get('risk_level')}")
+    for check in result.checks:
+        print(f"- {check.name}: {check.status.upper()} ({check.details})")
+    return 0 if result.success else 2
 
 
 def _read_json(path: Path) -> dict:

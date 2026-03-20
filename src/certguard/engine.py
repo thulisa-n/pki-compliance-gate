@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -65,8 +67,31 @@ class ComplianceGateEngine:
         seal_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
         if not seal_result.success:
             raise ValueError("; ".join(seal_result.errors))
+        self._write_evidence_manifest(
+            evidence_dir=evidence_dir,
+            report_path=report_path,
+            seal_path=Path(seal_result.data["seal_path"]),
+        )
 
         return compliant, report
+
+    def _write_evidence_manifest(
+        self, evidence_dir: Path, report_path: Path, seal_path: Path
+    ) -> None:
+        manifest_path = evidence_dir / "evidence_manifest.json"
+        payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
+            "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
+            "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
+            "report_file": str(report_path),
+            "seal_file": str(seal_path),
+            "evidence_files": [
+                str(evidence_dir / "policy_checks.json"),
+                str(evidence_dir / "lint_results.json"),
+            ],
+        }
+        manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     def _run_zlint_if_enabled(self, cert_path: Path) -> dict[str, Any]:
         lint_cfg = self.policy.get("lint", {})

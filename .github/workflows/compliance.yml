@@ -71,13 +71,70 @@ jobs:
             --report-input reports/compliance_report.json \
             --summary-output reports/compliance_summary.md
 
+      - name: Generate trend snapshot
+        run: |
+          python src/main.py \
+            --mode trend \
+            --report-input reports/compliance_report.json \
+            --trend-output reports/compliance_trend_snapshot.json
+
+      - name: Prepare traceable artifact bundle
+        run: |
+          mkdir -p "artifacts/${GITHUB_RUN_ID}"
+          cp reports/compliance_report.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/compliance_report.json.seal "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/compliance_summary.md "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/compliance_trend_snapshot.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/evidence_manifest.json "artifacts/${GITHUB_RUN_ID}/"
+
       - name: Upload compliance artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: certguard-compliance-artifacts
+          name: certguard-compliance-artifacts-${{ github.run_id }}
           path: |
-            reports/compliance_report.json
-            reports/compliance_report.json.seal
-            reports/compliance_summary.md
-            audit_evidence/policy_checks.json
-            audit_evidence/lint_results.json
+            artifacts/${{ github.run_id }}
+
+  fixture-matrix:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - fixture: tests/certificates/valid_cert.pem
+            expected_exit: 0
+          - fixture: tests/certificates/internal_domain_cert.pem
+            expected_exit: 2
+          - fixture: tests/certificates/long_validity_cert.pem
+            expected_exit: 2
+          - fixture: tests/certificates/no_san_cert.pem
+            expected_exit: 2
+          - fixture: tests/certificates/weak_key_cert.pem
+            expected_exit: 3
+          - fixture: tests/certificates/sha1_cert.pem
+            expected_exit: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Evaluate fixture scenario
+        run: |
+          set +e
+          python src/main.py --cert "${{ matrix.fixture }}" --output json > /tmp/matrix_result.json
+          exit_code=$?
+          echo "Fixture: ${{ matrix.fixture }}"
+          echo "Expected: ${{ matrix.expected_exit }}"
+          echo "Actual: ${exit_code}"
+          if [ "${exit_code}" -ne "${{ matrix.expected_exit }}" ]; then
+            echo "Matrix validation failed for ${{ matrix.fixture }}"
+            cat /tmp/matrix_result.json || true
+            exit 1
+          fi
