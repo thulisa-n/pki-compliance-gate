@@ -9,6 +9,17 @@ Automated PKI compliance gate for X.509 certificates using policy-as-code, pre-i
 
 ---
 
+## What This Does (in 10 seconds)
+
+CertGuard Engine is a **policy-as-code PKI compliance gate** that:
+
+- validates X.509 certificates against CAB Forum and RFC 5280-informed controls
+- blocks non-compliant certificates in CI/CD pipelines
+- generates audit-ready evidence and remediation plans
+- simulates certificate authority pre-issuance compliance controls
+
+---
+
 ## Overview
 
 `CertGuard Engine` is a compliance-focused security automation project designed to mirror how modern CA pipelines enforce pre-issuance controls.
@@ -33,6 +44,18 @@ This project demonstrates a shift-left compliance model:
 - **Governance gate:** pipeline blocks violations
 - **Audit evidence:** JSON outputs support review and assurance workflows
 - **Engineering discipline:** testable, repeatable, CI-driven validation
+
+---
+
+## Why This Matters
+
+A single non-compliant certificate can:
+
+- break browser trust
+- cause production outages
+- introduce avoidable security risk
+
+CertGuard helps prevent this by enforcing compliance before issuance, not after failure.
 
 ---
 
@@ -76,6 +99,19 @@ This reflects real compliance operations where violations are detected, classifi
 
 ---
 
+## Example End-to-End Flow
+
+1. Developer submits a certificate file or endpoint target.
+2. CertGuard evaluates compliance checks.
+3. Violations are detected (for example weak hash or missing SAN).
+4. Triage classifies severity and next action.
+5. Remediation guidance is generated.
+6. Corrected certificate is revalidated.
+7. Evidence is sealed for audit traceability.
+8. Reviewer receives summary and trend outputs.
+
+---
+
 ## Example Compliance Output
 
 ```text
@@ -95,27 +131,22 @@ Lint: skipped
 
 This project now includes governance-focused agents for operational readiness:
 
-- **Bug Triage Agent**
-  - classifies failed controls by severity
-  - suggests remediation actions for each failed check
-- **Compliance Assurance Agent**
-  - confirms required controls are present and passing after fixes
-  - validates final compliance state against governance expectations
-- **Standards Watch Agent**
-  - compares current policy to tracked standards baseline
-  - reports policy drift and recommends updates
-- **Remediation Agent**
-  - produces actionable fix steps for failed controls
-  - supports heal-and-recheck workflow with assurance verification
-- **Evidence Vault Agent**
-  - seals generated compliance reports using SHA-256 fingerprints
-  - records execution metadata for chain-of-custody and audit integrity
-- **Reviewer Summary Agent**
-  - generates markdown summaries for reviewers and PR discussions
-- **Trend Snapshot Agent**
-  - creates run-level trend snapshots for governance visibility
-- **API TLS Posture Agent (APISEC)**
-  - evaluates endpoint certificate posture for API-facing security checks
+### Core Governance Agents
+
+- **Bug Triage Agent**: classifies failed controls by severity and triage action
+- **Remediation Agent**: generates targeted fix guidance for failed controls
+- **Compliance Assurance Agent**: verifies control state after remediation
+
+### Audit and Evidence Agents
+
+- **Evidence Vault Agent**: seals reports with SHA-256 chain-of-custody metadata
+- **Reviewer Summary Agent**: generates reviewer-ready markdown summaries
+- **Trend Snapshot Agent**: writes run-level trend outputs for governance tracking
+
+### Advanced Security Agents
+
+- **Standards Watch Agent**: detects policy drift against tracked baselines
+- **API TLS Posture Agent (APISEC)**: evaluates endpoint TLS posture for API-facing controls
 
 These agents support an automation engineering workflow where controls, evidence, and remediation are all traceable.
 
@@ -399,7 +430,7 @@ Together, they support a transition path:
 
 ## About the Author
 
-Automation Engineer transitioning into Security and PKI Compliance Engineering.
+Automation Engineer specializing in security automation, DevSecOps compliance gates, and PKI governance systems.
 
 Currently building:
 
