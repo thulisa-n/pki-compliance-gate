@@ -90,7 +90,7 @@ jobs:
           cp audit_evidence/evidence_manifest.json "artifacts/${GITHUB_RUN_ID}/"
 
       - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: certguard-compliance-artifacts-${{ github.run_id }}
           path: |
