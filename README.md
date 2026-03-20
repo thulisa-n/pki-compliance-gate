@@ -111,36 +111,15 @@ These agents support an automation engineering workflow where controls, evidence
 
 ---
 
-## Current Features (Phase 1 + Phase 2 Complete, Phase 3 Started)
+## Current Features
 
-- **X.509 parsing agent**
-  - subject, issuer, validity window, SAN, signature hash, key details
-- **Policy validation agent**
-  - max validity days
-  - required SAN extension
-  - minimum RSA key size
-  - prohibited hash algorithms
-  - internal domain suffix blocking
-- **Compliance gate engine**
-  - pass/fail decision with explicit check results
-  - compliance score and risk classification output
-  - severity-based exit codes for pipeline-friendly behavior
-- **Evidence generation**
-  - `reports/compliance_report.json`
-  - `reports/compliance_report.json.seal`
-  - `reports/compliance_summary.md`
-  - `reports/compliance_trend_snapshot.json`
-  - `audit_evidence/policy_checks.json`
-  - `audit_evidence/lint_results.json`
-  - `audit_evidence/evidence_manifest.json`
-- **CI pipeline**
-  - runs tests
-  - executes compliance check
-  - uploads artifacts
-- **Phase 2 lint controls**
-  - severity-aware zlint parsing
-  - policy-driven fail severities (`lint.fail_severities`)
-  - fallback behavior for non-JSON lint output
+- X.509 parsing and policy validation for core PKI controls.
+- Compliance gating with score, risk classification, and pipeline-friendly exit codes.
+- Evidence lifecycle outputs for audit traceability (`reports/` and `audit_evidence/`).
+- Governance automation agents for triage, assurance, watch, remediation, and reviewer summaries.
+- CI governance pipeline with tests, compliance execution, artifact upload, and security scans.
+
+Detailed phase-by-phase capability tracking lives in `docs/PROJECT_STATUS.md`.
 
 ---
 
