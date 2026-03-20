@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
+# Controlled use for zlint CLI integration.
+import subprocess  # nosec B404
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -98,9 +99,12 @@ class ComplianceGateEngine:
         if not lint_cfg.get("enable_zlint", False):
             return {"status": "skipped", "details": "zlint disabled in policy"}
 
+        # Safe invocation: fixed binary and argument structure, shell disabled.
         cmd = ["zlint", "-pretty", str(cert_path)]
         try:
-            process = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            process = subprocess.run(  # nosec B603
+                cmd, capture_output=True, text=True, check=False
+            )
         except FileNotFoundError:
             return {"status": "skipped", "details": "zlint not installed"}
 
