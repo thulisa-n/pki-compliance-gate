@@ -1,0 +1,7 @@
+# Default owner for all repository paths
+* @thulisa-n
+
+# High-trust areas
+/.github/workflows/* @thulisa-n
+/policies/* @thulisa-n
+/src/certguard/* @thulisa-n

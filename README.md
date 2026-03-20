@@ -313,16 +313,19 @@ Fixture matrix validation:
 
 ## Roadmap
 
-- **Phase 3 (next)**
-  - CISA-style chain-of-custody metadata
-  - CISSP-aligned identity and access controls for gated actions
-  - richer evidence lifecycle and reviewer workflow
-  - compliance dashboard summary for reviewer visibility
-  - signed evidence hash manifest for tamper detection
-- **Phase 4**
-  - API/TLS endpoint posture checks for API security workflows
-  - policy expansion for endpoint-level controls
-  - additional RFC 5280 checks (including extension profile validation)
+- **Phase 3 (completed)**
+  - chain-of-custody report sealing and evidence manifests
+  - role-aware protected run controls
+  - reviewer summary, trend snapshots, fixture matrix CI checks
+  - API TLS posture mode for initial APISEC coverage
+- **Phase 4 (enterprise alignment)**
+  - expand APISEC checks (TLS version/cipher policies, cert chain posture)
+  - add SBOM generation and signed release provenance
+  - deeper RFC 5280 coverage (extension profile and edge-case linting)
+- **Phase 5 (big-tech readiness)**
+  - policy change approval workflows with stricter CODEOWNERS gating
+  - observability metrics and trend dashboards for long-running governance
+  - multi-environment compliance profiles (dev/staging/production)
 
 ---
 
