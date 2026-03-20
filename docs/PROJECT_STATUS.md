@@ -2,7 +2,7 @@
 
 This document tracks implemented capabilities in a detailed, phase-oriented format.
 
-## Current Features (Phase 1 + Phase 2 Complete, Phase 3 Started)
+## Current Features (Phase 1 + Phase 2 + Phase 3 Complete)
 
 - **X.509 parsing agent**
   - subject, issuer, validity window, SAN, signature hash, key details
@@ -36,3 +36,8 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 ## Why This Split Exists
 
 `README.md` stays concise for first-time readers, while this file preserves full implementation detail for reviewers, hiring managers, and audit-minded stakeholders.
+
+## Upcoming Work (Not Started Yet)
+
+- **Phase 4 (enterprise alignment)**
+- **Phase 5 (big-tech readiness)**

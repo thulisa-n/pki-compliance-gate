@@ -111,15 +111,21 @@ These agents support an automation engineering workflow where controls, evidence
 
 ---
 
-## Current Features
+## Implementation Status
 
-- X.509 parsing and policy validation for core PKI controls.
-- Compliance gating with score, risk classification, and pipeline-friendly exit codes.
-- Evidence lifecycle outputs for audit traceability (`reports/` and `audit_evidence/`).
-- Governance automation agents for triage, assurance, watch, remediation, and reviewer summaries.
-- CI governance pipeline with tests, compliance execution, artifact upload, and security scans.
+- Completed implementation details (Phase 1 to Phase 3) are maintained in `docs/PROJECT_STATUS.md`.
+- README focuses on active direction and roadmap visibility.
 
-Detailed phase-by-phase capability tracking lives in `docs/PROJECT_STATUS.md`.
+### Current Focus
+
+- **Phase 4 (enterprise alignment) - not started**
+  - expand APISEC checks (TLS version/cipher policies, cert chain posture)
+  - add SBOM generation and signed release provenance
+  - deeper RFC 5280 coverage (extension profile and edge-case linting)
+- **Phase 5 (big-tech readiness) - not started**
+  - policy change approval workflows with stricter CODEOWNERS gating
+  - observability metrics and trend dashboards for long-running governance
+  - multi-environment compliance profiles (dev/staging/production)
 
 ---
 
