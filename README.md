@@ -152,24 +152,6 @@ These agents support an automation engineering workflow where controls, evidence
 
 ---
 
-## Implementation Status
-
-- Completed implementation details (Phase 1 to Phase 3) are maintained in `docs/PROJECT_STATUS.md`.
-- README focuses on active direction and roadmap visibility.
-
-### Current Focus
-
-- **Phase 4 (enterprise alignment) - not started**
-  - expand APISEC checks (TLS version/cipher policies, cert chain posture)
-  - add SBOM generation and signed release provenance
-  - deeper RFC 5280 coverage (extension profile and edge-case linting)
-- **Phase 5 (big-tech readiness) - not started**
-  - policy change approval workflows with stricter CODEOWNERS gating
-  - observability metrics and trend dashboards for long-running governance
-  - multi-environment compliance profiles (dev/staging/production)
-
----
-
 ## Quick Start
 
 ### 1) Setup
