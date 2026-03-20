@@ -10,6 +10,7 @@ class CheckResult:
     name: str
     status: str
     details: str
+    rule_id: str | None = None
     category: str | None = None
     severity: str | None = None
     standard_reference: str | None = None
@@ -66,6 +67,7 @@ class ComplianceReport:
         failed_controls = [
             {
                 "name": check.name,
+                "rule_id": check.rule_id,
                 "severity": (check.severity or "unknown").lower(),
                 "standard_reference": check.standard_reference,
             }

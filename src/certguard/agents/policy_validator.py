@@ -7,6 +7,7 @@ from certguard.models import AgentResult, CheckResult
 
 CHECK_METADATA: dict[str, dict[str, str]] = {
     "validity_days": {
+        "rule_id": "CAB-BR-6.3.2",
         "category": "VALIDITY",
         "severity": "high",
         "standard_reference": "CA/B Forum BR 7.1.2.4",
@@ -14,6 +15,7 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "recommendation": "Reissue certificate with validity at or below policy threshold.",
     },
     "san_extension": {
+        "rule_id": "RFC-5280-4.2.1.6",
         "category": "IDENTITY",
         "severity": "high",
         "standard_reference": "CA/B Forum BR 7.1.4.2.1",
@@ -21,6 +23,7 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "recommendation": "Issue certificate with SAN entries matching intended hostnames.",
     },
     "rsa_key_size": {
+        "rule_id": "CAB-BR-6.1.5",
         "category": "CRYPTOGRAPHY",
         "severity": "critical",
         "standard_reference": "CA/B Forum BR 6.1.5",
@@ -28,6 +31,7 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "recommendation": "Generate key pair with RSA 2048+ before issuance.",
     },
     "signature_algorithm": {
+        "rule_id": "CAB-BR-7.1.3",
         "category": "CRYPTOGRAPHY",
         "severity": "critical",
         "standard_reference": "CA/B Forum BR 7.1.3",
@@ -35,6 +39,7 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "recommendation": "Use SHA-256 or stronger signature algorithm.",
     },
     "internal_domain_check": {
+        "rule_id": "CAB-BR-7.1.4.2.1",
         "category": "POLICY",
         "severity": "high",
         "standard_reference": "CA/B Forum BR 7.1.4.2.1",
@@ -160,6 +165,7 @@ class PolicyValidatorAgent(BaseAgent):
             name=name,
             status="pass" if condition else "fail",
             details=details,
+            rule_id=meta.get("rule_id"),
             category=meta.get("category"),
             severity=meta.get("severity"),
             standard_reference=meta.get("standard_reference"),

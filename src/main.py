@@ -147,11 +147,14 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         print(f"Compliance Score: {report.score}%")
         print(f"Risk Level: {report.risk_level}")
         for check in report.checks:
+            rule_tag = f"[{check.rule_id}] " if check.rule_id else ""
             print(
-                f"- [{check.category}] {check.name}: {check.status.upper()} "
+                f"- [{check.category}] {rule_tag}{check.name}: {check.status.upper()} "
                 f"({check.details})"
             )
             if args.explain:
+                if check.rule_id:
+                    print(f"  Rule ID: {check.rule_id}")
                 print(f"  Why this matters: {check.rationale}")
                 print(f"  Standard: {check.standard_reference}")
                 print(f"  Recommendation: {check.recommendation}")

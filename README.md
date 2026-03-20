@@ -66,16 +66,26 @@ Compliance Report      Audit Evidence
 
 ---
 
+## Compliance Lifecycle (Core Concept)
+
+CertGuard Engine models a governance workflow, not only a single pass/fail check:
+
+`evaluate -> triage -> remediate/heal -> assure -> summary -> trend -> seal`
+
+This reflects real compliance operations where violations are detected, classified, remediated, revalidated, tracked over time, and preserved as evidence.
+
+---
+
 ## Example Compliance Output
 
 ```text
 Certificate: tests/certificates/valid_cert.pem
 Compliant: YES
-- validity_days: PASS (Certificate validity is 90 days (max 398))
-- san_extension: PASS (SAN extension present)
-- rsa_key_size: PASS (RSA key size is 2048 bits (min 2048))
-- signature_algorithm: PASS (Signature algorithm is sha256)
-- internal_domain_check: PASS (No blocked internal domains detected)
+- [CAB-BR-6.3.2] validity_days: PASS (Certificate validity is 90 days (max 398))
+- [RFC-5280-4.2.1.6] san_extension: PASS (SAN extension present)
+- [CAB-BR-6.1.5] rsa_key_size: PASS (RSA key size is 2048 bits (min 2048))
+- [CAB-BR-7.1.3] signature_algorithm: PASS (Signature algorithm is sha256)
+- [CAB-BR-7.1.4.2.1] internal_domain_check: PASS (No blocked internal domains detected)
 Lint: skipped
 ```
 
@@ -201,6 +211,14 @@ python src/main.py --cert tests/certificates/sha1_cert.pem --explain
 python src/main.py --cert tests/certificates/valid_cert.pem --output json
 ```
 
+### 5) Real-world endpoint posture demo
+
+```bash
+python src/main.py --mode apisec --endpoint https://example.com
+```
+
+This runs a live endpoint TLS posture check and returns a risk-oriented result for API-facing usage.
+
 Mode summary:
 
 - `evaluate`: run core compliance checks and generate evidence
@@ -263,6 +281,30 @@ The standards baseline tracker is maintained in `policies/standards_baseline.yam
 
 ---
 
+## Example Policy Mapping
+
+| Rule ID | Description | Implementation |
+| --- | --- | --- |
+| `CAB-BR-6.3.2` | Max certificate validity window | `certificate.max_validity_days` -> `validity_days` check |
+| `RFC-5280-4.2.1.6` | SAN extension required for identity matching | `certificate.require_san` -> `san_extension` check |
+| `CAB-BR-6.1.5` | RSA key size must be 2048+ | `key.minimum_rsa_bits` -> `rsa_key_size` check |
+| `CAB-BR-7.1.3` | Prohibited weak signature/hash algorithms | `signature.prohibited_algorithms` -> `signature_algorithm` check |
+| `CAB-BR-7.1.4.2.1` | Internal names not allowed in public trust context | `domains.blocked_suffixes` -> `internal_domain_check` check |
+
+---
+
+## Industry Alignment
+
+This project mirrors patterns commonly seen in:
+
+- certificate authority pre-issuance validation pipelines
+- certificate linting ecosystems (`zlint`, `pkilint`)
+- DevSecOps compliance gates in CI/CD systems
+
+It extends those patterns with governance agents, remediation workflows, and evidence sealing for audit traceability.
+
+---
+
 ## CI Pipeline
 
 Workflow: `.github/workflows/compliance.yml`
@@ -298,19 +340,16 @@ Fixture matrix validation:
 
 ## Roadmap
 
-- **Phase 3 (completed)**
-  - chain-of-custody report sealing and evidence manifests
-  - role-aware protected run controls
-  - reviewer summary, trend snapshots, fixture matrix CI checks
-  - API TLS posture mode for initial APISEC coverage
-- **Phase 4 (enterprise alignment)**
+- **Phase 4 (enterprise alignment) - not started**
   - expand APISEC checks (TLS version/cipher policies, cert chain posture)
   - add SBOM generation and signed release provenance
   - deeper RFC 5280 coverage (extension profile and edge-case linting)
-- **Phase 5 (big-tech readiness)**
+- **Phase 5 (big-tech readiness) - not started**
   - policy change approval workflows with stricter CODEOWNERS gating
   - observability metrics and trend dashboards for long-running governance
   - multi-environment compliance profiles (dev/staging/production)
+
+Completed implementation history is documented in `docs/PROJECT_STATUS.md`.
 
 ---
 
