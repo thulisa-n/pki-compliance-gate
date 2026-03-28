@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 from pathlib import Path
 
 from certguard.agents.api_tls_posture import ApiTlsPostureAgent
@@ -58,3 +59,8 @@ def test_apisec_agent_medium_risk_for_weak_tls_posture(monkeypatch) -> None:
     result = agent.run({"endpoint": "https://api.example.com"})
     assert result.success is False
     assert result.data["risk_level"] == "MEDIUM"
+
+
+def test_apisec_context_enforces_tls_12_or_higher() -> None:
+    context = ApiTlsPostureAgent()._build_ssl_context()
+    assert context.minimum_version == ssl.TLSVersion.TLSv1_2

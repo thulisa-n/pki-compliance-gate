@@ -133,7 +133,7 @@ class ApiTlsPostureAgent(BaseAgent):
         return host, port
 
     def _fetch_tls_posture(self, host: str, port: int) -> dict[str, str]:
-        context = ssl.create_default_context()
+        context = self._build_ssl_context()
         with socket.create_connection((host, port), timeout=10) as tcp_sock:
             with context.wrap_socket(tcp_sock, server_hostname=host) as tls_sock:
                 der_cert = tls_sock.getpeercert(binary_form=True)
@@ -146,6 +146,12 @@ class ApiTlsPostureAgent(BaseAgent):
                     "tls_version": tls_sock.version() or "unknown",
                     "cipher_suite": cipher[0] if cipher else "unknown",
                 }
+
+    def _build_ssl_context(self) -> ssl.SSLContext:
+        context = ssl.create_default_context()
+        # Explicitly enforce modern TLS to satisfy secure transport policy.
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        return context
 
     def _is_weak_cipher(self, cipher_suite: str) -> bool:
         weak_markers = ("rc4", "3des", "des", "null", "anon", "export", "md5")
