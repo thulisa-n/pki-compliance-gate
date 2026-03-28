@@ -286,6 +286,8 @@ def _run_apisec(args: argparse.Namespace) -> int:
     print("Agent:", result.agent)
     print("Success:", "YES" if result.success else "NO")
     print(f"Endpoint: {result.data.get('endpoint')}")
+    print(f"TLS Version: {result.data.get('tls_version')}")
+    print(f"Cipher Suite: {result.data.get('cipher_suite')}")
     print(f"Risk Level: {result.data.get('risk_level')}")
     for check in result.checks:
         print(f"- {check.name}: {check.status.upper()} ({check.details})")

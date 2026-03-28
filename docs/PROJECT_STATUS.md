@@ -37,7 +37,8 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 
 `README.md` stays concise for first-time readers, while this file preserves full implementation detail for reviewers, hiring managers, and audit-minded stakeholders.
 
-## Upcoming Work (Not Started Yet)
+## Upcoming Work
 
-- **Phase 4 (enterprise alignment)**
-- **Phase 5 (big-tech readiness)**
+- **Phase 4 (enterprise alignment) - in progress**
+  - APISEC expanded with TLS version policy checks, cipher posture checks, and chain posture signals
+- **Phase 5 (big-tech readiness) - not started**

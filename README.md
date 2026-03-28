@@ -127,6 +127,21 @@ Lint: skipped
 
 ---
 
+## Example APISEC Result
+
+```text
+Endpoint: https://api.example.com
+TLS Version: TLSv1.2
+Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+Risk Level: MEDIUM
+- endpoint_tls_version_policy: PASS
+- endpoint_cipher_policy: PASS
+- endpoint_signature_algorithm: PASS
+- endpoint_chain_posture: FAIL (missing SKI/AKI linkage)
+```
+
+---
+
 ## Governance Agents
 
 This project now includes governance-focused agents for operational readiness:
@@ -353,8 +368,8 @@ Fixture matrix validation:
 
 ## Roadmap
 
-- **Phase 4 (enterprise alignment) - not started**
-  - expand APISEC checks (TLS version/cipher policies, cert chain posture)
+- **Phase 4 (enterprise alignment) - in progress**
+  - expand APISEC checks (TLS version/cipher policies, cert chain posture) ✅
   - add SBOM generation and signed release provenance
   - deeper RFC 5280 coverage (extension profile and edge-case linting)
 - **Phase 5 (big-tech readiness) - not started**
