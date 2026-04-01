@@ -14,7 +14,7 @@ def _write_policy(
 ) -> None:
     policy = {
         "metadata": {"standard": "CABF", "version": "test", "terms": "test"},
-        "certificate": {"max_validity_days": 398, "require_san": True},
+        "certificate": {"max_validity_days": 200, "require_san": True},
         "key": {"minimum_rsa_bits": 2048},
         "signature": {"prohibited_algorithms": ["sha1", "md5"]},
         "domains": {"forbid_internal_names": True, "blocked_suffixes": [".local"]},

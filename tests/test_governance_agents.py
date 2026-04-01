@@ -47,7 +47,7 @@ def test_standards_watch_agent_detects_policy_drift() -> None:
     baseline = {
         "baseline": {"version": "2026.03", "last_reviewed": "2026-03-16"},
         "expected": {
-            "certificate": {"max_validity_days": 398},
+            "certificate": {"max_validity_days": 200},
             "key": {"minimum_rsa_bits": 2048},
             "signature": {"prohibited_algorithms": ["md5", "sha1"]},
         },

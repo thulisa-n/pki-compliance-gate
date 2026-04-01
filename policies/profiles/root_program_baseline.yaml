@@ -7,7 +7,7 @@ metadata:
 terms: []
 
 certificate:
-  max_validity_days: 398
+  max_validity_days: 200
   require_san: true
 
 key:

@@ -5,5 +5,5 @@ package pki.compliance
 default allow := false
 
 allow if {
-    input.validity_days <= 398
+    input.validity_days <= 200
 }

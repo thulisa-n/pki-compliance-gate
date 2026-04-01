@@ -117,7 +117,7 @@ This reflects real compliance operations where violations are detected, classifi
 ```text
 Certificate: tests/certificates/valid_cert.pem
 Compliant: YES
-- [CAB-BR-6.3.2] validity_days: PASS (Certificate validity is 90 days (max 398))
+- [CAB-BR-6.3.2] validity_days: PASS (Certificate validity is 90 days (max 200))
 - [RFC-5280-4.2.1.6] san_extension: PASS (SAN extension present)
 - [CAB-BR-6.1.5] rsa_key_size: PASS (RSA key size is 2048 bits (min 2048))
 - [CAB-BR-7.1.3] signature_algorithm: PASS (Signature algorithm is sha256)
@@ -337,6 +337,7 @@ Profile overlays for standards coverage breadth:
 - `policies/profiles/smime_br.yaml`
 - `policies/profiles/root_program_baseline.yaml`
 - `policies/profiles/cpcps_controls.yaml`
+- `policies/profiles/short_lived_90d.yaml`
 
 ---
 

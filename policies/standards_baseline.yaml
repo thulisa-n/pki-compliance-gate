@@ -10,7 +10,7 @@ baseline:
 
 expected:
   certificate:
-    max_validity_days: 398
+    max_validity_days: 200
   key:
     minimum_rsa_bits: 2048
   signature:
