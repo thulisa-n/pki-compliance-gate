@@ -63,7 +63,13 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(rfc5280, "require_end_entity_not_ca", bool, "rfc5280")
     _require_key_type(rfc5280, "require_key_usage", bool, "rfc5280")
     _require_key_type(rfc5280, "required_key_usages", list, "rfc5280")
+    _require_key_type(rfc5280, "require_subject_key_identifier", bool, "rfc5280")
+    _require_key_type(rfc5280, "require_authority_key_identifier", bool, "rfc5280")
+    _require_key_type(rfc5280, "allowed_critical_extensions", list, "rfc5280")
     _require_list_of_strings(rfc5280["required_key_usages"], "rfc5280.required_key_usages")
+    _require_list_of_strings(
+        rfc5280["allowed_critical_extensions"], "rfc5280.allowed_critical_extensions"
+    )
 
     opa = policy["opa"]
     _require_key_type(opa, "enabled", bool, "opa")
@@ -80,6 +86,9 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy["rfc5280"].setdefault("require_end_entity_not_ca", False)
     policy["rfc5280"].setdefault("require_key_usage", False)
     policy["rfc5280"].setdefault("required_key_usages", [])
+    policy["rfc5280"].setdefault("require_subject_key_identifier", False)
+    policy["rfc5280"].setdefault("require_authority_key_identifier", False)
+    policy["rfc5280"].setdefault("allowed_critical_extensions", [])
 
     policy.setdefault("opa", {})
     policy["opa"].setdefault("enabled", False)

@@ -46,6 +46,9 @@ rfc5280:
   required_key_usages:
     - "digital_signature"
     - "key_encipherment"
+  require_subject_key_identifier: false
+  require_authority_key_identifier: false
+  allowed_critical_extensions: []
 
 opa:
   enabled: false

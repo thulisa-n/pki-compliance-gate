@@ -32,7 +32,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install cyclonedx-bom
 
       - name: Run unit tests
         run: pytest -q
@@ -78,6 +80,36 @@ jobs:
             --report-input reports/compliance_report.json \
             --trend-output reports/compliance_trend_snapshot.json
 
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          cyclonedx-py requirements requirements.txt \
+            --output-format JSON \
+            --output-reproducible \
+            --output-file reports/sbom.cdx.json
+
+      - name: Generate signed release provenance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from certguard.release_provenance import generate_release_provenance
+          artifacts = [
+              Path("reports/compliance_report.json"),
+              Path("reports/compliance_report.json.seal"),
+              Path("reports/compliance_summary.md"),
+              Path("reports/compliance_trend_snapshot.json"),
+              Path("reports/sbom.cdx.json"),
+              Path("audit_evidence/policy_checks.json"),
+              Path("audit_evidence/lint_results.json"),
+              Path("audit_evidence/waiver_results.json"),
+              Path("audit_evidence/opa_results.json"),
+              Path("audit_evidence/evidence_manifest.json"),
+          ]
+          generate_release_provenance(
+              artifact_paths=artifacts,
+              output_path=Path("reports/release_provenance.json"),
+          )
+          PY
+
       - name: Prepare traceable artifact bundle
         run: |
           mkdir -p "artifacts/${GITHUB_RUN_ID}"
@@ -85,8 +117,13 @@ jobs:
           cp reports/compliance_report.json.seal "artifacts/${GITHUB_RUN_ID}/"
           cp reports/compliance_summary.md "artifacts/${GITHUB_RUN_ID}/"
           cp reports/compliance_trend_snapshot.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/sbom.cdx.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.json.sig "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/opa_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/evidence_manifest.json "artifacts/${GITHUB_RUN_ID}/"
 
       - name: Upload compliance artifacts

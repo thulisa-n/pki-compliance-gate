@@ -5,7 +5,7 @@ from typing import Any
 
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import ExtensionOID, NameOID
 
 from certguard.agents.base import BaseAgent
 from certguard.models import AgentResult
@@ -46,6 +46,9 @@ class X509ParserAgent(BaseAgent):
         common_name = self._safe_cn(cert)
         basic_constraints_ca = self._basic_constraints_ca(cert)
         key_usage = self._key_usage_flags(cert)
+        has_ski = self._has_extension(cert, ExtensionOID.SUBJECT_KEY_IDENTIFIER)
+        has_aki = self._has_extension(cert, ExtensionOID.AUTHORITY_KEY_IDENTIFIER)
+        critical_extension_oids = self._critical_extension_oids(cert)
 
         parser_data: dict[str, Any] = {
             "subject": cert.subject.rfc4514_string(),
@@ -60,6 +63,9 @@ class X509ParserAgent(BaseAgent):
             "rsa_key_size": rsa_bits,
             "basic_constraints_ca": basic_constraints_ca,
             "key_usage": key_usage,
+            "has_subject_key_identifier": has_ski,
+            "has_authority_key_identifier": has_aki,
+            "critical_extension_oids": critical_extension_oids,
         }
 
         return AgentResult(agent=self.name, success=True, data=parser_data)
@@ -105,3 +111,17 @@ class X509ParserAgent(BaseAgent):
                 ]
             )
         return [name for name, is_enabled in flags if is_enabled]
+
+    def _has_extension(self, cert: x509.Certificate, oid: ExtensionOID) -> bool:
+        try:
+            cert.extensions.get_extension_for_oid(oid)
+            return True
+        except x509.ExtensionNotFound:
+            return False
+
+    def _critical_extension_oids(self, cert: x509.Certificate) -> list[str]:
+        return sorted(
+            extension.oid.dotted_string
+            for extension in cert.extensions
+            if extension.critical
+        )

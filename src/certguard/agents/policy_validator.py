@@ -79,6 +79,30 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rationale": "Key usage extensions must align with intended certificate purpose.",
         "recommendation": "Set key usage extension to include required subscriber usages.",
     },
+    "rfc5280_subject_key_identifier": {
+        "rule_id": "RFC-5280-4.2.1.2",
+        "category": "RFC5280",
+        "severity": "medium",
+        "standard_reference": "RFC 5280 4.2.1.2",
+        "rationale": "SKI helps bind subject keys to certificate lifecycle and chain processing.",
+        "recommendation": "Include Subject Key Identifier extension for leaf profile consistency.",
+    },
+    "rfc5280_authority_key_identifier": {
+        "rule_id": "RFC-5280-4.2.1.1",
+        "category": "RFC5280",
+        "severity": "medium",
+        "standard_reference": "RFC 5280 4.2.1.1",
+        "rationale": "AKI supports robust issuer key linkage during path validation.",
+        "recommendation": "Include Authority Key Identifier extension for issuer linkage.",
+    },
+    "rfc5280_critical_extension_profile": {
+        "rule_id": "RFC-5280-4.2",
+        "category": "RFC5280",
+        "severity": "high",
+        "standard_reference": "RFC 5280 4.2",
+        "rationale": "Unexpected critical extensions can break relying-party validation behavior.",
+        "recommendation": "Restrict critical extensions to an approved extension profile.",
+    },
 }
 
 
@@ -302,6 +326,86 @@ class PolicyValidatorAgent(BaseAgent):
                     "RFC 5280 key usage profile check disabled by policy.",
                     policy_value=False,
                     actual_value=False,
+                )
+            )
+
+        if rfc_cfg["require_subject_key_identifier"]:
+            has_ski = bool(parser_data.get("has_subject_key_identifier"))
+            checks.append(
+                self._check(
+                    "rfc5280_subject_key_identifier",
+                    has_ski,
+                    "Subject Key Identifier extension present."
+                    if has_ski
+                    else "Subject Key Identifier extension missing.",
+                    policy_value=True,
+                    actual_value=has_ski,
+                )
+            )
+        else:
+            checks.append(
+                self._check(
+                    "rfc5280_subject_key_identifier",
+                    True,
+                    "RFC 5280 SKI check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                )
+            )
+
+        if rfc_cfg["require_authority_key_identifier"]:
+            has_aki = bool(parser_data.get("has_authority_key_identifier"))
+            checks.append(
+                self._check(
+                    "rfc5280_authority_key_identifier",
+                    has_aki,
+                    "Authority Key Identifier extension present."
+                    if has_aki
+                    else "Authority Key Identifier extension missing.",
+                    policy_value=True,
+                    actual_value=has_aki,
+                )
+            )
+        else:
+            checks.append(
+                self._check(
+                    "rfc5280_authority_key_identifier",
+                    True,
+                    "RFC 5280 AKI check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                )
+            )
+
+        allowed_critical = {
+            value.strip() for value in rfc_cfg["allowed_critical_extensions"] if value.strip()
+        }
+        critical_oids = {
+            value.strip() for value in parser_data.get("critical_extension_oids", []) if value
+        }
+        if allowed_critical:
+            unknown_critical = sorted(critical_oids - allowed_critical)
+            checks.append(
+                self._check(
+                    "rfc5280_critical_extension_profile",
+                    not unknown_critical,
+                    (
+                        "Critical extensions align with policy profile."
+                        if not unknown_critical
+                        else f"Unexpected critical extensions: {', '.join(unknown_critical)}"
+                    ),
+                    policy_value=sorted(allowed_critical),
+                    actual_value=sorted(critical_oids),
+                )
+            )
+        else:
+            checks.append(
+                self._check(
+                    "rfc5280_critical_extension_profile",
+                    True,
+                    "Critical extension profile linting disabled by policy.",
+                    policy_value=[],
+                    actual_value=sorted(critical_oids),
                 )
             )
 

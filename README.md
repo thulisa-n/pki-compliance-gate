@@ -312,6 +312,9 @@ Core policy file: `policies/cabf_policy.yaml`
 - `rfc5280.require_end_entity_not_ca`
 - `rfc5280.require_key_usage`
 - `rfc5280.required_key_usages`
+- `rfc5280.require_subject_key_identifier`
+- `rfc5280.require_authority_key_identifier`
+- `rfc5280.allowed_critical_extensions`
 - `opa.enabled`
 - `opa.policy_file`
 
@@ -364,7 +367,9 @@ Pipeline actions:
 2. Execute `pytest`
 3. Generate sample certificate
 4. Run compliance gate
-5. Upload compliance artifacts
+5. Generate CycloneDX SBOM
+6. Generate signed release provenance
+7. Upload compliance artifacts
 
 This creates visible governance evidence directly in GitHub Actions.
 
@@ -394,8 +399,8 @@ Fixture matrix validation:
   - add DCV attestation guardrails (allowed method + recency) ✅
   - add false-positive waiver controls with audit evidence ✅
   - add optional OPA/Rego policy gate integration ✅
-  - add SBOM generation and signed release provenance
-  - deeper RFC 5280 coverage (extension profile and edge-case linting)
+  - add SBOM generation and signed release provenance ✅
+  - deeper RFC 5280 coverage (extension profile and edge-case linting) ✅
 - **Phase 5 (big-tech readiness) - not started**
   - policy change approval workflows with stricter CODEOWNERS gating
   - observability metrics and trend dashboards for long-running governance

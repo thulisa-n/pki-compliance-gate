@@ -34,6 +34,9 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `rfc5280.require_end_entity_not_ca` (`bool`)
 - `rfc5280.require_key_usage` (`bool`)
 - `rfc5280.required_key_usages` (`list[str]`)
+- `rfc5280.require_subject_key_identifier` (`bool`)
+- `rfc5280.require_authority_key_identifier` (`bool`)
+- `rfc5280.allowed_critical_extensions` (`list[str]`, extension OID allowlist)
 - `opa.enabled` (`bool`)
 - `opa.policy_file` (`str`)
 

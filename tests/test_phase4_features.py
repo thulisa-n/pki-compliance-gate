@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 
+from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.engine import ComplianceGateEngine
 
 
@@ -92,3 +93,32 @@ def test_opa_enabled_with_missing_policy_file_fails_closed(tmp_path: Path) -> No
     report = json.loads(report_path.read_text(encoding="utf-8"))
     opa_check = next(item for item in report["checks"] if item["name"] == "opa_policy_gate")
     assert opa_check["status"] == "fail"
+
+
+def test_rfc5280_extension_profile_checks_detect_edge_cases() -> None:
+    policy = _base_policy()
+    policy["rfc5280"]["require_subject_key_identifier"] = True
+    policy["rfc5280"]["require_authority_key_identifier"] = True
+    policy["rfc5280"]["allowed_critical_extensions"] = ["2.5.29.15", "2.5.29.19"]
+
+    parser_data = {
+        "validity_days": 90,
+        "san_dns": ["example.com"],
+        "is_rsa": True,
+        "rsa_key_size": 2048,
+        "signature_algorithm": "sha256",
+        "basic_constraints_ca": False,
+        "key_usage": ["digital_signature", "key_encipherment"],
+        "has_subject_key_identifier": False,
+        "has_authority_key_identifier": True,
+        "critical_extension_oids": ["2.5.29.15", "1.2.3.4"],
+    }
+    result = PolicyValidatorAgent().run({"policy": policy, "parser_data": parser_data})
+
+    ski_check = next(check for check in result.checks if check.name == "rfc5280_subject_key_identifier")
+    critical_check = next(
+        check for check in result.checks if check.name == "rfc5280_critical_extension_profile"
+    )
+    assert ski_check.status == "fail"
+    assert critical_check.status == "fail"
+    assert "1.2.3.4" in critical_check.details
