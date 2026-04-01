@@ -51,4 +51,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - optional OPA/Rego policy gate added for policy-as-code extension
   - SBOM generation and signed release provenance added to CI artifacts
   - deeper RFC 5280 extension profile checks added (SKI/AKI + critical extension linting)
+  - RFC 5280 path linkage checks added (issuer-subject + AKI/SKI path links)
+  - issuance attestation controls added (HSM-backed operations + FIPS level checks)
+  - policy profile packs added for EV, S/MIME, Root Program, and CP/CPS overlays
 - **Phase 5 (big-tech readiness) - not started**

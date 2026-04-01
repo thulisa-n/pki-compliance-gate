@@ -51,6 +51,8 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(lint, "enable_zlint", bool, "lint")
     _require_key_type(lint, "fail_on_error", bool, "lint")
     _require_key_type(lint, "fail_severities", list, "lint")
+    _require_key_type(lint, "enable_asn1parse", bool, "lint")
+    _require_key_type(lint, "fail_on_asn1_error", bool, "lint")
     _require_list_of_strings(lint["fail_severities"], "lint.fail_severities")
 
     dcv = policy["dcv"]
@@ -66,6 +68,10 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(rfc5280, "require_subject_key_identifier", bool, "rfc5280")
     _require_key_type(rfc5280, "require_authority_key_identifier", bool, "rfc5280")
     _require_key_type(rfc5280, "allowed_critical_extensions", list, "rfc5280")
+    _require_key_type(
+        rfc5280, "require_path_issuer_subject_match", bool, "rfc5280"
+    )
+    _require_key_type(rfc5280, "require_path_aki_ski_match", bool, "rfc5280")
     _require_list_of_strings(rfc5280["required_key_usages"], "rfc5280.required_key_usages")
     _require_list_of_strings(
         rfc5280["allowed_critical_extensions"], "rfc5280.allowed_critical_extensions"
@@ -75,8 +81,16 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(opa, "enabled", bool, "opa")
     _require_key_type(opa, "policy_file", str, "opa")
 
+    issuance = policy["issuance"]
+    _require_key_type(issuance, "require_hsm_attestation", bool, "issuance")
+    _require_key_type(issuance, "min_fips_level", int, "issuance")
+
 
 def _apply_defaults(policy: dict[str, Any]) -> None:
+    policy.setdefault("lint", {})
+    policy["lint"].setdefault("enable_asn1parse", False)
+    policy["lint"].setdefault("fail_on_asn1_error", True)
+
     policy.setdefault("dcv", {})
     policy["dcv"].setdefault("required", False)
     policy["dcv"].setdefault("allowed_methods", [])
@@ -89,10 +103,16 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy["rfc5280"].setdefault("require_subject_key_identifier", False)
     policy["rfc5280"].setdefault("require_authority_key_identifier", False)
     policy["rfc5280"].setdefault("allowed_critical_extensions", [])
+    policy["rfc5280"].setdefault("require_path_issuer_subject_match", False)
+    policy["rfc5280"].setdefault("require_path_aki_ski_match", False)
 
     policy.setdefault("opa", {})
     policy["opa"].setdefault("enabled", False)
     policy["opa"].setdefault("policy_file", "policies/rego/validity.rego")
+
+    policy.setdefault("issuance", {})
+    policy["issuance"].setdefault("require_hsm_attestation", False)
+    policy["issuance"].setdefault("min_fips_level", 2)
 
 
 def _require_key_type(

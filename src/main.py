@@ -110,6 +110,14 @@ def parse_args() -> argparse.Namespace:
         "--waiver-file",
         help="Path to JSON waiver file for approved false-positive exceptions",
     )
+    parser.add_argument(
+        "--issuer-cert",
+        help="Optional issuer certificate path for RFC 5280 path-linkage checks",
+    )
+    parser.add_argument(
+        "--issuance-attestation",
+        help="Path to JSON attestation for issuance controls (HSM/FIPS)",
+    )
     return parser.parse_args()
 
 
@@ -148,6 +156,10 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         dcv_attestation=_read_json(Path(args.dcv_attestation))
         if args.dcv_attestation
         else None,
+        issuance_attestation=_read_json(Path(args.issuance_attestation))
+        if args.issuance_attestation
+        else None,
+        issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
     )
     if args.output == "json":
@@ -258,6 +270,10 @@ def _run_heal(args: argparse.Namespace) -> int:
         dcv_attestation=_read_json(Path(args.dcv_attestation))
         if args.dcv_attestation
         else None,
+        issuance_attestation=_read_json(Path(args.issuance_attestation))
+        if args.issuance_attestation
+        else None,
+        issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
     )
 

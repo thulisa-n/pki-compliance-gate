@@ -48,6 +48,8 @@ class X509ParserAgent(BaseAgent):
         key_usage = self._key_usage_flags(cert)
         has_ski = self._has_extension(cert, ExtensionOID.SUBJECT_KEY_IDENTIFIER)
         has_aki = self._has_extension(cert, ExtensionOID.AUTHORITY_KEY_IDENTIFIER)
+        ski_key_id = self._subject_key_identifier(cert)
+        aki_key_id = self._authority_key_identifier(cert)
         critical_extension_oids = self._critical_extension_oids(cert)
 
         parser_data: dict[str, Any] = {
@@ -65,6 +67,8 @@ class X509ParserAgent(BaseAgent):
             "key_usage": key_usage,
             "has_subject_key_identifier": has_ski,
             "has_authority_key_identifier": has_aki,
+            "subject_key_identifier": ski_key_id,
+            "authority_key_identifier": aki_key_id,
             "critical_extension_oids": critical_extension_oids,
         }
 
@@ -125,3 +129,21 @@ class X509ParserAgent(BaseAgent):
             for extension in cert.extensions
             if extension.critical
         )
+
+    def _subject_key_identifier(self, cert: x509.Certificate) -> str | None:
+        try:
+            value = cert.extensions.get_extension_for_oid(
+                ExtensionOID.SUBJECT_KEY_IDENTIFIER
+            ).value
+            return value.digest.hex()
+        except x509.ExtensionNotFound:
+            return None
+
+    def _authority_key_identifier(self, cert: x509.Certificate) -> str | None:
+        try:
+            value = cert.extensions.get_extension_for_oid(
+                ExtensionOID.AUTHORITY_KEY_IDENTIFIER
+            ).value
+            return value.key_identifier.hex() if value.key_identifier is not None else None
+        except x509.ExtensionNotFound:
+            return None

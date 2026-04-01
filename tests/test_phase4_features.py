@@ -122,3 +122,54 @@ def test_rfc5280_extension_profile_checks_detect_edge_cases() -> None:
     assert ski_check.status == "fail"
     assert critical_check.status == "fail"
     assert "1.2.3.4" in critical_check.details
+
+
+def test_rfc5280_path_linkage_checks_require_issuer_data() -> None:
+    policy = _base_policy()
+    policy["rfc5280"]["require_path_issuer_subject_match"] = True
+    policy["rfc5280"]["require_path_aki_ski_match"] = True
+
+    parser_data = {
+        "validity_days": 90,
+        "san_dns": ["example.com"],
+        "is_rsa": True,
+        "rsa_key_size": 2048,
+        "signature_algorithm": "sha256",
+        "basic_constraints_ca": False,
+        "key_usage": ["digital_signature", "key_encipherment"],
+        "has_subject_key_identifier": True,
+        "has_authority_key_identifier": True,
+        "subject_key_identifier": "aaaa",
+        "authority_key_identifier": "bbbb",
+        "critical_extension_oids": [],
+        "issuer": "CN=Issuer",
+    }
+    result = PolicyValidatorAgent().run({"policy": policy, "parser_data": parser_data})
+    issuer_subject = next(
+        check for check in result.checks if check.name == "rfc5280_path_issuer_subject_match"
+    )
+    aki_ski = next(check for check in result.checks if check.name == "rfc5280_path_aki_ski_match")
+    assert issuer_subject.status == "fail"
+    assert aki_ski.status == "fail"
+
+
+def test_issuance_controls_fail_without_attestation_when_required() -> None:
+    policy = _base_policy()
+    policy["issuance"]["require_hsm_attestation"] = True
+    policy["issuance"]["min_fips_level"] = 3
+
+    parser_data = {
+        "validity_days": 90,
+        "san_dns": ["example.com"],
+        "is_rsa": True,
+        "rsa_key_size": 2048,
+        "signature_algorithm": "sha256",
+        "basic_constraints_ca": False,
+        "key_usage": ["digital_signature", "key_encipherment"],
+        "critical_extension_oids": [],
+    }
+    result = PolicyValidatorAgent().run({"policy": policy, "parser_data": parser_data})
+    hsm = next(check for check in result.checks if check.name == "issuance_hsm_attestation")
+    fips = next(check for check in result.checks if check.name == "issuance_fips_level")
+    assert hsm.status == "fail"
+    assert fips.status == "fail"

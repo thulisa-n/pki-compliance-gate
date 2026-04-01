@@ -28,6 +28,8 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `lint.enable_zlint` (`bool`)
 - `lint.fail_on_error` (`bool`)
 - `lint.fail_severities` (`list[str]`, for example `["error", "fatal"]`)
+- `lint.enable_asn1parse` (`bool`)
+- `lint.fail_on_asn1_error` (`bool`)
 - `dcv.required` (`bool`)
 - `dcv.allowed_methods` (`list[str]`)
 - `dcv.max_age_days` (`int`)
@@ -37,7 +39,11 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `rfc5280.require_subject_key_identifier` (`bool`)
 - `rfc5280.require_authority_key_identifier` (`bool`)
 - `rfc5280.allowed_critical_extensions` (`list[str]`, extension OID allowlist)
+- `rfc5280.require_path_issuer_subject_match` (`bool`)
+- `rfc5280.require_path_aki_ski_match` (`bool`)
 - `opa.enabled` (`bool`)
 - `opa.policy_file` (`str`)
+- `issuance.require_hsm_attestation` (`bool`)
+- `issuance.min_fips_level` (`int`)
 
 The loader performs validation and raises an explicit error when required keys are missing or typed incorrectly.

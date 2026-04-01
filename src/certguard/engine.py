@@ -31,17 +31,28 @@ class ComplianceGateEngine:
         report_path: Path,
         evidence_dir: Path,
         dcv_attestation: dict[str, Any] | None = None,
+        issuance_attestation: dict[str, Any] | None = None,
+        issuer_cert_path: Path | None = None,
         waiver_path: Path | None = None,
     ) -> tuple[bool, ComplianceReport]:
         parser_result = self.parser_agent.run({"cert_path": str(cert_path)})
         if not parser_result.success:
             raise ValueError("; ".join(parser_result.errors))
 
+        issuer_parser_data: dict[str, Any] | None = None
+        if issuer_cert_path is not None:
+            issuer_result = self.parser_agent.run({"cert_path": str(issuer_cert_path)})
+            if not issuer_result.success:
+                raise ValueError("; ".join(issuer_result.errors))
+            issuer_parser_data = issuer_result.data
+
         policy_result = self.policy_agent.run(
             {
                 "policy": self.policy,
                 "parser_data": parser_result.data,
                 "dcv_attestation": dcv_attestation,
+                "issuer_parser_data": issuer_parser_data,
+                "issuance_attestation": issuance_attestation,
             }
         )
         opa_result = self._run_opa_if_enabled(parser_result.data)
@@ -53,7 +64,7 @@ class ComplianceGateEngine:
         policy_checks = waiver_result["checks"]
         policy_failures = [check for check in policy_checks if check.status == "fail"]
 
-        lint_result = self._run_zlint_if_enabled(cert_path)
+        lint_result = self._run_lint_controls(cert_path)
         lint_fail = lint_result.get("status") == "fail"
 
         compliant = (not policy_failures) and (not lint_fail)
@@ -268,6 +279,24 @@ class ComplianceGateEngine:
             },
         }
 
+    def _run_lint_controls(self, cert_path: Path) -> dict[str, Any]:
+        zlint_result = self._run_zlint_if_enabled(cert_path)
+        asn1_result = self._run_asn1parse_if_enabled(cert_path)
+        controls = {"zlint": zlint_result, "asn1parse": asn1_result}
+        failing = [
+            name for name, payload in controls.items() if payload.get("status") == "fail"
+        ]
+        if failing:
+            status = "fail"
+            details = f"Lint controls failed: {', '.join(failing)}"
+        elif any(payload.get("status") == "pass" for payload in controls.values()):
+            status = "pass"
+            details = "Lint controls passed."
+        else:
+            status = "skipped"
+            details = "All lint controls skipped."
+        return {"status": status, "details": details, "controls": controls}
+
     def _run_zlint_if_enabled(self, cert_path: Path) -> dict[str, Any]:
         lint_cfg = self.policy.get("lint", {})
         if not lint_cfg.get("enable_zlint", False):
@@ -313,6 +342,29 @@ class ComplianceGateEngine:
                 "matched_failures": [entry["lint"] for entry in matched] if parsed["entries"] else [],
             },
             "raw_output": combined_output.strip(),
+        }
+
+    def _run_asn1parse_if_enabled(self, cert_path: Path) -> dict[str, Any]:
+        lint_cfg = self.policy.get("lint", {})
+        if not lint_cfg.get("enable_asn1parse", False):
+            return {"status": "skipped", "details": "asn1parse disabled in policy"}
+
+        cmd = ["openssl", "asn1parse", "-in", str(cert_path), "-inform", "PEM"]
+        try:
+            process = subprocess.run(  # nosec B603
+                cmd, capture_output=True, text=True, check=False
+            )
+        except FileNotFoundError:
+            return {"status": "skipped", "details": "openssl not installed"}
+
+        fail_on_error = lint_cfg.get("fail_on_asn1_error", True)
+        failed = process.returncode != 0 and fail_on_error
+        return {
+            "tool": "openssl asn1parse",
+            "status": "fail" if failed else "pass",
+            "return_code": process.returncode,
+            "details": "ASN.1 parsing completed." if process.returncode == 0 else "ASN.1 parsing returned non-zero exit.",
+            "raw_output": ((process.stdout or "") + ("\n" + process.stderr if process.stderr else "")).strip(),
         }
 
     def _parse_zlint_output(self, output: str) -> dict[str, Any]:

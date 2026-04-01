@@ -258,6 +258,11 @@ python src/main.py \
 
 # Enable optional OPA/Rego gate via policy (policy.opa.enabled=true)
 python src/main.py --cert tests/certificates/valid_cert.pem
+
+# Include issuance controls attestation (HSM/FIPS)
+python src/main.py \
+  --cert tests/certificates/valid_cert.pem \
+  --issuance-attestation examples/issuance_attestation.json
 ```
 
 Mode summary:
@@ -306,6 +311,8 @@ Core policy file: `policies/cabf_policy.yaml`
 - `lint.enable_zlint`
 - `lint.fail_on_error`
 - `lint.fail_severities`
+- `lint.enable_asn1parse`
+- `lint.fail_on_asn1_error`
 - `dcv.required`
 - `dcv.allowed_methods`
 - `dcv.max_age_days`
@@ -315,10 +322,21 @@ Core policy file: `policies/cabf_policy.yaml`
 - `rfc5280.require_subject_key_identifier`
 - `rfc5280.require_authority_key_identifier`
 - `rfc5280.allowed_critical_extensions`
+- `rfc5280.require_path_issuer_subject_match`
+- `rfc5280.require_path_aki_ski_match`
 - `opa.enabled`
 - `opa.policy_file`
+- `issuance.require_hsm_attestation`
+- `issuance.min_fips_level`
 
 Field-level policy notes are documented in `policies/README.md`.
+
+Profile overlays for standards coverage breadth:
+
+- `policies/profiles/ev_guidelines.yaml`
+- `policies/profiles/smime_br.yaml`
+- `policies/profiles/root_program_baseline.yaml`
+- `policies/profiles/cpcps_controls.yaml`
 
 ---
 
@@ -394,19 +412,13 @@ Fixture matrix validation:
 
 ## Roadmap
 
-- **Phase 4 (enterprise alignment) - in progress**
-  - expand APISEC checks (TLS version/cipher policies, cert chain posture) ✅
-  - add DCV attestation guardrails (allowed method + recency) ✅
-  - add false-positive waiver controls with audit evidence ✅
-  - add optional OPA/Rego policy gate integration ✅
-  - add SBOM generation and signed release provenance ✅
-  - deeper RFC 5280 coverage (extension profile and edge-case linting) ✅
-- **Phase 5 (big-tech readiness) - not started**
-  - policy change approval workflows with stricter CODEOWNERS gating
-  - observability metrics and trend dashboards for long-running governance
-  - multi-environment compliance profiles (dev/staging/production)
+- **Phase 4 (enterprise alignment): completed**
+- **Phase 5 (big-tech readiness): planned**
 
-Completed implementation history is documented in `docs/PROJECT_STATUS.md`.
+Detailed implementation history and capability tracking lives in:
+
+- `docs/PROJECT_STATUS.md`
+- `docs/JOB_SPEC_ALIGNMENT.md`
 
 ---
 

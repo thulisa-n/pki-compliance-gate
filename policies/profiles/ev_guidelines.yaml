@@ -1,8 +1,8 @@
 metadata:
-  standard: "CA/Browser Forum Baseline Requirements"
-  version: "1.0.0"
-  last_updated: "2026-03-16"
-  terms: "CABF Baseline Requirements policy profile for CertGuard MVP"
+  standard: "CA/Browser Forum EV Guidelines"
+  version: "2026.1"
+  last_updated: "2026-04-01"
+  terms: "EV profile overlay for CertGuard policy-as-code simulation"
 
 terms: []
 
@@ -26,16 +26,16 @@ domains:
     - ".intranet"
 
 lint:
-  enable_zlint: false
+  enable_zlint: true
   fail_on_error: true
   fail_severities:
     - "error"
     - "fatal"
-  enable_asn1parse: false
+  enable_asn1parse: true
   fail_on_asn1_error: true
 
 dcv:
-  required: false
+  required: true
   allowed_methods:
     - "dns-01"
     - "http-01"
@@ -43,21 +43,23 @@ dcv:
   max_age_days: 30
 
 rfc5280:
-  require_end_entity_not_ca: false
-  require_key_usage: false
+  require_end_entity_not_ca: true
+  require_key_usage: true
   required_key_usages:
     - "digital_signature"
     - "key_encipherment"
-  require_subject_key_identifier: false
-  require_authority_key_identifier: false
-  allowed_critical_extensions: []
-  require_path_issuer_subject_match: false
-  require_path_aki_ski_match: false
+  require_subject_key_identifier: true
+  require_authority_key_identifier: true
+  allowed_critical_extensions:
+    - "2.5.29.15"
+    - "2.5.29.19"
+  require_path_issuer_subject_match: true
+  require_path_aki_ski_match: true
 
 opa:
   enabled: false
   policy_file: "policies/rego/validity.rego"
 
 issuance:
-  require_hsm_attestation: false
+  require_hsm_attestation: true
   min_fips_level: 2

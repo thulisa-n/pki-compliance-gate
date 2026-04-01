@@ -1,0 +1,6 @@
+{
+  "hsm_backed": true,
+  "fips_level": 3,
+  "module_id": "HSM-PRIMARY-01",
+  "operation_ref": "ISS-2026-041"
+}

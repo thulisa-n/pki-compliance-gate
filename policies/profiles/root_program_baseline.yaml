@@ -1,0 +1,66 @@
+metadata:
+  standard: "Root Program Policy Baseline"
+  version: "2026.1"
+  last_updated: "2026-04-01"
+  terms: "Root program policy profile for CertGuard pre-issuance simulation"
+
+terms: []
+
+certificate:
+  max_validity_days: 398
+  require_san: true
+
+key:
+  minimum_rsa_bits: 3072
+
+signature:
+  prohibited_algorithms:
+    - sha1
+    - md5
+
+domains:
+  forbid_internal_names: true
+  blocked_suffixes:
+    - ".local"
+    - ".internal"
+    - ".intranet"
+
+lint:
+  enable_zlint: true
+  fail_on_error: true
+  fail_severities:
+    - "error"
+    - "fatal"
+  enable_asn1parse: true
+  fail_on_asn1_error: true
+
+dcv:
+  required: true
+  allowed_methods:
+    - "dns-01"
+    - "http-01"
+    - "tls-alpn-01"
+  max_age_days: 15
+
+rfc5280:
+  require_end_entity_not_ca: true
+  require_key_usage: true
+  required_key_usages:
+    - "digital_signature"
+    - "key_encipherment"
+  require_subject_key_identifier: true
+  require_authority_key_identifier: true
+  allowed_critical_extensions:
+    - "2.5.29.15"
+    - "2.5.29.19"
+    - "2.5.29.37"
+  require_path_issuer_subject_match: true
+  require_path_aki_ski_match: true
+
+opa:
+  enabled: false
+  policy_file: "policies/rego/validity.rego"
+
+issuance:
+  require_hsm_attestation: true
+  min_fips_level: 3

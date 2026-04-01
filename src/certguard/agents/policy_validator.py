@@ -103,6 +103,38 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rationale": "Unexpected critical extensions can break relying-party validation behavior.",
         "recommendation": "Restrict critical extensions to an approved extension profile.",
     },
+    "rfc5280_path_issuer_subject_match": {
+        "rule_id": "RFC-5280-6",
+        "category": "RFC5280",
+        "severity": "high",
+        "standard_reference": "RFC 5280 6.1",
+        "rationale": "Issuer and subject linkage is required for path construction.",
+        "recommendation": "Provide the issuing certificate and validate issuer-subject linkage.",
+    },
+    "rfc5280_path_aki_ski_match": {
+        "rule_id": "RFC-5280-4.2.1.1",
+        "category": "RFC5280",
+        "severity": "medium",
+        "standard_reference": "RFC 5280 4.2.1.1",
+        "rationale": "AKI/SKI linkage improves deterministic path validation.",
+        "recommendation": "Ensure leaf AKI matches issuer SKI.",
+    },
+    "issuance_hsm_attestation": {
+        "rule_id": "PKCS11-HSM-ATTESTATION",
+        "category": "ISSUANCE",
+        "severity": "high",
+        "standard_reference": "PKCS#11 / FIPS operations",
+        "rationale": "Key custody controls require evidence of hardware-backed issuance operations.",
+        "recommendation": "Provide issuance attestation indicating HSM-backed key operations.",
+    },
+    "issuance_fips_level": {
+        "rule_id": "FIPS-140-CONTROL",
+        "category": "ISSUANCE",
+        "severity": "medium",
+        "standard_reference": "FIPS 140-2/140-3",
+        "rationale": "Cryptographic module assurance levels are key audit controls.",
+        "recommendation": "Provide attested FIPS level meeting minimum policy requirement.",
+    },
 }
 
 
@@ -114,6 +146,8 @@ class PolicyValidatorAgent(BaseAgent):
         policy = context["policy"]
         parser_data = context["parser_data"]
         dcv_attestation = context.get("dcv_attestation")
+        issuer_parser_data = context.get("issuer_parser_data")
+        issuance_attestation = context.get("issuance_attestation")
         checks: list[CheckResult] = []
 
         max_validity = policy["certificate"]["max_validity_days"]
@@ -175,7 +209,8 @@ class PolicyValidatorAgent(BaseAgent):
         domain_checks = self._internal_domain_checks(policy, parser_data)
         checks.extend(domain_checks)
         checks.extend(self._dcv_checks(policy, dcv_attestation))
-        checks.extend(self._rfc5280_checks(policy, parser_data))
+        checks.extend(self._rfc5280_checks(policy, parser_data, issuer_parser_data))
+        checks.extend(self._issuance_checks(policy, issuance_attestation))
 
         success = all(check.status == "pass" for check in checks)
         return AgentResult(agent=self.name, success=success, checks=checks)
@@ -270,7 +305,10 @@ class PolicyValidatorAgent(BaseAgent):
         return False, f"DCV attestation age is {age_days} days (max {max_age_days}).", age_days
 
     def _rfc5280_checks(
-        self, policy: dict[str, Any], parser_data: dict[str, Any]
+        self,
+        policy: dict[str, Any],
+        parser_data: dict[str, Any],
+        issuer_parser_data: dict[str, Any] | None,
     ) -> list[CheckResult]:
         rfc_cfg = policy["rfc5280"]
         checks: list[CheckResult] = []
@@ -409,7 +447,142 @@ class PolicyValidatorAgent(BaseAgent):
                 )
             )
 
+        if rfc_cfg["require_path_issuer_subject_match"]:
+            if not isinstance(issuer_parser_data, dict):
+                checks.append(
+                    self._check(
+                        "rfc5280_path_issuer_subject_match",
+                        False,
+                        "Issuer certificate parser data missing for path linkage check.",
+                        policy_value=True,
+                        actual_value=False,
+                    )
+                )
+            else:
+                issuer_match = parser_data.get("issuer") == issuer_parser_data.get("subject")
+                checks.append(
+                    self._check(
+                        "rfc5280_path_issuer_subject_match",
+                        issuer_match,
+                        "Leaf issuer matches issuer certificate subject."
+                        if issuer_match
+                        else "Leaf issuer does not match provided issuer certificate subject.",
+                        policy_value=True,
+                        actual_value=issuer_match,
+                    )
+                )
+        else:
+            checks.append(
+                self._check(
+                    "rfc5280_path_issuer_subject_match",
+                    True,
+                    "RFC 5280 issuer-subject path check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                )
+            )
+
+        if rfc_cfg["require_path_aki_ski_match"]:
+            if not isinstance(issuer_parser_data, dict):
+                checks.append(
+                    self._check(
+                        "rfc5280_path_aki_ski_match",
+                        False,
+                        "Issuer certificate parser data missing for AKI/SKI path check.",
+                        policy_value=True,
+                        actual_value=False,
+                    )
+                )
+            else:
+                leaf_aki = parser_data.get("authority_key_identifier")
+                issuer_ski = issuer_parser_data.get("subject_key_identifier")
+                aki_match = bool(leaf_aki and issuer_ski and leaf_aki == issuer_ski)
+                checks.append(
+                    self._check(
+                        "rfc5280_path_aki_ski_match",
+                        aki_match,
+                        "Leaf AKI matches issuer SKI."
+                        if aki_match
+                        else "Leaf AKI does not match issuer SKI (or one is missing).",
+                        policy_value=True,
+                        actual_value=aki_match,
+                    )
+                )
+        else:
+            checks.append(
+                self._check(
+                    "rfc5280_path_aki_ski_match",
+                    True,
+                    "RFC 5280 AKI/SKI path check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                )
+            )
+
         return checks
+
+    def _issuance_checks(
+        self, policy: dict[str, Any], issuance_attestation: dict[str, Any] | None
+    ) -> list[CheckResult]:
+        issuance_cfg = policy["issuance"]
+        if not issuance_cfg["require_hsm_attestation"]:
+            return [
+                self._check(
+                    "issuance_hsm_attestation",
+                    True,
+                    "Issuance HSM attestation checks disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                ),
+                self._check(
+                    "issuance_fips_level",
+                    True,
+                    "Issuance FIPS level checks disabled by policy.",
+                    policy_value=issuance_cfg["min_fips_level"],
+                    actual_value=issuance_cfg["min_fips_level"],
+                ),
+            ]
+
+        if not isinstance(issuance_attestation, dict):
+            return [
+                self._check(
+                    "issuance_hsm_attestation",
+                    False,
+                    "Issuance attestation is required but missing.",
+                    policy_value=True,
+                    actual_value=False,
+                ),
+                self._check(
+                    "issuance_fips_level",
+                    False,
+                    "FIPS level attestation missing.",
+                    policy_value=issuance_cfg["min_fips_level"],
+                    actual_value=None,
+                ),
+            ]
+
+        hsm_backed = bool(issuance_attestation.get("hsm_backed"))
+        fips_level = issuance_attestation.get("fips_level")
+        fips_ok = isinstance(fips_level, int) and fips_level >= issuance_cfg["min_fips_level"]
+
+        return [
+            self._check(
+                "issuance_hsm_attestation",
+                hsm_backed,
+                "Issuance attestation confirms HSM-backed key operations."
+                if hsm_backed
+                else "Issuance attestation does not confirm HSM-backed key operations.",
+                policy_value=True,
+                actual_value=hsm_backed,
+            ),
+            self._check(
+                "issuance_fips_level",
+                fips_ok,
+                f"Attested FIPS level is {fips_level} (min {issuance_cfg['min_fips_level']}).",
+                policy_value=issuance_cfg["min_fips_level"],
+                actual_value=fips_level,
+            ),
+        ]
 
     def _internal_domain_checks(
         self, policy: dict[str, Any], parser_data: dict[str, Any]
