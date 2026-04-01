@@ -44,6 +44,8 @@ class X509ParserAgent(BaseAgent):
         public_key = cert.public_key()
         rsa_bits = public_key.key_size if isinstance(public_key, rsa.RSAPublicKey) else None
         common_name = self._safe_cn(cert)
+        basic_constraints_ca = self._basic_constraints_ca(cert)
+        key_usage = self._key_usage_flags(cert)
 
         parser_data: dict[str, Any] = {
             "subject": cert.subject.rfc4514_string(),
@@ -56,6 +58,8 @@ class X509ParserAgent(BaseAgent):
             "signature_algorithm": self._signature_name(cert),
             "is_rsa": rsa_bits is not None,
             "rsa_key_size": rsa_bits,
+            "basic_constraints_ca": basic_constraints_ca,
+            "key_usage": key_usage,
         }
 
         return AgentResult(agent=self.name, success=True, data=parser_data)
@@ -70,3 +74,34 @@ class X509ParserAgent(BaseAgent):
         if not attrs:
             return None
         return attrs[0].value
+
+    def _basic_constraints_ca(self, cert: x509.Certificate) -> bool | None:
+        try:
+            ext = cert.extensions.get_extension_for_class(x509.BasicConstraints).value
+            return ext.ca
+        except x509.ExtensionNotFound:
+            return None
+
+    def _key_usage_flags(self, cert: x509.Certificate) -> list[str]:
+        try:
+            usage = cert.extensions.get_extension_for_class(x509.KeyUsage).value
+        except x509.ExtensionNotFound:
+            return []
+
+        flags: list[tuple[str, bool]] = [
+            ("digital_signature", usage.digital_signature),
+            ("content_commitment", usage.content_commitment),
+            ("key_encipherment", usage.key_encipherment),
+            ("data_encipherment", usage.data_encipherment),
+            ("key_agreement", usage.key_agreement),
+            ("key_cert_sign", usage.key_cert_sign),
+            ("crl_sign", usage.crl_sign),
+        ]
+        if usage.key_agreement:
+            flags.extend(
+                [
+                    ("encipher_only", usage.encipher_only),
+                    ("decipher_only", usage.decipher_only),
+                ]
+            )
+        return [name for name, is_enabled in flags if is_enabled]

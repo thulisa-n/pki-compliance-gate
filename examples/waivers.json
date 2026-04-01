@@ -1,0 +1,10 @@
+{
+  "waivers": [
+    {
+      "check": "signature_algorithm",
+      "reason": "Known false positive during migration dry-run",
+      "ticket": "PKI-EX-101",
+      "expires_on": "2026-12-31"
+    }
+  ]
+}

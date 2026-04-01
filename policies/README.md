@@ -2,7 +2,7 @@
 
 The compliance engine behavior is controlled by `cabf_policy.yaml`.
 
-## Required sections
+## Core required sections
 
 - `metadata`
 - `certificate`
@@ -10,6 +10,12 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `signature`
 - `domains`
 - `lint`
+
+## Optional advanced sections (with defaults)
+
+- `dcv`
+- `rfc5280`
+- `opa`
 
 ## Key fields
 
@@ -22,5 +28,13 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `lint.enable_zlint` (`bool`)
 - `lint.fail_on_error` (`bool`)
 - `lint.fail_severities` (`list[str]`, for example `["error", "fatal"]`)
+- `dcv.required` (`bool`)
+- `dcv.allowed_methods` (`list[str]`)
+- `dcv.max_age_days` (`int`)
+- `rfc5280.require_end_entity_not_ca` (`bool`)
+- `rfc5280.require_key_usage` (`bool`)
+- `rfc5280.required_key_usages` (`list[str]`)
+- `opa.enabled` (`bool`)
+- `opa.policy_file` (`str`)
 
 The loader performs validation and raises an explicit error when required keys are missing or typed incorrectly.

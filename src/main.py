@@ -102,6 +102,14 @@ def parse_args() -> argparse.Namespace:
         default="reports/compliance_trend_snapshot.json",
         help="Path for trend snapshot JSON",
     )
+    parser.add_argument(
+        "--dcv-attestation",
+        help="Path to JSON attestation for domain control validation checks",
+    )
+    parser.add_argument(
+        "--waiver-file",
+        help="Path to JSON waiver file for approved false-positive exceptions",
+    )
     return parser.parse_args()
 
 
@@ -137,6 +145,10 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         cert_path=Path(args.cert),
         report_path=Path(args.report),
         evidence_dir=Path(args.evidence_dir),
+        dcv_attestation=_read_json(Path(args.dcv_attestation))
+        if args.dcv_attestation
+        else None,
+        waiver_path=Path(args.waiver_file) if args.waiver_file else None,
     )
     if args.output == "json":
         print(json.dumps(report.to_dict(), indent=2))
@@ -243,6 +255,10 @@ def _run_heal(args: argparse.Namespace) -> int:
         cert_path=Path(args.healed_cert),
         report_path=Path(args.healed_report),
         evidence_dir=Path(args.evidence_dir),
+        dcv_attestation=_read_json(Path(args.dcv_attestation))
+        if args.dcv_attestation
+        else None,
+        waiver_path=Path(args.waiver_file) if args.waiver_file else None,
     )
 
     assurance = ComplianceAssuranceAgent().run({"report": healed_report.to_dict()})

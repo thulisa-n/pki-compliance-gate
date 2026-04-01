@@ -23,6 +23,8 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - `reports/compliance_trend_snapshot.json`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
+  - `audit_evidence/waiver_results.json`
+  - `audit_evidence/opa_results.json`
   - `audit_evidence/evidence_manifest.json`
 - **CI pipeline**
   - runs tests
@@ -41,4 +43,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 
 - **Phase 4 (enterprise alignment) - in progress**
   - APISEC expanded with TLS version policy checks, cipher posture checks, and chain posture signals
+  - DCV attestation guardrails added (allowed methods + recency windows)
+  - waiver-based false-positive controls added with audit traceability
+  - optional OPA/Rego policy gate added for policy-as-code extension
 - **Phase 5 (big-tech readiness) - not started**

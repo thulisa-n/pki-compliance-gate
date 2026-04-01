@@ -75,7 +75,9 @@ class ComplianceReport:
             if check.status == "fail"
         ]
         total_checks = len(checks)
-        passed_checks = len([check for check in checks if check.status == "pass"])
+        passed_checks = len(
+            [check for check in checks if check.status in {"pass", "waived"}]
+        )
         score = round((passed_checks / total_checks) * 100, 2) if total_checks else 0.0
         risk_level = _risk_from_failed_controls(failed_controls)
         return cls(

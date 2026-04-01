@@ -31,3 +31,22 @@ lint:
   fail_severities:
     - "error"
     - "fatal"
+
+dcv:
+  required: false
+  allowed_methods:
+    - "dns-01"
+    - "http-01"
+    - "tls-alpn-01"
+  max_age_days: 30
+
+rfc5280:
+  require_end_entity_not_ca: false
+  require_key_usage: false
+  required_key_usages:
+    - "digital_signature"
+    - "key_encipherment"
+
+opa:
+  enabled: false
+  policy_file: "policies/rego/validity.rego"

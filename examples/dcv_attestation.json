@@ -1,0 +1,6 @@
+{
+  "method": "dns-01",
+  "validated_at": "2026-03-25T08:00:00+00:00",
+  "domain": "example.com",
+  "evidence_ref": "DCV-2026-031"
+}

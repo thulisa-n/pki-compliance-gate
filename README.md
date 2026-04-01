@@ -247,6 +247,19 @@ python src/main.py --mode apisec --endpoint https://example.com
 
 This runs a live endpoint TLS posture check and returns a risk-oriented result for API-facing usage.
 
+### 6) Optional DCV, waiver, and OPA policy gate inputs
+
+```bash
+# Evaluate with DCV attestation and approved waivers
+python src/main.py \
+  --cert tests/certificates/valid_cert.pem \
+  --dcv-attestation examples/dcv_attestation.json \
+  --waiver-file examples/waivers.json
+
+# Enable optional OPA/Rego gate via policy (policy.opa.enabled=true)
+python src/main.py --cert tests/certificates/valid_cert.pem
+```
+
 Mode summary:
 
 - `evaluate`: run core compliance checks and generate evidence
@@ -293,6 +306,14 @@ Core policy file: `policies/cabf_policy.yaml`
 - `lint.enable_zlint`
 - `lint.fail_on_error`
 - `lint.fail_severities`
+- `dcv.required`
+- `dcv.allowed_methods`
+- `dcv.max_age_days`
+- `rfc5280.require_end_entity_not_ca`
+- `rfc5280.require_key_usage`
+- `rfc5280.required_key_usages`
+- `opa.enabled`
+- `opa.policy_file`
 
 Field-level policy notes are documented in `policies/README.md`.
 
@@ -370,6 +391,9 @@ Fixture matrix validation:
 
 - **Phase 4 (enterprise alignment) - in progress**
   - expand APISEC checks (TLS version/cipher policies, cert chain posture) ✅
+  - add DCV attestation guardrails (allowed method + recency) ✅
+  - add false-positive waiver controls with audit evidence ✅
+  - add optional OPA/Rego policy gate integration ✅
   - add SBOM generation and signed release provenance
   - deeper RFC 5280 coverage (extension profile and edge-case linting)
 - **Phase 5 (big-tech readiness) - not started**

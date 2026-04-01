@@ -20,6 +20,7 @@ def load_policy(policy_path: Path) -> dict[str, Any]:
     if not isinstance(policy, dict):
         raise PolicyValidationError("Policy root must be a mapping/object.")
 
+    _apply_defaults(policy)
     _validate_policy(policy)
     return policy
 
@@ -51,6 +52,38 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(lint, "fail_on_error", bool, "lint")
     _require_key_type(lint, "fail_severities", list, "lint")
     _require_list_of_strings(lint["fail_severities"], "lint.fail_severities")
+
+    dcv = policy["dcv"]
+    _require_key_type(dcv, "required", bool, "dcv")
+    _require_key_type(dcv, "allowed_methods", list, "dcv")
+    _require_key_type(dcv, "max_age_days", int, "dcv")
+    _require_list_of_strings(dcv["allowed_methods"], "dcv.allowed_methods")
+
+    rfc5280 = policy["rfc5280"]
+    _require_key_type(rfc5280, "require_end_entity_not_ca", bool, "rfc5280")
+    _require_key_type(rfc5280, "require_key_usage", bool, "rfc5280")
+    _require_key_type(rfc5280, "required_key_usages", list, "rfc5280")
+    _require_list_of_strings(rfc5280["required_key_usages"], "rfc5280.required_key_usages")
+
+    opa = policy["opa"]
+    _require_key_type(opa, "enabled", bool, "opa")
+    _require_key_type(opa, "policy_file", str, "opa")
+
+
+def _apply_defaults(policy: dict[str, Any]) -> None:
+    policy.setdefault("dcv", {})
+    policy["dcv"].setdefault("required", False)
+    policy["dcv"].setdefault("allowed_methods", [])
+    policy["dcv"].setdefault("max_age_days", 30)
+
+    policy.setdefault("rfc5280", {})
+    policy["rfc5280"].setdefault("require_end_entity_not_ca", False)
+    policy["rfc5280"].setdefault("require_key_usage", False)
+    policy["rfc5280"].setdefault("required_key_usages", [])
+
+    policy.setdefault("opa", {})
+    policy["opa"].setdefault("enabled", False)
+    policy["opa"].setdefault("policy_file", "policies/rego/validity.rego")
 
 
 def _require_key_type(

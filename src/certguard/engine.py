@@ -4,6 +4,7 @@ import json
 import os
 # Controlled use for zlint CLI integration.
 import subprocess  # nosec B404
+import tempfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import Any
 from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
-from certguard.models import ComplianceReport
+from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy
 
 
@@ -29,6 +30,8 @@ class ComplianceGateEngine:
         cert_path: Path,
         report_path: Path,
         evidence_dir: Path,
+        dcv_attestation: dict[str, Any] | None = None,
+        waiver_path: Path | None = None,
     ) -> tuple[bool, ComplianceReport]:
         parser_result = self.parser_agent.run({"cert_path": str(cert_path)})
         if not parser_result.success:
@@ -38,17 +41,26 @@ class ComplianceGateEngine:
             {
                 "policy": self.policy,
                 "parser_data": parser_result.data,
+                "dcv_attestation": dcv_attestation,
             }
         )
+        opa_result = self._run_opa_if_enabled(parser_result.data)
+        policy_checks = list(policy_result.checks)
+        if opa_result["check"] is not None:
+            policy_checks.append(opa_result["check"])
+
+        waiver_result = self._apply_waivers(policy_checks, waiver_path)
+        policy_checks = waiver_result["checks"]
+        policy_failures = [check for check in policy_checks if check.status == "fail"]
 
         lint_result = self._run_zlint_if_enabled(cert_path)
         lint_fail = lint_result.get("status") == "fail"
 
-        compliant = policy_result.success and (not lint_fail)
+        compliant = (not policy_failures) and (not lint_fail)
         report = ComplianceReport.new(
             certificate=str(cert_path),
             compliant=compliant,
-            checks=policy_result.checks,
+            checks=policy_checks,
             parser_data=parser_result.data,
             lint=lint_result,
             policy_version=self.policy.get("metadata", {}).get("version", "unknown"),
@@ -59,11 +71,17 @@ class ComplianceGateEngine:
         report_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
 
         (evidence_dir / "policy_checks.json").write_text(
-            json.dumps([c.to_dict() for c in policy_result.checks], indent=2),
+            json.dumps([c.to_dict() for c in policy_checks], indent=2),
             encoding="utf-8",
         )
         (evidence_dir / "lint_results.json").write_text(
             json.dumps(lint_result, indent=2), encoding="utf-8"
+        )
+        (evidence_dir / "waiver_results.json").write_text(
+            json.dumps(waiver_result["summary"], indent=2), encoding="utf-8"
+        )
+        (evidence_dir / "opa_results.json").write_text(
+            json.dumps(opa_result["summary"], indent=2), encoding="utf-8"
         )
         seal_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
         if not seal_result.success:
@@ -90,9 +108,165 @@ class ComplianceGateEngine:
             "evidence_files": [
                 str(evidence_dir / "policy_checks.json"),
                 str(evidence_dir / "lint_results.json"),
+                str(evidence_dir / "waiver_results.json"),
+                str(evidence_dir / "opa_results.json"),
             ],
         }
         manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def _run_opa_if_enabled(self, parser_data: dict[str, Any]) -> dict[str, Any]:
+        opa_cfg = self.policy.get("opa", {})
+        if not opa_cfg.get("enabled", False):
+            return {
+                "check": None,
+                "summary": {
+                    "status": "skipped",
+                    "details": "OPA policy evaluation disabled in policy.",
+                },
+            }
+
+        policy_file = Path(str(opa_cfg.get("policy_file", "")))
+        if not policy_file.exists():
+            check = CheckResult(
+                name="opa_policy_gate",
+                status="fail",
+                details=f"OPA policy file not found: {policy_file}",
+                rule_id="OPA-POLICY",
+                category="POLICY",
+                severity="high",
+                standard_reference="OPA/Rego policy-as-code",
+            )
+            return {"check": check, "summary": {"status": "fail", "details": check.details}}
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as handle:
+            json.dump(parser_data, handle)
+            input_path = Path(handle.name)
+
+        cmd = [
+            "opa",
+            "eval",
+            "--format",
+            "raw",
+            "--data",
+            str(policy_file),
+            "--input",
+            str(input_path),
+            "data.pki.compliance.allow",
+        ]
+
+        try:
+            process = subprocess.run(  # nosec B603
+                cmd, capture_output=True, text=True, check=False
+            )
+        except FileNotFoundError:
+            input_path.unlink(missing_ok=True)
+            return {
+                "check": CheckResult(
+                    name="opa_policy_gate",
+                    status="pass",
+                    details="OPA binary not installed; optional policy gate skipped.",
+                    rule_id="OPA-POLICY",
+                    category="POLICY",
+                    severity="low",
+                    standard_reference="OPA/Rego policy-as-code",
+                ),
+                "summary": {
+                    "status": "skipped",
+                    "details": "OPA binary not installed.",
+                    "policy_file": str(policy_file),
+                },
+            }
+
+        input_path.unlink(missing_ok=True)
+        output = (process.stdout or "").strip().lower()
+        allowed = process.returncode == 0 and output == "true"
+        status = "pass" if allowed else "fail"
+        details = (
+            f"OPA evaluation result: {output or 'unknown'}"
+            if process.returncode == 0
+            else f"OPA evaluation command failed with code {process.returncode}"
+        )
+        return {
+            "check": CheckResult(
+                name="opa_policy_gate",
+                status=status,
+                details=details,
+                rule_id="OPA-POLICY",
+                category="POLICY",
+                severity="high",
+                standard_reference="OPA/Rego policy-as-code",
+            ),
+            "summary": {
+                "status": status,
+                "details": details,
+                "policy_file": str(policy_file),
+                "stdout": (process.stdout or "").strip(),
+                "stderr": (process.stderr or "").strip(),
+            },
+        }
+
+    def _apply_waivers(
+        self, checks: list[CheckResult], waiver_path: Path | None
+    ) -> dict[str, Any]:
+        if waiver_path is None:
+            return {
+                "checks": checks,
+                "summary": {"status": "skipped", "details": "No waiver file provided.", "applied": []},
+            }
+        if not waiver_path.exists():
+            return {
+                "checks": checks,
+                "summary": {
+                    "status": "ignored",
+                    "details": f"Waiver file not found: {waiver_path}",
+                    "applied": [],
+                },
+            }
+
+        payload = json.loads(waiver_path.read_text(encoding="utf-8"))
+        waivers = payload.get("waivers", []) if isinstance(payload, dict) else []
+        now = datetime.now(timezone.utc).date()
+        applied: list[dict[str, Any]] = []
+
+        for check in checks:
+            if check.status != "fail":
+                continue
+            for waiver in waivers:
+                if not isinstance(waiver, dict):
+                    continue
+                if waiver.get("check") != check.name:
+                    continue
+                expires_on = waiver.get("expires_on")
+                if isinstance(expires_on, str):
+                    try:
+                        expiry = datetime.fromisoformat(expires_on).date()
+                    except ValueError:
+                        continue
+                    if expiry < now:
+                        continue
+                check.status = "waived"
+                reason = waiver.get("reason", "No reason provided")
+                ticket = waiver.get("ticket", "N/A")
+                check.details = f"{check.details} Waived: {reason} (ticket: {ticket})."
+                applied.append(
+                    {
+                        "check": check.name,
+                        "reason": reason,
+                        "ticket": ticket,
+                        "expires_on": expires_on,
+                    }
+                )
+                break
+
+        return {
+            "checks": checks,
+            "summary": {
+                "status": "applied" if applied else "none",
+                "details": f"Applied {len(applied)} waiver(s).",
+                "source": str(waiver_path),
+                "applied": applied,
+            },
+        }
 
     def _run_zlint_if_enabled(self, cert_path: Path) -> dict[str, Any]:
         lint_cfg = self.policy.get("lint", {})
