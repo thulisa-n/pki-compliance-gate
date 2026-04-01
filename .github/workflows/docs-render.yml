@@ -1,0 +1,44 @@
+name: Docs Render
+
+on:
+  push:
+    paths:
+      - "**/*.md"
+      - "**/*.adoc"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "**/*.adoc"
+  workflow_dispatch:
+
+jobs:
+  render-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve base reference
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate DOCX/PDF final and redline docs
+        run: |
+          python scripts/generate_docs_artifacts.py \
+            --base-ref "${{ steps.base.outputs.ref }}" \
+            --output-dir artifacts/docs
+
+      - name: Upload rendered doc artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-render-${{ github.run_id }}
+          path: artifacts/docs

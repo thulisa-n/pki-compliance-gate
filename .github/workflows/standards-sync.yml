@@ -1,0 +1,43 @@
+name: Standards Sync
+
+on:
+  schedule:
+    - cron: "0 6 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-cabf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install sync dependencies
+        run: pip install pyyaml
+
+      - name: Sync CAB Forum baseline snapshot
+        run: python scripts/sync_cabf_baseline.py
+
+      - name: Create pull request if sync changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(standards): sync CAB Forum baseline snapshot"
+          title: "chore(standards): sync CAB Forum baseline snapshot"
+          body: |
+            ## Summary
+            - sync CA/B Forum BR snapshot from upstream source
+            - refresh `policies/standards_baseline.yaml`
+            - update generated `policies/standards_sync_snapshot.yaml`
+          branch: chore/standards-sync
+          delete-branch: true
