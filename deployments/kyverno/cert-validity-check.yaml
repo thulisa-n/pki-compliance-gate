@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-90-day-max-validity
+  annotations:
+    policies.kyverno.io/title: Enforce 90-day certificate duration
+    policies.kyverno.io/category: PKI Compliance
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-cert-expiry
+      match:
+        any:
+          - resources:
+              kinds:
+                - Certificate
+      validate:
+        message: "Certificates must not exceed a 90-day validity period."
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.spec.duration || '2160h' }}"
+                operator: DurationGreaterThan
+                value: "2160h"

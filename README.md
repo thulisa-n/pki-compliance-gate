@@ -302,6 +302,7 @@ Severity-based exit codes (`evaluate` mode):
 ```text
 .github/workflows/      # CI compliance pipeline
 policies/               # policy-as-code definitions
+deployments/            # optional runtime enforcement examples
 src/certguard/          # agents and orchestration engine
 tests/                  # unit tests
 reports/                # compliance report outputs
@@ -385,6 +386,18 @@ This project mirrors patterns commonly seen in:
 - DevSecOps compliance gates in CI/CD systems
 
 It extends those patterns with governance agents, remediation workflows, and evidence sealing for audit traceability.
+
+---
+
+## Kubernetes Admission Control (Kyverno)
+
+To demonstrate policy-to-enforcement capability beyond CI, CertGuard includes a Kyverno example:
+
+- `deployments/kyverno/cert-validity-check.yaml`
+
+This policy validates cert-manager `Certificate` resources and denies durations above `2160h` (90 days). It is set to `Audit` by default for safe rollout and can be promoted to `Enforce` after validation.
+
+Use this as a runtime complement to CertGuard's CI compliance gate.
 
 ---
 
