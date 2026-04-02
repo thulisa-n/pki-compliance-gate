@@ -87,7 +87,7 @@ jobs:
             --output-reproducible \
             --output-file reports/sbom.cdx.json
 
-      - name: Generate signed release provenance
+      - name: Generate release provenance digest
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -119,7 +119,7 @@ jobs:
           cp reports/compliance_trend_snapshot.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/sbom.cdx.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.json.sig "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.json.digest "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
@@ -173,5 +173,33 @@ jobs:
           if [ "${exit_code}" -ne "${{ matrix.expected_exit }}" ]; then
             echo "Matrix validation failed for ${{ matrix.fixture }}"
             cat /tmp/matrix_result.json || true
+            exit 1
+          fi
+
+  strict-profile-smoke:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Evaluate strict profile baseline
+        run: |
+          set +e
+          python src/main.py \
+            --cert tests/certificates/valid_cert.pem \
+            --policy policies/profiles/root_program_baseline.yaml \
+            --output json > /tmp/strict_profile_result.json
+          exit_code=$?
+          echo "Strict profile exit: ${exit_code}"
+          if [ "${exit_code}" -eq 0 ]; then
+            echo "Expected non-zero exit for strict profile without attestations/tooling."
+            cat /tmp/strict_profile_result.json || true
             exit 1
           fi

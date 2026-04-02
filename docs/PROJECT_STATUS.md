@@ -23,7 +23,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - `reports/compliance_trend_snapshot.json`
   - `reports/sbom.cdx.json`
   - `reports/release_provenance.json`
-  - `reports/release_provenance.json.sig`
+  - `reports/release_provenance.json.digest`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
   - `audit_evidence/waiver_results.json`
@@ -49,7 +49,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - DCV attestation guardrails added (allowed methods + recency windows)
   - waiver-based false-positive controls added with audit traceability
   - optional OPA/Rego policy gate added for policy-as-code extension
-  - SBOM generation and signed release provenance added to CI artifacts
+  - SBOM generation and release provenance digest artifacts added to CI outputs
   - deeper RFC 5280 extension profile checks added (SKI/AKI + critical extension linting)
   - RFC 5280 path linkage checks added (issuer-subject + AKI/SKI path links)
   - issuance attestation controls added (HSM-backed operations + FIPS level checks)

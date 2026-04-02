@@ -13,6 +13,7 @@ from certguard.agents.api_tls_posture import ApiTlsPostureAgent
 from certguard.agents.remediation import RemediationAgent
 from certguard.agents.reviewer_summary import ReviewerSummaryAgent
 from certguard.agents.standards_watch import StandardsWatchAgent
+from certguard.agents.external_signal_watch import ExternalSignalWatchAgent
 from certguard.agents.trend_snapshot import TrendSnapshotAgent
 from certguard.engine import ComplianceGateEngine
 from certguard.governance import enforce_protected_context
@@ -31,6 +32,7 @@ def parse_args() -> argparse.Namespace:
             "summary",
             "trend",
             "apisec",
+            "signals",
         ],
         default="evaluate",
         help="Execution mode",
@@ -118,6 +120,24 @@ def parse_args() -> argparse.Namespace:
         "--issuance-attestation",
         help="Path to JSON attestation for issuance controls (HSM/FIPS)",
     )
+    parser.add_argument(
+        "--external-signals",
+        dest="external_signals",
+        default="examples/external_signals.json",
+        help="Path to JSON file containing curated external standards/security signals",
+    )
+    parser.add_argument(
+        "--signals-output",
+        dest="signals_output",
+        default="reports/external_signal_snapshot.json",
+        help="Path to external signal snapshot output JSON",
+    )
+    parser.add_argument(
+        "--signal-recommendations-output",
+        dest="signal_recommendations_output",
+        default="reports/external_control_recommendations.json",
+        help="Path to external signal recommendation output JSON",
+    )
     return parser.parse_args()
 
 
@@ -139,6 +159,8 @@ def main() -> int:
         return _run_trend(args)
     if args.mode == "apisec":
         return _run_apisec(args)
+    if args.mode == "signals":
+        return _run_signals(args)
     raise ValueError(f"Unsupported mode: {args.mode}")
 
 
@@ -326,6 +348,43 @@ def _run_apisec(args: argparse.Namespace) -> int:
     return 0 if result.success else 2
 
 
+def _run_signals(args: argparse.Namespace) -> int:
+    signals = _read_json(Path(args.external_signals))
+    if not isinstance(signals, list):
+        raise ValueError("--external-signals must point to a JSON array of signal objects.")
+
+    result = ExternalSignalWatchAgent().run({"signals": signals})
+    snapshot_path = Path(args.signals_output)
+    rec_path = Path(args.signal_recommendations_output)
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+    rec_path.parent.mkdir(parents=True, exist_ok=True)
+
+    snapshot_payload = {
+        "agent": result.agent,
+        "success": result.success,
+        "generated_at": result.data.get("generated_at"),
+        "signal_count": result.data.get("signal_count"),
+        "high_priority_signals": result.data.get("high_priority_signals"),
+        "signals": result.data.get("signals", []),
+    }
+    rec_payload = {
+        "agent": result.agent,
+        "success": result.success,
+        "recommendation_count": result.data.get("recommendation_count"),
+        "recommendations": result.data.get("recommendations", []),
+    }
+    snapshot_path.write_text(json.dumps(snapshot_payload, indent=2), encoding="utf-8")
+    rec_path.write_text(json.dumps(rec_payload, indent=2), encoding="utf-8")
+
+    print("Agent:", result.agent)
+    print("Success:", "YES" if result.success else "NO")
+    print(f"Signals: {result.data.get('signal_count')}")
+    print(f"Recommendations: {result.data.get('recommendation_count')}")
+    print(f"Snapshot written to {snapshot_path}")
+    print(f"Recommendations written to {rec_path}")
+    return 0 if result.success else 1
+
+
 def _read_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as stream:
         return json.load(stream)
@@ -333,15 +392,16 @@ def _read_json(path: Path) -> dict:
 
 def _exit_code_from_report(report) -> int:
     failed = [check for check in report.checks if check.status == "fail"]
+    lint_failed = report.lint.get("status") == "fail"
     if not failed:
-        return 0
+        return 2 if lint_failed else 0
 
     severities = {(check.severity or "medium").lower() for check in failed}
     if "critical" in severities:
         return 3
     if "high" in severities or "medium" in severities:
         return 2
-    return 1
+    return 2 if lint_failed else 1
 
 
 if __name__ == "__main__":

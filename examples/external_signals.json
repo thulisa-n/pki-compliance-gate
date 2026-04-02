@@ -1,0 +1,29 @@
+[
+  {
+    "id": "signal-001",
+    "title": "Certificate lifecycle reduction trend",
+    "category": "certificate_lifecycle",
+    "priority": "high",
+    "published_at": "2026-03-31T00:00:00Z",
+    "source_url": "https://cabforum.org/",
+    "notes": "Track shorter public TLS validity windows in policy baselines."
+  },
+  {
+    "id": "signal-002",
+    "title": "Cryptographic transition readiness signal",
+    "category": "crypto_transition",
+    "priority": "high",
+    "published_at": "2026-03-31T00:00:00Z",
+    "source_url": "https://www.nist.gov/",
+    "notes": "Prepare profile overlays and controls for algorithm agility."
+  },
+  {
+    "id": "signal-003",
+    "title": "Root program profile update watch",
+    "category": "root_program_update",
+    "priority": "medium",
+    "published_at": "2026-03-31T00:00:00Z",
+    "source_url": "https://www.mozilla.org/en-US/about/governance/policies/security-group/certs/",
+    "notes": "Watch profile-level changes that affect issuance policy and evidence."
+  }
+]

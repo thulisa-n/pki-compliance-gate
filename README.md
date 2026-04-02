@@ -67,6 +67,14 @@ CertGuard Engine simulates this style of control pipeline by converting policy r
 
 ---
 
+## Ethics and Attribution
+
+This project uses public standards and public security research references for educational and portfolio purposes.
+
+It is an independent implementation and is not affiliated with, endorsed by, or based on any non-public systems from external organizations.
+
+---
+
 ## System Architecture
 
 ```text
@@ -263,6 +271,9 @@ python src/main.py --cert tests/certificates/valid_cert.pem
 python src/main.py \
   --cert tests/certificates/valid_cert.pem \
   --issuance-attestation examples/issuance_attestation.json
+
+# Generate external signal snapshot + control recommendations
+python src/main.py --mode signals --external-signals examples/external_signals.json
 ```
 
 Mode summary:
@@ -275,6 +286,7 @@ Mode summary:
 - `summary`: generate reviewer-friendly markdown compliance summary
 - `trend`: generate compliance trend snapshot JSON
 - `apisec`: evaluate endpoint TLS posture for API security review
+- `signals`: convert curated external signals into control recommendations
 
 Severity-based exit codes (`evaluate` mode):
 
@@ -387,7 +399,7 @@ Pipeline actions:
 3. Generate sample certificate
 4. Run compliance gate
 5. Generate CycloneDX SBOM
-6. Generate signed release provenance
+6. Generate release provenance digest (integrity hash)
 7. Upload compliance artifacts
 
 This creates visible governance evidence directly in GitHub Actions.
@@ -419,6 +431,10 @@ Fixture matrix validation:
 Detailed implementation history and capability tracking lives in:
 
 - `docs/PROJECT_STATUS.md`
+
+Planned in next phase:
+
+- **Crypto transition readiness** (algorithm agility controls, migration profiles, and evidence hooks)
 - `docs/JOB_SPEC_ALIGNMENT.md`
 
 ---

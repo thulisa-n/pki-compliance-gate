@@ -12,10 +12,14 @@ def generate_release_provenance(
 ) -> tuple[Path, Path]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    missing_artifacts = [str(path) for path in artifact_paths if not path.exists()]
+    if missing_artifacts:
+        raise ValueError(
+            "Missing required provenance artifacts: " + ", ".join(missing_artifacts)
+        )
+
     artifacts = []
     for artifact in artifact_paths:
-        if not artifact.exists():
-            continue
         artifacts.append(
             {
                 "path": str(artifact),
@@ -34,9 +38,9 @@ def generate_release_provenance(
     }
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-    signature_path = output_path.with_suffix(output_path.suffix + ".sig")
-    signature_path.write_text(_sha256_bytes(output_path.read_bytes()), encoding="utf-8")
-    return output_path, signature_path
+    digest_path = output_path.with_suffix(output_path.suffix + ".digest")
+    digest_path.write_text(_sha256_bytes(output_path.read_bytes()), encoding="utf-8")
+    return output_path, digest_path
 
 
 def _sha256_file(path: Path) -> str:

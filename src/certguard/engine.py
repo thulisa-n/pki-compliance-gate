@@ -174,16 +174,16 @@ class ComplianceGateEngine:
             return {
                 "check": CheckResult(
                     name="opa_policy_gate",
-                    status="pass",
-                    details="OPA binary not installed; optional policy gate skipped.",
+                    status="fail",
+                    details="OPA binary not installed while opa.enabled=true.",
                     rule_id="OPA-POLICY",
                     category="POLICY",
-                    severity="low",
+                    severity="high",
                     standard_reference="OPA/Rego policy-as-code",
                 ),
                 "summary": {
-                    "status": "skipped",
-                    "details": "OPA binary not installed.",
+                    "status": "fail",
+                    "details": "OPA binary not installed while policy requires OPA.",
                     "policy_file": str(policy_file),
                 },
             }
@@ -247,17 +247,20 @@ class ComplianceGateEngine:
                     continue
                 if waiver.get("check") != check.name:
                     continue
+                ticket = waiver.get("ticket")
+                if not isinstance(ticket, str) or not ticket.strip():
+                    continue
                 expires_on = waiver.get("expires_on")
-                if isinstance(expires_on, str):
-                    try:
-                        expiry = datetime.fromisoformat(expires_on).date()
-                    except ValueError:
-                        continue
-                    if expiry < now:
-                        continue
+                if not isinstance(expires_on, str):
+                    continue
+                try:
+                    expiry = datetime.fromisoformat(expires_on).date()
+                except ValueError:
+                    continue
+                if expiry < now:
+                    continue
                 check.status = "waived"
                 reason = waiver.get("reason", "No reason provided")
-                ticket = waiver.get("ticket", "N/A")
                 check.details = f"{check.details} Waived: {reason} (ticket: {ticket})."
                 applied.append(
                     {

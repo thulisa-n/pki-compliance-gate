@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from types import SimpleNamespace
+
+from main import _exit_code_from_report
 
 
 def test_exit_code_zero_for_compliant_fixture() -> None:
@@ -22,3 +25,8 @@ def test_exit_code_three_for_critical_failure_fixture() -> None:
         check=False,
     )
     assert process.returncode == 3
+
+
+def test_exit_code_non_zero_when_only_lint_fails() -> None:
+    report = SimpleNamespace(checks=[], lint={"status": "fail"})
+    assert _exit_code_from_report(report) == 2

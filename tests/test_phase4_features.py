@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
+import certguard.engine as engine_module
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.engine import ComplianceGateEngine
 
@@ -73,12 +75,74 @@ def test_waiver_can_suppress_known_false_positive(tmp_path: Path) -> None:
     assert waiver_evidence["status"] == "applied"
 
 
+def test_waiver_without_expiry_or_ticket_is_not_applied(tmp_path: Path) -> None:
+    policy_path = Path("policies/cabf_policy.yaml")
+    waiver_path = tmp_path / "waivers.json"
+    waiver_path.write_text(
+        json.dumps(
+            {
+                "waivers": [
+                    {
+                        "check": "signature_algorithm",
+                        "reason": "Missing required governance fields",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report_path = tmp_path / "report.json"
+    evidence_dir = tmp_path / "audit_evidence"
+    engine = ComplianceGateEngine(policy_path=policy_path)
+    compliant, _ = engine.evaluate(
+        cert_path=Path("tests/certificates/sha1_cert.pem"),
+        report_path=report_path,
+        evidence_dir=evidence_dir,
+        waiver_path=waiver_path,
+    )
+
+    assert compliant is False
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    signature = next(item for item in report["checks"] if item["name"] == "signature_algorithm")
+    assert signature["status"] == "fail"
+
+
 def test_opa_enabled_with_missing_policy_file_fails_closed(tmp_path: Path) -> None:
     policy = _base_policy()
     policy["opa"]["enabled"] = True
     policy["opa"]["policy_file"] = str(tmp_path / "missing.rego")
     policy_path = tmp_path / "policy.yaml"
     policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
+
+    report_path = tmp_path / "report.json"
+    evidence_dir = tmp_path / "audit_evidence"
+    engine = ComplianceGateEngine(policy_path=policy_path)
+    compliant, _ = engine.evaluate(
+        cert_path=Path("tests/certificates/valid_cert.pem"),
+        report_path=report_path,
+        evidence_dir=evidence_dir,
+    )
+
+    assert compliant is False
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    opa_check = next(item for item in report["checks"] if item["name"] == "opa_policy_gate")
+    assert opa_check["status"] == "fail"
+
+
+def test_opa_enabled_with_missing_binary_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = _base_policy()
+    policy["opa"]["enabled"] = True
+    policy["opa"]["policy_file"] = str(Path("policies/rego/validity.rego"))
+    policy_path = tmp_path / "policy.yaml"
+    policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
+
+    def _raise_missing_binary(*args, **kwargs):
+        raise FileNotFoundError()
+
+    monkeypatch.setattr(engine_module.subprocess, "run", _raise_missing_binary)
 
     report_path = tmp_path / "report.json"
     evidence_dir = tmp_path / "audit_evidence"
