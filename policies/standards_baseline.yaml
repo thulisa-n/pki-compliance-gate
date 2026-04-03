@@ -1,13 +1,11 @@
 terms: []
-
 baseline:
-  source: "CA/Browser Forum + internal policy baseline"
-  version: "2026.03"
-  last_reviewed: "2026-03-16"
+  source: CA/Browser Forum BR (auto-synced)
+  version: 2026.04.03
+  last_reviewed: '2026-04-03'
   references:
-    - "CAB Forum Baseline Requirements"
-    - "RFC 5280"
-
+  - CAB Forum Baseline Requirements
+  - RFC 5280
 expected:
   certificate:
     max_validity_days: 200
@@ -15,5 +13,5 @@ expected:
     minimum_rsa_bits: 2048
   signature:
     prohibited_algorithms:
-      - "md5"
-      - "sha1"
+    - md5
+    - sha1
