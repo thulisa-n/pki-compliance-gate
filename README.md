@@ -126,7 +126,7 @@ This reflects real compliance operations where violations are detected, classifi
 Certificate: tests/certificates/valid_cert.pem
 Compliant: YES
 - [CAB-BR-6.3.2] validity_days: PASS (Certificate validity is 90 days (max 200))
-- [RFC-5280-4.2.1.6] san_extension: PASS (SAN extension present)
+- [CAB-BR-7.1.4.2.1 / RFC-5280-4.2.1.6] san_extension: PASS (SAN extension present)
 - [CAB-BR-6.1.5] rsa_key_size: PASS (RSA key size is 2048 bits (min 2048))
 - [CAB-BR-7.1.3] signature_algorithm: PASS (Signature algorithm is sha256)
 - [CAB-BR-7.1.4.2.1] internal_domain_check: PASS (No blocked internal domains detected)
@@ -370,7 +370,7 @@ The standards baseline tracker is maintained in `policies/standards_baseline.yam
 | Rule ID | Description | Implementation |
 | --- | --- | --- |
 | `CAB-BR-6.3.2` | Max certificate validity window | `certificate.max_validity_days` -> `validity_days` check |
-| `RFC-5280-4.2.1.6` | SAN extension required for identity matching | `certificate.require_san` -> `san_extension` check |
+| `CAB-BR-7.1.4.2.1 / RFC-5280-4.2.1.6` | SAN required for public-trust profiles, with X.509 extension semantics from RFC 5280 | `certificate.require_san` -> `san_extension` check |
 | `CAB-BR-6.1.5` | RSA key size must be 2048+ | `key.minimum_rsa_bits` -> `rsa_key_size` check |
 | `CAB-BR-7.1.3` | Prohibited weak signature/hash algorithms | `signature.prohibited_algorithms` -> `signature_algorithm` check |
 | `CAB-BR-7.1.4.2.1` | Internal names not allowed in public trust context | `domains.blocked_suffixes` -> `internal_domain_check` check |
@@ -444,7 +444,7 @@ Fixture matrix validation:
 ## Roadmap
 
 - **Phase 4 (enterprise alignment): completed**
-- **Phase 5 (big-tech readiness): planned**
+- **Phase 5: Crypto-Agility & Post-Quantum Readiness (planned)**
 
 Detailed implementation history and capability tracking lives in:
 
