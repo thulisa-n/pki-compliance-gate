@@ -30,7 +30,7 @@ jobs:
         run: python scripts/sync_cabf_baseline.py
 
       - name: Create pull request if sync changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore(standards): sync CAB Forum baseline snapshot"
           title: "chore(standards): sync CAB Forum baseline snapshot"
