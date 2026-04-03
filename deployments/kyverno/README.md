@@ -18,3 +18,5 @@ This directory contains Kubernetes admission policies that mirror CertGuard cont
 ## Why This Matters
 
 CertGuard enforces policy in CI and evidence workflows. Kyverno adds runtime admission control so the same policy intent can be applied before Kubernetes resources are accepted.
+
+In this repo, OPA/Rego policy evaluation is scoped to optional CI execution inside CertGuard, while Kyverno is the runtime admission example for Kubernetes clusters.

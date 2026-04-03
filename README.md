@@ -255,7 +255,7 @@ python src/main.py --mode apisec --endpoint https://example.com
 
 This runs a live endpoint TLS posture check and returns a risk-oriented result for API-facing usage.
 
-### 6) Optional DCV, waiver, and OPA policy gate inputs
+### 6) Optional DCV, waiver, and CI policy gate inputs
 
 ```bash
 # Evaluate with DCV attestation and approved waivers
@@ -264,7 +264,7 @@ python src/main.py \
   --dcv-attestation examples/dcv_attestation.json \
   --waiver-file examples/waivers.json
 
-# Enable optional OPA/Rego gate via policy (policy.opa.enabled=true)
+# Enable optional OPA/Rego CI gate via policy (policy.opa.enabled=true)
 python src/main.py --cert tests/certificates/valid_cert.pem
 
 # Include issuance controls attestation (HSM/FIPS)
@@ -396,6 +396,11 @@ To demonstrate policy-to-enforcement capability beyond CI, CertGuard includes a 
 - `deployments/kyverno/cert-validity-check.yaml`
 
 This policy validates cert-manager `Certificate` resources and denies durations above `2160h` (90 days). It is set to `Audit` by default for safe rollout and can be promoted to `Enforce` after validation.
+
+Policy engine positioning in this project:
+
+- `opa` section in `policies/cabf_policy.yaml`: optional CI/CD policy evaluation in CertGuard runs
+- `deployments/kyverno/`: Kubernetes runtime admission enforcement example
 
 Use this as a runtime complement to CertGuard's CI compliance gate.
 
