@@ -135,6 +135,30 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rationale": "Cryptographic module assurance levels are key audit controls.",
         "recommendation": "Provide attested FIPS level meeting minimum policy requirement.",
     },
+    "crypto_transition_validity_target": {
+        "rule_id": "CRYPTO-AGILITY-VALIDITY",
+        "category": "CRYPTO-TRANSITION",
+        "severity": "high",
+        "standard_reference": "Crypto transition readiness profile",
+        "rationale": "Short-lived certificate profiles reduce exposure and improve rotation agility.",
+        "recommendation": "Reduce certificate validity to transition target or lower.",
+    },
+    "crypto_transition_rsa_target": {
+        "rule_id": "CRYPTO-AGILITY-RSA",
+        "category": "CRYPTO-TRANSITION",
+        "severity": "medium",
+        "standard_reference": "Crypto transition readiness profile",
+        "rationale": "Stronger key sizes improve resilience during algorithm transition periods.",
+        "recommendation": "Issue RSA certificates at or above the transition RSA key target.",
+    },
+    "crypto_transition_signature_hash": {
+        "rule_id": "CRYPTO-AGILITY-HASH",
+        "category": "CRYPTO-TRANSITION",
+        "severity": "high",
+        "standard_reference": "Crypto transition readiness profile",
+        "rationale": "Approved signature hashes reduce risk from weak or deprecated digests.",
+        "recommendation": "Use signature hash algorithms from the approved transition allowlist.",
+    },
 }
 
 
@@ -211,6 +235,7 @@ class PolicyValidatorAgent(BaseAgent):
         checks.extend(self._dcv_checks(policy, dcv_attestation))
         checks.extend(self._rfc5280_checks(policy, parser_data, issuer_parser_data))
         checks.extend(self._issuance_checks(policy, issuance_attestation))
+        checks.extend(self._crypto_transition_checks(policy, parser_data))
 
         success = all(check.status == "pass" for check in checks)
         return AgentResult(agent=self.name, success=success, checks=checks)
@@ -520,6 +545,81 @@ class PolicyValidatorAgent(BaseAgent):
             )
 
         return checks
+
+    def _crypto_transition_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
+        cfg = policy["crypto_transition"]
+        if not cfg["enabled"]:
+            return [
+                self._check(
+                    "crypto_transition_validity_target",
+                    True,
+                    "Crypto transition validity target check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                ),
+                self._check(
+                    "crypto_transition_rsa_target",
+                    True,
+                    "Crypto transition RSA target check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                ),
+                self._check(
+                    "crypto_transition_signature_hash",
+                    True,
+                    "Crypto transition signature hash check disabled by policy.",
+                    policy_value=False,
+                    actual_value=False,
+                ),
+            ]
+
+        target_validity = cfg["target_max_validity_days"]
+        validity_days = parser_data.get("validity_days")
+        is_rsa = bool(parser_data.get("is_rsa"))
+        rsa_bits = parser_data.get("rsa_key_size")
+        target_rsa = cfg["target_min_rsa_bits"]
+        signature_algorithm = str(parser_data.get("signature_algorithm", "")).lower()
+        approved_hashes = {
+            value.lower() for value in cfg["approved_signature_algorithms"] if value.strip()
+        }
+
+        validity_ok = isinstance(validity_days, int) and validity_days <= target_validity
+        rsa_ok = (not is_rsa) or (isinstance(rsa_bits, int) and rsa_bits >= target_rsa)
+        hash_ok = signature_algorithm in approved_hashes
+
+        return [
+            self._check(
+                "crypto_transition_validity_target",
+                validity_ok,
+                (
+                    f"Certificate validity is {validity_days} days (target <= {target_validity})."
+                    if isinstance(validity_days, int)
+                    else "Certificate validity value missing for crypto transition check."
+                ),
+                policy_value=target_validity,
+                actual_value=validity_days,
+            ),
+            self._check(
+                "crypto_transition_rsa_target",
+                rsa_ok,
+                (
+                    f"RSA key size is {rsa_bits} bits (target >= {target_rsa})."
+                    if is_rsa
+                    else "Non-RSA key; RSA transition target not applicable."
+                ),
+                policy_value=target_rsa,
+                actual_value=rsa_bits,
+            ),
+            self._check(
+                "crypto_transition_signature_hash",
+                hash_ok,
+                f"Signature algorithm is {signature_algorithm or 'missing'}.",
+                policy_value=sorted(approved_hashes),
+                actual_value=signature_algorithm or None,
+            ),
+        ]
 
     def _issuance_checks(
         self, policy: dict[str, Any], issuance_attestation: dict[str, Any] | None

@@ -351,6 +351,7 @@ Profile overlays for standards coverage breadth:
 - `policies/profiles/root_program_baseline.yaml`
 - `policies/profiles/cpcps_controls.yaml`
 - `policies/profiles/short_lived_90d.yaml`
+- `policies/profiles/crypto_agility_pqc_readiness.yaml`
 
 ---
 
@@ -444,7 +445,7 @@ Fixture matrix validation:
 ## Roadmap
 
 - **Phase 4 (enterprise alignment): completed**
-- **Phase 5: Crypto-Agility & Post-Quantum Readiness (planned)**
+- **Phase 5: Crypto-Agility & Post-Quantum Readiness (in progress)**
 
 Detailed implementation history and capability tracking lives in:
 
@@ -452,8 +453,8 @@ Detailed implementation history and capability tracking lives in:
 
 Planned in next phase:
 
-- **Crypto transition readiness** (algorithm agility controls, migration profiles, and evidence hooks)
-- `docs/JOB_SPEC_ALIGNMENT.md`
+- **Expand crypto transition readiness** (algorithm agility controls, migration profiles, and evidence hooks)
+- **Add crypto transition evidence snapshots** for long-running readiness tracking
 
 ---
 

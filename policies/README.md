@@ -16,6 +16,8 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `dcv`
 - `rfc5280`
 - `opa`
+- `issuance`
+- `crypto_transition`
 
 ## Key fields
 
@@ -45,5 +47,9 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `opa.policy_file` (`str`)
 - `issuance.require_hsm_attestation` (`bool`)
 - `issuance.min_fips_level` (`int`)
+- `crypto_transition.enabled` (`bool`)
+- `crypto_transition.target_max_validity_days` (`int`)
+- `crypto_transition.target_min_rsa_bits` (`int`)
+- `crypto_transition.approved_signature_algorithms` (`list[str]`)
 
 The loader performs validation and raises an explicit error when required keys are missing or typed incorrectly.

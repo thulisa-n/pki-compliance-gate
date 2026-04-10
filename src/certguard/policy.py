@@ -85,6 +85,31 @@ def _validate_policy(policy: dict[str, Any]) -> None:
     _require_key_type(issuance, "require_hsm_attestation", bool, "issuance")
     _require_key_type(issuance, "min_fips_level", int, "issuance")
 
+    crypto_transition = policy["crypto_transition"]
+    _require_key_type(crypto_transition, "enabled", bool, "crypto_transition")
+    _require_key_type(
+        crypto_transition,
+        "target_max_validity_days",
+        int,
+        "crypto_transition",
+    )
+    _require_key_type(
+        crypto_transition,
+        "target_min_rsa_bits",
+        int,
+        "crypto_transition",
+    )
+    _require_key_type(
+        crypto_transition,
+        "approved_signature_algorithms",
+        list,
+        "crypto_transition",
+    )
+    _require_list_of_strings(
+        crypto_transition["approved_signature_algorithms"],
+        "crypto_transition.approved_signature_algorithms",
+    )
+
 
 def _apply_defaults(policy: dict[str, Any]) -> None:
     policy.setdefault("lint", {})
@@ -113,6 +138,14 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy.setdefault("issuance", {})
     policy["issuance"].setdefault("require_hsm_attestation", False)
     policy["issuance"].setdefault("min_fips_level", 2)
+
+    policy.setdefault("crypto_transition", {})
+    policy["crypto_transition"].setdefault("enabled", False)
+    policy["crypto_transition"].setdefault("target_max_validity_days", 90)
+    policy["crypto_transition"].setdefault("target_min_rsa_bits", 3072)
+    policy["crypto_transition"].setdefault(
+        "approved_signature_algorithms", ["sha256", "sha384", "sha512"]
+    )
 
 
 def _require_key_type(

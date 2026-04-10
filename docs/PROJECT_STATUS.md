@@ -44,7 +44,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 
 ## Upcoming Work
 
-- **Phase 4 (enterprise alignment) - in progress**
+- **Phase 4 (enterprise alignment) - completed**
   - APISEC expanded with TLS version policy checks, cipher posture checks, and chain posture signals
   - DCV attestation guardrails added (allowed methods + recency windows)
   - waiver-based false-positive controls added with audit traceability
@@ -54,4 +54,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - RFC 5280 path linkage checks added (issuer-subject + AKI/SKI path links)
   - issuance attestation controls added (HSM-backed operations + FIPS level checks)
   - policy profile packs added for EV, S/MIME, Root Program, and CP/CPS overlays
-- **Phase 5 (big-tech readiness) - not started**
+- **Phase 5 (crypto-agility and PQC readiness) - in progress**
+  - crypto transition policy section added (`crypto_transition.*`) with defaults and schema validation
+  - crypto transition checks added (validity target, RSA target, approved signature hash allowlist)
+  - dedicated profile added: `policies/profiles/crypto_agility_pqc_readiness.yaml`

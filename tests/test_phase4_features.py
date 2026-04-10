@@ -237,3 +237,67 @@ def test_issuance_controls_fail_without_attestation_when_required() -> None:
     fips = next(check for check in result.checks if check.name == "issuance_fips_level")
     assert hsm.status == "fail"
     assert fips.status == "fail"
+
+
+def test_crypto_transition_checks_fail_when_transition_targets_not_met() -> None:
+    policy = _base_policy()
+    policy["crypto_transition"]["enabled"] = True
+    policy["crypto_transition"]["target_max_validity_days"] = 90
+    policy["crypto_transition"]["target_min_rsa_bits"] = 3072
+    policy["crypto_transition"]["approved_signature_algorithms"] = ["sha384", "sha512"]
+
+    parser_data = {
+        "validity_days": 120,
+        "san_dns": ["example.com"],
+        "is_rsa": True,
+        "rsa_key_size": 2048,
+        "signature_algorithm": "sha256",
+        "basic_constraints_ca": False,
+        "key_usage": ["digital_signature", "key_encipherment"],
+        "critical_extension_oids": [],
+    }
+    result = PolicyValidatorAgent().run({"policy": policy, "parser_data": parser_data})
+    validity = next(
+        check for check in result.checks if check.name == "crypto_transition_validity_target"
+    )
+    rsa_target = next(
+        check for check in result.checks if check.name == "crypto_transition_rsa_target"
+    )
+    hash_target = next(
+        check for check in result.checks if check.name == "crypto_transition_signature_hash"
+    )
+    assert validity.status == "fail"
+    assert rsa_target.status == "fail"
+    assert hash_target.status == "fail"
+
+
+def test_crypto_transition_checks_pass_when_targets_met() -> None:
+    policy = _base_policy()
+    policy["crypto_transition"]["enabled"] = True
+    policy["crypto_transition"]["target_max_validity_days"] = 90
+    policy["crypto_transition"]["target_min_rsa_bits"] = 3072
+    policy["crypto_transition"]["approved_signature_algorithms"] = ["sha256", "sha384", "sha512"]
+
+    parser_data = {
+        "validity_days": 90,
+        "san_dns": ["example.com"],
+        "is_rsa": True,
+        "rsa_key_size": 4096,
+        "signature_algorithm": "sha384",
+        "basic_constraints_ca": False,
+        "key_usage": ["digital_signature", "key_encipherment"],
+        "critical_extension_oids": [],
+    }
+    result = PolicyValidatorAgent().run({"policy": policy, "parser_data": parser_data})
+    validity = next(
+        check for check in result.checks if check.name == "crypto_transition_validity_target"
+    )
+    rsa_target = next(
+        check for check in result.checks if check.name == "crypto_transition_rsa_target"
+    )
+    hash_target = next(
+        check for check in result.checks if check.name == "crypto_transition_signature_hash"
+    )
+    assert validity.status == "pass"
+    assert rsa_target.status == "pass"
+    assert hash_target.status == "pass"

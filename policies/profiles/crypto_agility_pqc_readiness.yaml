@@ -1,17 +1,17 @@
 metadata:
-  standard: "CA/Browser Forum Baseline Requirements"
-  version: "1.0.0"
-  last_updated: "2026-03-16"
-  terms: "CABF Baseline Requirements policy profile for CertGuard MVP"
+  standard: "Crypto-Agility and PQC Readiness Profile"
+  version: "2026.1"
+  last_updated: "2026-04-10"
+  terms: "Transition profile for short-lived certificates and stronger cryptographic baselines."
 
 terms: []
 
 certificate:
-  max_validity_days: 200
+  max_validity_days: 90
   require_san: true
 
 key:
-  minimum_rsa_bits: 2048
+  minimum_rsa_bits: 3072
 
 signature:
   prohibited_algorithms:
@@ -26,44 +26,47 @@ domains:
     - ".intranet"
 
 lint:
-  enable_zlint: false
+  enable_zlint: true
   fail_on_error: true
   fail_severities:
     - "error"
     - "fatal"
-  enable_asn1parse: false
+  enable_asn1parse: true
   fail_on_asn1_error: true
 
 dcv:
-  required: false
+  required: true
   allowed_methods:
     - "dns-01"
     - "http-01"
     - "tls-alpn-01"
-  max_age_days: 30
+  max_age_days: 15
 
 rfc5280:
-  require_end_entity_not_ca: false
-  require_key_usage: false
+  require_end_entity_not_ca: true
+  require_key_usage: true
   required_key_usages:
     - "digital_signature"
     - "key_encipherment"
-  require_subject_key_identifier: false
-  require_authority_key_identifier: false
-  allowed_critical_extensions: []
-  require_path_issuer_subject_match: false
-  require_path_aki_ski_match: false
+  require_subject_key_identifier: true
+  require_authority_key_identifier: true
+  allowed_critical_extensions:
+    - "2.5.29.15"
+    - "2.5.29.19"
+    - "2.5.29.37"
+  require_path_issuer_subject_match: true
+  require_path_aki_ski_match: true
 
 opa:
   enabled: false
   policy_file: "policies/rego/validity.rego"
 
 issuance:
-  require_hsm_attestation: false
-  min_fips_level: 2
+  require_hsm_attestation: true
+  min_fips_level: 3
 
 crypto_transition:
-  enabled: false
+  enabled: true
   target_max_validity_days: 90
   target_min_rsa_bits: 3072
   approved_signature_algorithms:
