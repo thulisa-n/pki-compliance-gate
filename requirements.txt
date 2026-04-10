@@ -2,4 +2,4 @@ cffi==2.0.0
 cryptography==46.0.7
 pycparser==3.0
 PyYAML==6.0.3
-pytest==9.0.2
+pytest==9.0.3
