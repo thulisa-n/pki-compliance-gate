@@ -12,3 +12,7 @@ reports/*.seal
 reports/*.md
 audit_evidence/*.json
 audit_evidence/*.jsonl
+
+# Private learning materials (not for public repo)
+docs/COMMANDS_AND_LEARNING_GUIDE.md
+docs/DEMO_SCRIPT.md

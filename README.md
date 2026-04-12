@@ -474,17 +474,22 @@ Fixture matrix validation:
 
 ## Roadmap
 
-- **Phase 4 (enterprise alignment): completed**
-- **Phase 5: Crypto-Agility & Post-Quantum Readiness (in progress)**
+- **Phase 1-4 (core engine through enterprise alignment): completed**
+- **Phase 5: Crypto-Agility & Post-Quantum Readiness: completed**
+  - crypto transition policy fields and validator checks
+  - dedicated crypto-agility profile (`crypto_agility_pqc_readiness.yaml`)
+  - supply-chain image verification (Kyverno `verifyImages`)
+  - lifecycle cleanup policies (Kyverno `ClusterCleanupPolicy`)
+  - Ed25519-signed release provenance with in-CI verification
+  - append-only hash-chained compliance decision log
 
 Detailed implementation history and capability tracking lives in:
 
 - `docs/PROJECT_STATUS.md`
 
-Planned in next phase:
+Next:
 
-- **Expand crypto transition readiness** (algorithm agility controls, migration profiles, and evidence hooks)
-- **Add crypto transition evidence snapshots** for long-running readiness tracking
+- **Phase 6 (hardening):** expand test coverage for parser edge cases and fixture matrix, harden policy definitions with CABF BR term references
 
 ---
 
