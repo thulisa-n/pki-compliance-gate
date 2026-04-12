@@ -87,11 +87,13 @@ jobs:
             --output-reproducible \
             --output-file reports/sbom.cdx.json
 
-      - name: Generate release provenance digest
+      - name: Generate signed release provenance + verify signature
         run: |
           python - <<'PY'
           from pathlib import Path
+          from certguard.artifact_signing import generate_ed25519_keypair_b64
           from certguard.release_provenance import generate_release_provenance
+          from certguard.release_provenance import verify_release_provenance_signature
           artifacts = [
               Path("reports/compliance_report.json"),
               Path("reports/compliance_report.json.seal"),
@@ -103,10 +105,26 @@ jobs:
               Path("audit_evidence/waiver_results.json"),
               Path("audit_evidence/opa_results.json"),
               Path("audit_evidence/evidence_manifest.json"),
+              Path("audit_evidence/compliance_decisions.jsonl"),
           ]
-          generate_release_provenance(
+          private_key_b64, public_key_b64 = generate_ed25519_keypair_b64()
+          manifest_path, _, signature_path = generate_release_provenance(
               artifact_paths=artifacts,
               output_path=Path("reports/release_provenance.json"),
+              signing_private_key_b64=private_key_b64,
+              signing_public_key_b64=public_key_b64,
+          )
+          if signature_path is None:
+              raise SystemExit("Expected signed provenance output, got none.")
+          if not verify_release_provenance_signature(
+              manifest_path,
+              signature_path,
+              public_key_b64,
+          ):
+              raise SystemExit("Release provenance signature verification failed.")
+          Path("reports/release_signing_public_key.b64").write_text(
+              public_key_b64,
+              encoding="utf-8",
           )
           PY
 
@@ -120,11 +138,15 @@ jobs:
           cp reports/sbom.cdx.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json.digest "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.json.sig "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.json.sig.meta.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_signing_public_key.b64 "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/opa_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/evidence_manifest.json "artifacts/${GITHUB_RUN_ID}/"
+          cp audit_evidence/compliance_decisions.jsonl "artifacts/${GITHUB_RUN_ID}/"
 
       - name: Upload compliance artifacts
         uses: actions/upload-artifact@v7

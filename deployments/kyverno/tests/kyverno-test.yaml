@@ -1,0 +1,38 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: certguard-kyverno-policy-suite
+policies:
+  - ../cert-validity-check.yaml
+  - ../default-cert-duration.yaml
+  - ../generate-namespace-networkpolicy.yaml
+resources:
+  - resources/certificate-valid.yaml
+  - resources/certificate-too-long.yaml
+  - resources/certificate-missing-duration.yaml
+  - resources/namespace-team-a.yaml
+results:
+  - policy: enforce-90-day-max-validity
+    rule: check-cert-expiry
+    resources:
+      - valid-cert
+    kind: Certificate
+    result: pass
+  - policy: enforce-90-day-max-validity
+    rule: check-cert-expiry
+    resources:
+      - too-long-cert
+    kind: Certificate
+    result: fail
+  - policy: default-cert-duration
+    rule: add-default-duration
+    resources:
+      - missing-duration-cert
+    kind: Certificate
+    result: pass
+  - policy: generate-default-deny-networkpolicy
+    rule: generate-default-deny
+    resources:
+      - team-a
+    kind: Namespace
+    result: pass

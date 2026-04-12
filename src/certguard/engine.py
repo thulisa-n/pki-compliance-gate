@@ -7,6 +7,7 @@ import subprocess  # nosec B404
 import tempfile
 from collections import Counter
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -102,6 +103,12 @@ class ComplianceGateEngine:
             report_path=report_path,
             seal_path=Path(seal_result.data["seal_path"]),
         )
+        self._append_compliance_decision_log(
+            evidence_dir=evidence_dir,
+            report=report,
+            failed_checks=policy_failures,
+            lint_status=lint_result.get("status", "unknown"),
+        )
 
         return compliant, report
 
@@ -121,9 +128,57 @@ class ComplianceGateEngine:
                 str(evidence_dir / "lint_results.json"),
                 str(evidence_dir / "waiver_results.json"),
                 str(evidence_dir / "opa_results.json"),
+                str(evidence_dir / "compliance_decisions.jsonl"),
             ],
         }
         manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def _append_compliance_decision_log(
+        self,
+        evidence_dir: Path,
+        report: ComplianceReport,
+        failed_checks: list[CheckResult],
+        lint_status: str,
+    ) -> None:
+        decision_log_path = evidence_dir / "compliance_decisions.jsonl"
+        prev_hash = self._last_decision_hash(decision_log_path)
+        waived_checks = [check.name for check in report.checks if check.status == "waived"]
+        entry: dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
+            "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
+            "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
+            "commit_sha": os.getenv("GITHUB_SHA", "local-commit"),
+            "policy_version": report.policy_version,
+            "certificate": report.certificate,
+            "compliant": report.compliant,
+            "score": report.score,
+            "risk_level": report.risk_level,
+            "failed_checks": [check.name for check in failed_checks],
+            "waived_checks": waived_checks,
+            "lint_status": lint_status,
+            "previous_entry_hash": prev_hash,
+        }
+        canonical = json.dumps(entry, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        entry["entry_hash"] = hashlib.sha256(canonical).hexdigest()
+        with decision_log_path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(entry, sort_keys=True) + "\n")
+
+    def _last_decision_hash(self, decision_log_path: Path) -> str | None:
+        if not decision_log_path.exists():
+            return None
+        lines = decision_log_path.read_text(encoding="utf-8").splitlines()
+        for line in reversed(lines):
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            entry_hash = payload.get("entry_hash")
+            if isinstance(entry_hash, str) and entry_hash:
+                return entry_hash
+        return None
 
     def _run_opa_if_enabled(self, parser_data: dict[str, Any]) -> dict[str, Any]:
         opa_cfg = self.policy.get("opa", {})

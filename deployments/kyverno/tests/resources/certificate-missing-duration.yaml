@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: missing-duration-cert
+  namespace: certguard-system
+spec:
+  secretName: missing-duration-cert-tls
+  dnsNames:
+    - missing-duration.example.com
+  issuerRef:
+    name: certguard-ca
+    kind: ClusterIssuer

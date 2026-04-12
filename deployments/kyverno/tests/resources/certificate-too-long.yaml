@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: too-long-cert
+  namespace: certguard-system
+spec:
+  secretName: too-long-cert-tls
+  duration: 4380h
+  dnsNames:
+    - too-long.example.com
+  issuerRef:
+    name: certguard-ca
+    kind: ClusterIssuer

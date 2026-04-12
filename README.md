@@ -306,7 +306,7 @@ deployments/            # optional runtime enforcement examples
 src/certguard/          # agents and orchestration engine
 tests/                  # unit tests
 reports/                # compliance report outputs
-audit_evidence/         # policy and lint evidence outputs
+audit_evidence/         # policy, lint, and audit-decision evidence outputs
 ```
 
 ---
@@ -341,6 +341,10 @@ Core policy file: `policies/cabf_policy.yaml`
 - `opa.policy_file`
 - `issuance.require_hsm_attestation`
 - `issuance.min_fips_level`
+- `crypto_transition.enabled`
+- `crypto_transition.target_max_validity_days`
+- `crypto_transition.target_min_rsa_bits`
+- `crypto_transition.approved_signature_algorithms`
 
 Field-level policy notes are documented in `policies/README.md`.
 
@@ -392,11 +396,20 @@ It extends those patterns with governance agents, remediation workflows, and evi
 
 ## Kubernetes Admission Control (Kyverno)
 
-To demonstrate policy-to-enforcement capability beyond CI, CertGuard includes a Kyverno example:
+To demonstrate policy-to-enforcement capability beyond CI, CertGuard includes a Kyverno lifecycle set:
 
 - `deployments/kyverno/cert-validity-check.yaml`
+- `deployments/kyverno/default-cert-duration.yaml`
+- `deployments/kyverno/generate-namespace-networkpolicy.yaml`
+- `deployments/kyverno/tests/kyverno-test.yaml`
 
-This policy validates cert-manager `Certificate` resources and denies durations above `2160h` (90 days). It is set to `Audit` by default for safe rollout and can be promoted to `Enforce` after validation.
+These policies cover validation, mutation, and generation patterns:
+
+- validate cert-manager `Certificate` duration against `2160h` (90 days)
+- mutate missing certificate durations to a secure default
+- generate namespace-level default-deny network controls for secure-by-default onboarding
+
+Kyverno CLI tests run in CI via `.github/workflows/kyverno-policy.yml` to enforce shift-left policy checks before merge.
 
 Policy engine positioning in this project:
 
@@ -404,6 +417,10 @@ Policy engine positioning in this project:
 - `deployments/kyverno/`: Kubernetes runtime admission enforcement example
 
 Use this as a runtime complement to CertGuard's CI compliance gate.
+
+Policy report visibility guidance:
+
+- `docs/KYVERNO_POLICY_REPORTING.md`
 
 ---
 
@@ -418,7 +435,7 @@ Pipeline actions:
 3. Generate sample certificate
 4. Run compliance gate
 5. Generate CycloneDX SBOM
-6. Generate release provenance digest (integrity hash)
+6. Generate signed release provenance + verification
 7. Upload compliance artifacts
 
 This creates visible governance evidence directly in GitHub Actions.
@@ -474,6 +491,7 @@ This repo is designed to be educational for automation engineers moving into sec
 4. **Read audit evidence**
    - inspect `audit_evidence/policy_checks.json`
    - inspect `audit_evidence/lint_results.json`
+   - inspect `audit_evidence/compliance_decisions.jsonl`
 5. **Use CI as governance evidence**
    - review workflow artifacts in GitHub Actions for each run
 

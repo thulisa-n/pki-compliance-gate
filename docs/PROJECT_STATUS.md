@@ -24,11 +24,15 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - `reports/sbom.cdx.json`
   - `reports/release_provenance.json`
   - `reports/release_provenance.json.digest`
+  - `reports/release_provenance.json.sig`
+  - `reports/release_provenance.json.sig.meta.json`
+  - `reports/release_signing_public_key.b64`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
   - `audit_evidence/waiver_results.json`
   - `audit_evidence/opa_results.json`
   - `audit_evidence/evidence_manifest.json`
+  - `audit_evidence/compliance_decisions.jsonl`
 - **CI pipeline**
   - runs tests
   - executes compliance check
@@ -49,7 +53,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - DCV attestation guardrails added (allowed methods + recency windows)
   - waiver-based false-positive controls added with audit traceability
   - optional OPA/Rego policy gate added for policy-as-code extension
-  - SBOM generation and release provenance digest artifacts added to CI outputs
+  - SBOM generation and signed + verified release provenance artifacts added to CI outputs
   - deeper RFC 5280 extension profile checks added (SKI/AKI + critical extension linting)
   - RFC 5280 path linkage checks added (issuer-subject + AKI/SKI path links)
   - issuance attestation controls added (HSM-backed operations + FIPS level checks)
@@ -58,3 +62,4 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - crypto transition policy section added (`crypto_transition.*`) with defaults and schema validation
   - crypto transition checks added (validity target, RSA target, approved signature hash allowlist)
   - dedicated profile added: `policies/profiles/crypto_agility_pqc_readiness.yaml`
+  - Kyverno lifecycle coverage added (validation, mutation, generation, CLI tests, policy reporting guidance)

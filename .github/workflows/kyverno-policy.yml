@@ -1,0 +1,29 @@
+name: Kyverno Policy Tests
+
+on:
+  pull_request:
+    paths:
+      - "deployments/kyverno/**"
+      - ".github/workflows/kyverno-policy.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deployments/kyverno/**"
+      - ".github/workflows/kyverno-policy.yml"
+  workflow_dispatch:
+
+jobs:
+  kyverno-cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Kyverno CLI
+        run: |
+          curl -sSL https://raw.githubusercontent.com/kyverno/kyverno/main/scripts/install-cli.sh \
+            | bash -s -- -b /usr/local/bin
+          kyverno version
+
+      - name: Run Kyverno test suite
+        run: kyverno test deployments/kyverno/tests

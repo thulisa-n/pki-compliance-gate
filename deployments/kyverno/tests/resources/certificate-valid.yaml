@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: valid-cert
+  namespace: certguard-system
+spec:
+  secretName: valid-cert-tls
+  duration: 2160h
+  dnsNames:
+    - valid.example.com
+  issuerRef:
+    name: certguard-ca
+    kind: ClusterIssuer

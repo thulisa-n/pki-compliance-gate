@@ -1,0 +1,21 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: default-cert-duration
+  annotations:
+    policies.kyverno.io/title: Default certificate duration
+    policies.kyverno.io/category: PKI Compliance
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: add-default-duration
+      match:
+        any:
+          - resources:
+              kinds:
+                - Certificate
+      mutate:
+        patchStrategicMerge:
+          spec:
+            +(duration): "2160h"
