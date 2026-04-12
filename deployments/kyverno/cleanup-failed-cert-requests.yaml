@@ -1,0 +1,22 @@
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: cleanup-failed-certificate-requests
+  annotations:
+    policies.kyverno.io/title: Cleanup failed certificate requests
+    policies.kyverno.io/category: PKI Lifecycle Hygiene
+spec:
+  schedule: "0 */6 * * *"
+  match:
+    any:
+      - resources:
+          kinds:
+            - CertificateRequest
+          selector:
+            matchLabels:
+              certguard.io/cleanup: "true"
+  conditions:
+    any:
+      - key: "{{ target.status.conditions[?type=='Ready'][0].status || '' }}"
+        operator: Equals
+        value: "False"

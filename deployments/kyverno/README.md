@@ -14,6 +14,12 @@ This directory contains Kubernetes admission policies that mirror CertGuard cont
 - `generate-namespace-networkpolicy.yaml`
   - generates a default-deny `NetworkPolicy` when new namespaces are created
   - demonstrates secure-by-default multi-tenant platform patterns
+- `verify-image-signatures.yaml`
+  - verifies signatures for container images from controlled repositories
+  - demonstrates supply chain integrity controls at admission time
+- `cleanup-failed-cert-requests.yaml`
+  - deletes failed `CertificateRequest` resources marked for cleanup
+  - demonstrates lifecycle hygiene for high-volume issuance pipelines
 
 ## Shift-Left Testing
 
@@ -47,6 +53,15 @@ See `docs/KYVERNO_POLICY_REPORTING.md` for commands and usage examples with:
 - `ClusterPolicyReport`
 - `PolicyReport`
 - `kubectl` report inspection flow
+
+## Supply Chain Security Signal
+
+The `verify-image-signatures.yaml` policy uses `verifyImages` to ensure workloads are signed before admission.
+
+Example outcomes in test mode:
+
+- `signed-image-pod`: pass
+- `unsigned-image-pod`: fail
 
 ## Why This Matters
 

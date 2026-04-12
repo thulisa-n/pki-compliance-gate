@@ -6,11 +6,14 @@ policies:
   - ../cert-validity-check.yaml
   - ../default-cert-duration.yaml
   - ../generate-namespace-networkpolicy.yaml
+  - ../verify-image-signatures.yaml
 resources:
   - resources/certificate-valid.yaml
   - resources/certificate-too-long.yaml
   - resources/certificate-missing-duration.yaml
   - resources/namespace-team-a.yaml
+  - resources/pod-signed-image.yaml
+  - resources/pod-unsigned-image.yaml
 results:
   - policy: enforce-90-day-max-validity
     rule: check-cert-expiry
@@ -36,3 +39,15 @@ results:
       - team-a
     kind: Namespace
     result: pass
+  - policy: verify-signed-container-images
+    rule: require-signed-images
+    resources:
+      - signed-image-pod
+    kind: Pod
+    result: pass
+  - policy: verify-signed-container-images
+    rule: require-signed-images
+    resources:
+      - unsigned-image-pod
+    kind: Pod
+    result: fail

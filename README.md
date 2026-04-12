@@ -401,13 +401,17 @@ To demonstrate policy-to-enforcement capability beyond CI, CertGuard includes a 
 - `deployments/kyverno/cert-validity-check.yaml`
 - `deployments/kyverno/default-cert-duration.yaml`
 - `deployments/kyverno/generate-namespace-networkpolicy.yaml`
+- `deployments/kyverno/verify-image-signatures.yaml`
+- `deployments/kyverno/cleanup-failed-cert-requests.yaml`
 - `deployments/kyverno/tests/kyverno-test.yaml`
 
-These policies cover validation, mutation, and generation patterns:
+These policies cover validation, mutation, generation, supply-chain verification, and lifecycle cleanup:
 
 - validate cert-manager `Certificate` duration against `2160h` (90 days)
 - mutate missing certificate durations to a secure default
 - generate namespace-level default-deny network controls for secure-by-default onboarding
+- verify signed container images at admission using Kyverno `verifyImages`
+- clean up failed certificate requests marked for automated deletion
 
 Kyverno CLI tests run in CI via `.github/workflows/kyverno-policy.yml` to enforce shift-left policy checks before merge.
 
@@ -421,6 +425,15 @@ Use this as a runtime complement to CertGuard's CI compliance gate.
 Policy report visibility guidance:
 
 - `docs/KYVERNO_POLICY_REPORTING.md`
+
+### Example Kyverno Supply Chain Output
+
+```text
+policy: verify-signed-container-images
+rule: require-signed-images
+resource: Pod/signed-image-pod -> PASS
+resource: Pod/unsigned-image-pod -> FAIL (signature verification failed)
+```
 
 ---
 
