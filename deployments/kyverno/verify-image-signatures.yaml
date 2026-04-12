@@ -8,8 +8,6 @@ metadata:
 spec:
   validationFailureAction: Audit
   background: false
-  webhookTimeoutSeconds: 30
-  failurePolicy: Fail
   rules:
     - name: require-signed-images
       match:
@@ -19,10 +17,8 @@ spec:
                 - Pod
       verifyImages:
         - imageReferences:
-            - "ghcr.io/kyverno/test-verify-image:*"
-          mutateDigest: false
-          verifyDigest: false
-          required: true
+            - "ghcr.io/kyverno/test-verify-image*"
+          mutateDigest: true
           attestors:
             - count: 1
               entries:
