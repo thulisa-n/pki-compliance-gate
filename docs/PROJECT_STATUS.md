@@ -63,3 +63,4 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - crypto transition checks added (validity target, RSA target, approved signature hash allowlist)
   - dedicated profile added: `policies/profiles/crypto_agility_pqc_readiness.yaml`
   - Kyverno lifecycle coverage added (validation, mutation, generation, CLI tests, policy reporting guidance)
+  - Kyverno supply chain and lifecycle hygiene controls added (`verifyImages` and `ClusterCleanupPolicy`)
