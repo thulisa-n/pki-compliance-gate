@@ -43,3 +43,19 @@ jobs:
           branch: chore/standards-sync
           base: main
           delete-branch: true
+
+      - name: Capture sync artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts/standards-sync
+          cp policies/standards_baseline.yaml artifacts/standards-sync/ 2>/dev/null || true
+          cp policies/standards_sync_snapshot.yaml artifacts/standards-sync/ 2>/dev/null || true
+          git status --short > artifacts/standards-sync/git-status.txt
+
+      - name: Upload standards sync artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: standards-sync-artifacts-${{ github.run_id }}
+          path: artifacts/standards-sync
+          if-no-files-found: warn
