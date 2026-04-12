@@ -33,3 +33,23 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
+
+      - name: Capture CodeQL run metadata
+        if: always()
+        run: |
+          mkdir -p artifacts/codeql
+          {
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "workflow=${GITHUB_WORKFLOW}"
+            echo "ref=${GITHUB_REF}"
+            echo "sha=${GITHUB_SHA}"
+          } > artifacts/codeql/codeql-run-metadata.txt
+
+      - name: Upload CodeQL run artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-run-artifacts-${{ github.run_id }}
+          path: artifacts/codeql
+          if-no-files-found: warn

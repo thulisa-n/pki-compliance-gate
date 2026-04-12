@@ -25,9 +25,22 @@ jobs:
           pip install bandit pip-audit
 
       - name: Run Bandit (SAST)
-        run: bandit -r src -q
+        run: |
+          mkdir -p artifacts/security
+          set -o pipefail
+          bandit -r src -q | tee artifacts/security/bandit-report.txt
 
       - name: Run pip-audit (dependency vulnerabilities)
         run: |
+          set -o pipefail
           # Temporary exception until an upstream pygments fix is published.
-          pip-audit -r requirements.txt --ignore-vuln CVE-2026-4539
+          pip-audit -r requirements.txt --ignore-vuln CVE-2026-4539 \
+            | tee artifacts/security/pip-audit-report.txt
+
+      - name: Upload security scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-scan-artifacts-${{ github.run_id }}
+          path: artifacts/security
+          if-no-files-found: warn

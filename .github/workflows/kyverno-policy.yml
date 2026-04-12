@@ -28,4 +28,16 @@ jobs:
         run: kyverno version
 
       - name: Run Kyverno test suite
-        run: kyverno test deployments/kyverno/tests
+        run: |
+          mkdir -p artifacts/kyverno
+          set -o pipefail
+          kyverno test deployments/kyverno/tests --detailed-results \
+            | tee artifacts/kyverno/kyverno-test-results.txt
+
+      - name: Upload Kyverno test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kyverno-policy-test-artifacts-${{ github.run_id }}
+          path: artifacts/kyverno
+          if-no-files-found: warn
