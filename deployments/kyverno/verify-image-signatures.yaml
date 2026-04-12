@@ -18,13 +18,14 @@ spec:
       verifyImages:
         - imageReferences:
             - "ghcr.io/kyverno/test-verify-image*"
-          mutateDigest: true
+          mutateDigest: false
+          verifyDigest: false
           attestors:
             - count: 1
               entries:
                 - keys:
                     publicKeys: |-
                       -----BEGIN PUBLIC KEY-----
-                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8nXRh950IZbRj8Ra/N9sbqOPZrfM
-                      5/KAQN0/KjHcorm/J5yctVd7iEcnessRQjU917hmKO6JWVGHpDguIyakZA==
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEstG5Xl7UxkQsmLUxdmS85HLgYBFy
+                      c/P/oQ22iazkKm8P0sNlaZiaZC4TSEea3oh2Pim0+wxSubhKoK+7jq9Egg==
                       -----END PUBLIC KEY-----
