@@ -46,7 +46,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 
 `README.md` stays concise for first-time readers, while this file preserves full implementation detail for reviewers, hiring managers, and audit-minded stakeholders.
 
-## Upcoming Work
+## Completed Phases
 
 - **Phase 4 (enterprise alignment) - completed**
   - APISEC expanded with TLS version policy checks, cipher posture checks, and chain posture signals
