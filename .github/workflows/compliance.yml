@@ -38,9 +38,10 @@ jobs:
 
       - name: Install zlint
         run: |
-          curl -sL https://github.com/zmap/zlint/releases/download/v0.4.10/zlint-linux-amd64 -o /usr/local/bin/zlint
+          curl -sL https://github.com/zmap/zlint/releases/download/v3.6.8/zlint_3.6.8_Linux_x86_64.tar.gz -o /tmp/zlint.tar.gz
+          tar -xzf /tmp/zlint.tar.gz -C /usr/local/bin zlint
           chmod +x /usr/local/bin/zlint
-          zlint --version || echo "zlint installed"
+          zlint --version
 
       - name: Install OPA
         run: |
