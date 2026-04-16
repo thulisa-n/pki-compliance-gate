@@ -4,7 +4,19 @@ metadata:
   last_updated: "2026-04-01"
   terms: "S/MIME profile overlay for CertGuard policy-as-code simulation"
 
-terms: []
+terms:
+  - id: "CABF-SMIME-3.2.2"
+    title: "S/MIME Mailbox Validation"
+    summary: "CAs MUST validate the applicant's control over the email address to be included."
+  - id: "CABF-SMIME-7.1.2"
+    title: "S/MIME Certificate Content"
+    summary: "S/MIME certificates MUST include the emailAddress in SAN or subject."
+  - id: "CABF-SMIME-6.1.5"
+    title: "S/MIME Key Size Requirements"
+    summary: "RSA keys MUST be at least 2048 bits for S/MIME certificates."
+  - id: "CABF-SMIME-4.9"
+    title: "S/MIME Revocation Requirements"
+    summary: "CAs MUST provide revocation services for S/MIME certificates via CRL or OCSP."
 
 certificate:
   max_validity_days: 200

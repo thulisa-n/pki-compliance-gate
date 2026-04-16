@@ -4,7 +4,19 @@ metadata:
   last_updated: "2026-04-01"
   terms: "CP/CPS-aligned control overlay for CertGuard governance simulation"
 
-terms: []
+terms:
+  - id: "RFC-3647-4.1"
+    title: "Certificate Application Process"
+    summary: "The CP/CPS MUST define acceptable certificate application procedures."
+  - id: "RFC-3647-4.3"
+    title: "Certificate Issuance Controls"
+    summary: "CAs MUST describe issuance procedures including DCV, identity validation, and approval."
+  - id: "RFC-3647-4.9"
+    title: "Certificate Revocation and Suspension"
+    summary: "The CP/CPS MUST define revocation procedures, CRL issuance, and OCSP availability."
+  - id: "RFC-3647-6.2"
+    title: "Private Key Protection and HSM Controls"
+    summary: "CAs MUST use FIPS 140-validated HSMs for CA key generation and storage."
 
 certificate:
   max_validity_days: 200

@@ -36,6 +36,18 @@ jobs:
           pip install -r requirements.txt
           pip install cyclonedx-bom
 
+      - name: Install zlint
+        run: |
+          curl -sL https://github.com/zmap/zlint/releases/download/v0.4.10/zlint-linux-amd64 -o /usr/local/bin/zlint
+          chmod +x /usr/local/bin/zlint
+          zlint --version || echo "zlint installed"
+
+      - name: Install OPA
+        run: |
+          curl -sL https://openpolicyagent.org/downloads/v1.4.2/opa_linux_amd64_static -o /usr/local/bin/opa
+          chmod +x /usr/local/bin/opa
+          opa version
+
       - name: Run unit tests
         run: pytest -q
 
@@ -65,6 +77,33 @@ jobs:
             --report reports/compliance_report.json \
             --evidence-dir audit_evidence \
             --protected-run
+
+      - name: Run compliance engine with zlint + OPA enabled
+        run: |
+          python src/main.py \
+            --cert /tmp/certguard.pem \
+            --policy policies/profiles/ci_lint_gate.yaml \
+            --report reports/compliance_report_with_lint.json \
+            --evidence-dir audit_evidence_lint
+
+      - name: Verify zlint ran in lint evidence
+        run: |
+          python -c "
+          import json, sys
+          lint = json.load(open('audit_evidence_lint/lint_results.json'))
+          zlint_status = lint.get('controls', {}).get('zlint', {}).get('status', 'missing')
+          opa = json.load(open('audit_evidence_lint/opa_results.json'))
+          opa_status = opa.get('status', 'missing')
+          print(f'zlint: {zlint_status}')
+          print(f'opa: {opa_status}')
+          if zlint_status == 'skipped':
+              print('ERROR: zlint was skipped - binary may not be installed')
+              sys.exit(1)
+          if opa_status == 'skipped':
+              print('ERROR: OPA was skipped - binary may not be installed')
+              sys.exit(1)
+          print('Both integrations confirmed active')
+          "
 
       - name: Generate reviewer summary
         run: |

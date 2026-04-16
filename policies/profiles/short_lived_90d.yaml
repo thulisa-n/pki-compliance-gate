@@ -4,7 +4,16 @@ metadata:
   last_updated: "2026-04-01"
   terms: "90-day certificate profile overlay"
 
-terms: []
+terms:
+  - id: "CABF-BR-6.3.2"
+    title: "Short-Lived Certificate Validity"
+    summary: "Subscriber certificates in this profile SHALL NOT exceed 90 days."
+  - id: "CABF-SC-063"
+    title: "Short-Lived Certificate Profile (Ballot SC-063)"
+    summary: "Aligns with CABF ballot SC-063 reducing maximum subscriber cert lifetimes."
+  - id: "CABF-BR-4.2.1"
+    title: "DCV Freshness for Short-Lived Issuance"
+    summary: "DCV evidence MUST be no older than 15 days for short-lived certificate profiles."
 
 certificate:
   max_validity_days: 90
