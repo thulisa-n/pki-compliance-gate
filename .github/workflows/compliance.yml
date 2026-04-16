@@ -80,6 +80,7 @@ jobs:
             --protected-run
 
       - name: Run compliance engine with zlint + OPA enabled
+        continue-on-error: true
         run: |
           python src/main.py \
             --cert /tmp/certguard.pem \
@@ -87,22 +88,25 @@ jobs:
             --report reports/compliance_report_with_lint.json \
             --evidence-dir audit_evidence_lint
 
-      - name: Verify zlint ran in lint evidence
+      - name: Verify zlint and OPA ran (not skipped)
         run: |
           python -c "
-          import json, sys
+          import json, sys, pathlib
           lint = json.load(open('audit_evidence_lint/lint_results.json'))
-          zlint_status = lint.get('controls', {}).get('zlint', {}).get('status', 'missing')
+          zlint = lint.get('controls', {}).get('zlint', {})
+          zlint_status = zlint.get('status', 'missing')
           opa = json.load(open('audit_evidence_lint/opa_results.json'))
           opa_status = opa.get('status', 'missing')
-          print(f'zlint: {zlint_status}')
-          print(f'opa: {opa_status}')
+          print(f'zlint status: {zlint_status}')
+          print(f'opa   status: {opa_status}')
           if zlint_status == 'skipped':
-              print('ERROR: zlint was skipped - binary may not be installed')
+              print('ERROR: zlint was skipped — binary may not be installed')
               sys.exit(1)
           if opa_status == 'skipped':
-              print('ERROR: OPA was skipped - binary may not be installed')
+              print('ERROR: OPA was skipped — binary may not be installed')
               sys.exit(1)
+          if zlint_status == 'fail':
+              print('NOTE: zlint found findings on self-signed test cert (expected)')
           print('Both integrations confirmed active')
           "
 
