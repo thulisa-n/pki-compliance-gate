@@ -11,7 +11,7 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rule_id": "CAB-BR-6.3.2",
         "category": "VALIDITY",
         "severity": "high",
-        "standard_reference": "CA/B Forum BR 7.1.2.4",
+        "standard_reference": "CA/B Forum BR 6.3.2",
         "rationale": "Long validity windows increase exposure when private keys are compromised.",
         "recommendation": "Reissue certificate with validity at or below policy threshold.",
     },

@@ -4,7 +4,19 @@ metadata:
   last_updated: "2026-04-01"
   terms: "EV profile overlay for CertGuard policy-as-code simulation"
 
-terms: []
+terms:
+  - id: "CABF-EVG-9.2.1"
+    title: "EV Certificate Validity Period"
+    summary: "EV subscriber certificates SHALL NOT exceed 398 days."
+  - id: "CABF-EVG-9.8"
+    title: "EV Subject Identity Validation"
+    summary: "CAs MUST verify the identity and authority of the certificate applicant."
+  - id: "CABF-EVG-11.2"
+    title: "EV Domain Control Validation"
+    summary: "CAs MUST verify domain control using approved methods before EV issuance."
+  - id: "CABF-EVG-8.1"
+    title: "EV Private Key Protection"
+    summary: "EV subscriber key pairs MUST be generated in a secure manner with HSM backing."
 
 certificate:
   max_validity_days: 200

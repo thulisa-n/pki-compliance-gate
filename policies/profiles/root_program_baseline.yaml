@@ -4,7 +4,19 @@ metadata:
   last_updated: "2026-04-01"
   terms: "Root program policy profile for CertGuard pre-issuance simulation"
 
-terms: []
+terms:
+  - id: "MRSP-2.1"
+    title: "Root Key Material Security"
+    summary: "Root CA keys MUST be generated and stored in FIPS 140-2/3 Level 3 HSMs."
+  - id: "MRSP-5.1"
+    title: "Subscriber Certificate Validity"
+    summary: "Root programs require subscriber certificates to align with BR maximum validity."
+  - id: "MRSP-5.3"
+    title: "Minimum Cryptographic Standards"
+    summary: "RSA keys MUST be at least 3072 bits for new subscriber certificates."
+  - id: "MRSP-7.1"
+    title: "Audit and Compliance"
+    summary: "CAs MUST maintain auditable evidence of all issuance and lifecycle operations."
 
 certificate:
   max_validity_days: 200

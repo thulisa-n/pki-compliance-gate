@@ -4,7 +4,16 @@ metadata:
   last_updated: "2026-04-10"
   terms: "Transition profile for short-lived certificates and stronger cryptographic baselines."
 
-terms: []
+terms:
+  - id: "NIST-PQC-2024"
+    title: "Post-Quantum Cryptography Transition"
+    summary: "Organizations SHOULD begin migrating to quantum-safe algorithms per NIST PQC guidance."
+  - id: "CABF-BR-6.1.5-TRANSITION"
+    title: "Transitional RSA Key Size"
+    summary: "RSA keys SHOULD be at least 3072 bits during cryptographic transition periods."
+  - id: "CRYPTO-AGILITY-1"
+    title: "Algorithm Agility Readiness"
+    summary: "Systems MUST support configurable approved signature algorithm lists for migration."
 
 certificate:
   max_validity_days: 90

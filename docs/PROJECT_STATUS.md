@@ -58,9 +58,16 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - RFC 5280 path linkage checks added (issuer-subject + AKI/SKI path links)
   - issuance attestation controls added (HSM-backed operations + FIPS level checks)
   - policy profile packs added for EV, S/MIME, Root Program, and CP/CPS overlays
-- **Phase 5 (crypto-agility and PQC readiness) - in progress**
+- **Phase 5 (crypto-agility and PQC readiness) - completed**
   - crypto transition policy section added (`crypto_transition.*`) with defaults and schema validation
   - crypto transition checks added (validity target, RSA target, approved signature hash allowlist)
   - dedicated profile added: `policies/profiles/crypto_agility_pqc_readiness.yaml`
   - Kyverno lifecycle coverage added (validation, mutation, generation, CLI tests, policy reporting guidance)
   - Kyverno supply chain and lifecycle hygiene controls added (`verifyImages` and `ClusterCleanupPolicy`)
+  - Ed25519-signed release provenance with in-CI verification
+  - append-only hash-chained compliance decision log
+- **Phase 6 (hardening) - completed**
+  - dedicated X509ParserAgent and fixture compliance tests (64 total)
+  - CABF BR term references populated across all policy profiles
+  - zlint and OPA integrations proven in CI via `ci_lint_gate` profile
+  - stale documentation and BR citation inconsistencies resolved

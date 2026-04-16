@@ -1,0 +1,78 @@
+metadata:
+  standard: "CI Lint and OPA Gate Profile"
+  version: "2026.1"
+  last_updated: "2026-04-16"
+  terms: "Profile used in CI to prove zlint, ASN.1 parsing, and OPA gate integrations."
+
+terms:
+  - id: "CI-LINT-1"
+    title: "zlint Integration Verification"
+    summary: "Ensures zlint runs against certificates in CI with severity-aware failure gating."
+  - id: "CI-LINT-2"
+    title: "OPA Policy Gate Verification"
+    summary: "Ensures OPA/Rego evaluation runs in CI with fail-closed behavior."
+
+certificate:
+  max_validity_days: 200
+  require_san: true
+
+key:
+  minimum_rsa_bits: 2048
+
+signature:
+  prohibited_algorithms:
+    - sha1
+    - md5
+
+domains:
+  forbid_internal_names: true
+  blocked_suffixes:
+    - ".local"
+    - ".internal"
+    - ".intranet"
+
+lint:
+  enable_zlint: true
+  fail_on_error: true
+  fail_severities:
+    - "error"
+    - "fatal"
+  enable_asn1parse: true
+  fail_on_asn1_error: true
+
+dcv:
+  required: false
+  allowed_methods:
+    - "dns-01"
+    - "http-01"
+    - "tls-alpn-01"
+  max_age_days: 30
+
+rfc5280:
+  require_end_entity_not_ca: false
+  require_key_usage: false
+  required_key_usages:
+    - "digital_signature"
+    - "key_encipherment"
+  require_subject_key_identifier: false
+  require_authority_key_identifier: false
+  allowed_critical_extensions: []
+  require_path_issuer_subject_match: false
+  require_path_aki_ski_match: false
+
+opa:
+  enabled: true
+  policy_file: "policies/rego/validity.rego"
+
+issuance:
+  require_hsm_attestation: false
+  min_fips_level: 2
+
+crypto_transition:
+  enabled: false
+  target_max_validity_days: 90
+  target_min_rsa_bits: 3072
+  approved_signature_algorithms:
+    - "sha256"
+    - "sha384"
+    - "sha512"

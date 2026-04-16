@@ -31,7 +31,7 @@ The engine converts standards into executable checks:
 3. Run optional linting controls
 4. Generate machine-readable audit evidence
 
-This repo is intentionally built as a portfolio-quality project for PKI compliance and security automation roles.
+It is designed to demonstrate how compliance requirements translate into executable, testable, evidence-producing automation.
 
 ---
 
@@ -475,78 +475,47 @@ Fixture matrix validation:
 ## Roadmap
 
 - **Phase 1-4 (core engine through enterprise alignment): completed**
-- **Phase 5: Crypto-Agility & Post-Quantum Readiness: completed**
-  - crypto transition policy fields and validator checks
-  - dedicated crypto-agility profile (`crypto_agility_pqc_readiness.yaml`)
-  - supply-chain image verification (Kyverno `verifyImages`)
-  - lifecycle cleanup policies (Kyverno `ClusterCleanupPolicy`)
-  - Ed25519-signed release provenance with in-CI verification
-  - append-only hash-chained compliance decision log
+- **Phase 5 (crypto-agility and PQC readiness): completed**
+- **Phase 6 (hardening): completed**
 
-Detailed implementation history and capability tracking lives in:
-
-- `docs/PROJECT_STATUS.md`
-
-Next:
-
-- **Phase 6 (hardening):** expand test coverage for parser edge cases and fixture matrix, harden policy definitions with CABF BR term references
+Detailed implementation history: `docs/PROJECT_STATUS.md`
 
 ---
 
-## Learning Path (Educational Build)
+## Scope and Limitations
 
-This repo is designed to be educational for automation engineers moving into security compliance.
+This project implements **pre-issuance compliance controls** — the checks that happen before a certificate is issued or deployed.
 
-1. **Understand the certificate parser output**
-   - run `python src/main.py --cert tests/certificates/valid_cert.pem`
-   - inspect `reports/compliance_report.json`
-2. **Trace policy-to-check mapping**
-   - change one value in `policies/cabf_policy.yaml`
-   - rerun and observe which checks change
-3. **Practice red/green validation**
-   - run against `tests/certificates/sha1_cert.pem` and `tests/certificates/internal_domain_cert.pem`
-   - compare compliant vs non-compliant outputs
-4. **Read audit evidence**
-   - inspect `audit_evidence/policy_checks.json`
-   - inspect `audit_evidence/lint_results.json`
-   - inspect `audit_evidence/compliance_decisions.jsonl`
-5. **Use CI as governance evidence**
-   - review workflow artifacts in GitHub Actions for each run
+### What is implemented
+
+- Policy-as-code validation against CABF BR, EV Guidelines, S/MIME BR, Root Program, and CP/CPS control references
+- 18+ compliance checks with CABF/RFC 5280 section-level traceability
+- zlint integration (subprocess, severity-aware) — proven in CI via `ci_lint_gate` profile
+- OPA/Rego policy gate — proven in CI with fail-closed behavior
+- OpenSSL ASN.1 parsing integration
+- RFC 5280 extension profile checks (SKI, AKI, key usage, basic constraints, critical extensions)
+- RFC 5280 two-cert path linkage checks (issuer-subject DN match, AKI-SKI match)
+- DCV attestation validation (method and recency checks against JSON evidence)
+- Issuance attestation checks (HSM/FIPS level verification against policy thresholds)
+- Ticketed, time-limited waiver system with audit traceability
+- Append-only hash-chained compliance decision log
+- Ed25519-signed release provenance with in-CI verification
+
+### What is modeled but not fully implemented
+
+- **Full RFC 5280 path validation**: current checks are two-cert linkage (issuer-subject, AKI-SKI), not recursive chain building with policy/name constraint processing
+- **DCV execution**: DCV checks validate attestation evidence, not perform actual dns-01/http-01/tls-alpn-01 validation
+- **HSM/PKCS#11 operations**: issuance checks validate attestation JSON, not interface with actual HSMs
+- **cablint**: not integrated (zlint only)
+- **CFSSL**: not integrated
+- **Post-issuance lifecycle**: CRL distribution, OCSP stapling, CT log monitoring, and certificate renewal tracking are out of scope
+
+### Design rationale
+
+These boundaries are intentional. CertGuard focuses on the **policy validation and evidence generation** layer — the controls a compliance automation engineer builds and maintains. The hardware and protocol layers (HSM operations, DCV execution, CRL/OCSP serving) are operational infrastructure that this tool integrates with via attestation interfaces.
 
 ---
 
 ## Engineering Workflow
 
-This project is managed using a Jira-like GitHub Projects flow:
-
-`Backlog -> Ready -> In Progress -> Review -> Done`
-
-Each feature is tracked with issue-to-PR traceability to reflect real-world security engineering processes.
-
----
-
-## Career Positioning
-
-This repository is part of a two-repo portfolio strategy:
-
-- **QA/AI orchestration repo:** demonstrates automation architecture and test governance
-- **CertGuard Engine:** demonstrates PKI compliance automation, policy-as-code, and CI guardrails
-
-Together, they support a transition path:
-
-`QA Automation Engineer -> Security Automation Engineer -> PKI Compliance Engineer`
-
----
-
-## About the Author
-
-Automation Engineer specializing in security automation, DevSecOps compliance gates, and PKI governance systems.
-
-Currently building:
-
-- CertGuard Engine: PKI compliance gate with policy-as-code, governance agents, and audit evidence
-- QA automation frameworks and CI governance tooling
-
-Focus areas:
-
-Security automation | DevSecOps | PKI compliance engineering
+Changes follow a PR-first workflow with CI checks required before merge. Branch protection enforces review and status check gates on `main`.
