@@ -35,35 +35,16 @@ It is designed to demonstrate how compliance requirements translate into executa
 
 ---
 
-## Why This Project
-
-For certificate ecosystems, one non-compliant issuance can create significant operational and trust risk.  
-This project demonstrates a shift-left compliance model:
-
-- **Policy-as-code:** rules are configurable and traceable
-- **Governance gate:** pipeline blocks violations
-- **Audit evidence:** JSON outputs support review and assurance workflows
-- **Engineering discipline:** testable, repeatable, CI-driven validation
-
----
-
 ## Why This Matters
 
-A single non-compliant certificate can:
+A single non-compliant certificate can break browser trust, cause production outages, or introduce avoidable security risk. In CA environments, pre-issuance compliance controls ensure certificates meet industry standards before they are trusted.
 
-- break browser trust
-- cause production outages
-- introduce avoidable security risk
+CertGuard enforces compliance before issuance, not after failure, using a shift-left model:
 
-CertGuard helps prevent this by enforcing compliance before issuance, not after failure.
-
----
-
-## Security Context
-
-In certificate authority environments, pre-issuance compliance controls help ensure certificates meet industry standards before they are trusted by browsers and operating systems.
-
-CertGuard Engine simulates this style of control pipeline by converting policy requirements into automated validation checks, governance decisions, and audit evidence outputs.
+- **Policy-as-code:** rules are configurable, traceable, and version-controlled
+- **Governance gate:** pipeline blocks violations with severity-based exit codes
+- **Audit evidence:** JSON outputs support review, assurance, and audit workflows
+- **Engineering discipline:** testable, repeatable, CI-driven validation
 
 ---
 
@@ -292,7 +273,7 @@ Severity-based exit codes (`evaluate` mode):
 
 - `0` = fully compliant
 - `1` = low severity failures
-- `2` = medium/high severity failures
+- `2` = medium/high severity failures, or lint-only failure
 - `3` = critical failures
 
 ---
@@ -443,13 +424,16 @@ Workflow: `.github/workflows/compliance.yml`
 
 Pipeline actions:
 
-1. Install dependencies
-2. Execute `pytest`
+1. Install dependencies + zlint + OPA binaries
+2. Execute `pytest` (64 tests)
 3. Generate sample certificate
-4. Run compliance gate
-5. Generate CycloneDX SBOM
-6. Generate signed release provenance + verification
-7. Upload compliance artifacts
+4. Run compliance gate (standard profile)
+5. Run compliance gate with zlint + OPA enabled (`ci_lint_gate` profile)
+6. Verify zlint and OPA executed (not skipped)
+7. Generate reviewer summary + trend snapshot
+8. Generate CycloneDX SBOM
+9. Generate Ed25519-signed release provenance + in-CI verification
+10. Upload compliance artifact bundle
 
 This creates visible governance evidence directly in GitHub Actions.
 
