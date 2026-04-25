@@ -435,7 +435,7 @@ Pipeline actions:
 9. Generate Ed25519-signed release provenance + in-CI verification
 10. Upload compliance artifact bundle
 
-This creates visible governance evidence directly in GitHub Actions.
+This creates visible governance evidence in CI workflow logs and artifacts.
 
 Trigger modes:
 
