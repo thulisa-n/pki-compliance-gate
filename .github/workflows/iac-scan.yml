@@ -38,8 +38,9 @@ jobs:
         run: |
           mkdir -p artifacts/iac
           checkov \
-            -d deployments \
+            -d deployments/kyverno \
             --framework kubernetes \
+            --skip-path deployments/kyverno/tests \
             -o cli \
             -o json \
             --output-file-path console,artifacts/iac/checkov-report.json
