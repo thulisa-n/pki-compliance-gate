@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 from pathlib import Path
+import sys
+from typing import Any
 
 import yaml
 
@@ -143,25 +145,29 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if args.mode == "evaluate":
-        return _run_evaluate(args)
-    if args.mode == "triage":
-        return _run_triage(args)
-    if args.mode == "assure":
-        return _run_assure(args)
-    if args.mode == "watch":
-        return _run_watch(args)
-    if args.mode == "heal":
-        return _run_heal(args)
-    if args.mode == "summary":
-        return _run_summary(args)
-    if args.mode == "trend":
-        return _run_trend(args)
-    if args.mode == "apisec":
-        return _run_apisec(args)
-    if args.mode == "signals":
-        return _run_signals(args)
-    raise ValueError(f"Unsupported mode: {args.mode}")
+    try:
+        if args.mode == "evaluate":
+            return _run_evaluate(args)
+        if args.mode == "triage":
+            return _run_triage(args)
+        if args.mode == "assure":
+            return _run_assure(args)
+        if args.mode == "watch":
+            return _run_watch(args)
+        if args.mode == "heal":
+            return _run_heal(args)
+        if args.mode == "summary":
+            return _run_summary(args)
+        if args.mode == "trend":
+            return _run_trend(args)
+        if args.mode == "apisec":
+            return _run_apisec(args)
+        if args.mode == "signals":
+            return _run_signals(args)
+        raise ValueError(f"Unsupported mode: {args.mode}")
+    except (FileNotFoundError, PermissionError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 def _run_evaluate(args: argparse.Namespace) -> int:
@@ -237,10 +243,14 @@ def _run_assure(args: argparse.Namespace) -> int:
 
 
 def _run_watch(args: argparse.Namespace) -> int:
-    with Path(args.policy).open("r", encoding="utf-8") as stream:
-        policy = yaml.safe_load(stream)
-    with Path(args.standards_baseline).open("r", encoding="utf-8") as stream:
-        baseline = yaml.safe_load(stream)
+    policy = _read_yaml(Path(args.policy))
+    baseline = _read_yaml(Path(args.standards_baseline))
+    if not isinstance(policy, dict):
+        raise ValueError(f"--policy must contain a YAML object: {args.policy}")
+    if not isinstance(baseline, dict):
+        raise ValueError(
+            f"--standards-baseline must contain a YAML object: {args.standards_baseline}"
+        )
 
     agent = StandardsWatchAgent()
     result = agent.run({"policy": policy, "baseline": baseline})
@@ -385,9 +395,24 @@ def _run_signals(args: argparse.Namespace) -> int:
     return 0 if result.success else 1
 
 
-def _read_json(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as stream:
-        return json.load(stream)
+def _read_json(path: Path) -> Any:
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            return json.load(stream)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"JSON file not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {path}: {exc.msg} (line {exc.lineno})") from exc
+
+
+def _read_yaml(path: Path) -> Any:
+    try:
+        with path.open("r", encoding="utf-8") as stream:
+            return yaml.safe_load(stream)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"YAML file not found: {path}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
 
 
 def _exit_code_from_report(report) -> int:

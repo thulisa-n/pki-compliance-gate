@@ -9,6 +9,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: standards-sync-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync-cabf:
     runs-on: ubuntu-latest
@@ -25,10 +29,23 @@ jobs:
           python-version: "3.11"
 
       - name: Install sync dependencies
-        run: pip install pyyaml
+        run: pip install PyYAML==6.0.3
+
+      - name: Resolve CAB Forum source commit
+        id: source
+        run: |
+          set -euo pipefail
+          source_sha="$(git ls-remote https://github.com/cabforum/servercert.git refs/heads/main | awk '{print $1}')"
+          if [ -z "${source_sha}" ]; then
+            echo "Unable to resolve CAB Forum source commit SHA."
+            exit 1
+          fi
+          echo "sha=${source_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Sync CAB Forum baseline snapshot
-        run: python scripts/sync_cabf_baseline.py
+        run: |
+          python scripts/sync_cabf_baseline.py \
+            --source-url "https://raw.githubusercontent.com/cabforum/servercert/${{ steps.source.outputs.sha }}/docs/BR.md"
 
       - name: Create pull request if sync changed
         uses: peter-evans/create-pull-request@v8

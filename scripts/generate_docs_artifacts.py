@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import os
 import subprocess
+import sys
 from pathlib import Path
+
+PANDOC_IMAGE = os.getenv(
+    "PANDOC_LATEX_IMAGE",
+    "pandoc/latex@sha256:467bb9a70723627a34eb7003e46a1bb7c9344ea4580a46c4c978860784a6a754",
+)
 
 
 def main() -> int:
@@ -52,8 +59,17 @@ def main() -> int:
         redline_markdown = _redline_markdown(previous_text, current_text)
         redline_md_path = redline_dir / f"{current.stem}_redline.md"
         redline_md_path.write_text(redline_markdown, encoding="utf-8")
-        _render_document(redline_md_path, redline_dir / f"{current.stem}_redline.docx", redline_md_path)
-        _render_document(redline_md_path, redline_dir / f"{current.stem}_redline.pdf", redline_md_path)
+        _render_document(
+            redline_md_path,
+            redline_dir / f"{current.stem}_redline.docx",
+            redline_md_path,
+        )
+        _render_document(
+            redline_md_path,
+            redline_dir / f"{current.stem}_redline.pdf",
+            redline_md_path,
+            best_effort=True,
+        )
 
     summary = output_dir / "manifest.txt"
     summary.write_text(
@@ -73,7 +89,9 @@ def main() -> int:
     return 0
 
 
-def _render_document(source_path: Path, output_path: Path, format_hint: Path) -> None:
+def _render_document(
+    source_path: Path, output_path: Path, format_hint: Path, best_effort: bool = False
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     input_format = _input_format(format_hint)
     cwd = Path.cwd()
@@ -85,7 +103,7 @@ def _render_document(source_path: Path, output_path: Path, format_hint: Path) ->
         "--rm",
         "-v",
         f"{cwd}:/data",
-        "pandoc/latex:latest",
+        PANDOC_IMAGE,
         "--from",
         input_format,
         "--to",
@@ -94,7 +112,15 @@ def _render_document(source_path: Path, output_path: Path, format_hint: Path) ->
         f"/data/{output_rel.as_posix()}",
         f"/data/{source_rel.as_posix()}",
     ]
-    subprocess.run(docker_cmd, check=True)  # nosec B603
+    try:
+        subprocess.run(docker_cmd, check=True)  # nosec B603
+    except subprocess.CalledProcessError as exc:
+        if not best_effort:
+            raise
+        print(
+            f"WARNING: Failed to render {output_path.name} (continuing): {exc}",
+            file=sys.stderr,
+        )
 
 
 def _input_format(path: Path) -> str:

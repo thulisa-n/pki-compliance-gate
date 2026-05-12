@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 from typing import Tuple
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
@@ -33,10 +35,10 @@ def sign_bytes(content: bytes, private_key_b64: str) -> str:
 
 
 def verify_signature(content: bytes, signature_b64: str, public_key_b64: str) -> bool:
-    public_key = Ed25519PublicKey.from_public_bytes(_from_b64(public_key_b64))
     try:
+        public_key = Ed25519PublicKey.from_public_bytes(_from_b64(public_key_b64))
         public_key.verify(_from_b64(signature_b64), content)
-    except Exception:
+    except (InvalidSignature, ValueError):
         return False
     return True
 
@@ -50,4 +52,7 @@ def _b64(content: bytes) -> str:
 
 
 def _from_b64(value: str) -> bytes:
-    return base64.b64decode(value.encode("ascii"))
+    try:
+        return base64.b64decode(value.encode("ascii"), validate=True)
+    except (UnicodeEncodeError, binascii.Error, ValueError) as exc:
+        raise ValueError("Invalid base64 content.") from exc

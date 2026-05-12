@@ -15,6 +15,13 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
+concurrency:
+  group: compliance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-compliance:
     runs-on: ubuntu-latest
@@ -34,11 +41,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install cyclonedx-bom
 
       - name: Install zlint
         run: |
           curl -sL https://github.com/zmap/zlint/releases/download/v3.6.8/zlint_3.6.8_Linux_x86_64.tar.gz -o /tmp/zlint.tar.gz
+          echo "fa89ef389b870ae0c409d739b55efe86c29eecc9cf4ddc3e4dcaf7005dfa40aa  /tmp/zlint.tar.gz" | sha256sum -c -
           tar -xzf /tmp/zlint.tar.gz --strip-components=1 -C /usr/local/bin
           chmod +x /usr/local/bin/zlint
           zlint --version
@@ -46,6 +53,7 @@ jobs:
       - name: Install OPA
         run: |
           curl -sL https://openpolicyagent.org/downloads/v1.4.2/opa_linux_amd64_static -o /usr/local/bin/opa
+          echo "2c0ccdbbe0b8e2a5d12d9c42d92f1f34f494ffb32d1f3c4ddc36101be637d66f  /usr/local/bin/opa" | sha256sum -c -
           chmod +x /usr/local/bin/opa
           opa version
 

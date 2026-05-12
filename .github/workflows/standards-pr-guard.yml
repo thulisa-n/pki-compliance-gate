@@ -7,6 +7,13 @@ on:
       - "policies/standards_sync_snapshot.yaml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: standards-pr-guard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-standards-sync:
     runs-on: ubuntu-latest
@@ -20,7 +27,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install validation dependency
-        run: pip install pyyaml
+        run: pip install PyYAML==6.0.3
 
       - name: Validate standards sync files
         run: |

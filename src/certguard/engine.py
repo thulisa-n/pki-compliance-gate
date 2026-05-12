@@ -274,14 +274,15 @@ class ComplianceGateEngine:
     def _apply_waivers(
         self, checks: list[CheckResult], waiver_path: Path | None
     ) -> dict[str, Any]:
+        mutable_checks = list(checks)
         if waiver_path is None:
             return {
-                "checks": checks,
+                "checks": mutable_checks,
                 "summary": {"status": "skipped", "details": "No waiver file provided.", "applied": []},
             }
         if not waiver_path.exists():
             return {
-                "checks": checks,
+                "checks": mutable_checks,
                 "summary": {
                     "status": "ignored",
                     "details": f"Waiver file not found: {waiver_path}",
@@ -289,12 +290,76 @@ class ComplianceGateEngine:
                 },
             }
 
-        payload = json.loads(waiver_path.read_text(encoding="utf-8"))
-        waivers = payload.get("waivers", []) if isinstance(payload, dict) else []
+        try:
+            payload = json.loads(waiver_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            error_check = CheckResult(
+                name="waiver_file_validity",
+                status="fail",
+                details=f"Waiver file is not valid JSON: {exc.msg} (line {exc.lineno}).",
+                rule_id="WAIVER-FORMAT",
+                category="GOVERNANCE",
+                severity="high",
+                standard_reference="Internal waiver governance policy",
+            )
+            mutable_checks.append(error_check)
+            return {
+                "checks": mutable_checks,
+                "summary": {
+                    "status": "fail",
+                    "details": f"Waiver parsing failed for {waiver_path}.",
+                    "source": str(waiver_path),
+                    "applied": [],
+                },
+            }
+
+        if not isinstance(payload, dict):
+            error_check = CheckResult(
+                name="waiver_file_validity",
+                status="fail",
+                details="Waiver file must be a JSON object with a 'waivers' array.",
+                rule_id="WAIVER-FORMAT",
+                category="GOVERNANCE",
+                severity="high",
+                standard_reference="Internal waiver governance policy",
+            )
+            mutable_checks.append(error_check)
+            return {
+                "checks": mutable_checks,
+                "summary": {
+                    "status": "fail",
+                    "details": f"Waiver file has invalid top-level structure: {waiver_path}",
+                    "source": str(waiver_path),
+                    "applied": [],
+                },
+            }
+
+        waivers = payload.get("waivers", [])
+        if not isinstance(waivers, list):
+            error_check = CheckResult(
+                name="waiver_file_validity",
+                status="fail",
+                details="Waiver file field 'waivers' must be a JSON array.",
+                rule_id="WAIVER-FORMAT",
+                category="GOVERNANCE",
+                severity="high",
+                standard_reference="Internal waiver governance policy",
+            )
+            mutable_checks.append(error_check)
+            return {
+                "checks": mutable_checks,
+                "summary": {
+                    "status": "fail",
+                    "details": f"Waiver file has invalid 'waivers' field: {waiver_path}",
+                    "source": str(waiver_path),
+                    "applied": [],
+                },
+            }
+
         now = datetime.now(timezone.utc).date()
         applied: list[dict[str, Any]] = []
 
-        for check in checks:
+        for check in mutable_checks:
             if check.status != "fail":
                 continue
             for waiver in waivers:
@@ -328,7 +393,7 @@ class ComplianceGateEngine:
                 break
 
         return {
-            "checks": checks,
+            "checks": mutable_checks,
             "summary": {
                 "status": "applied" if applied else "none",
                 "details": f"Applied {len(applied)} waiver(s).",

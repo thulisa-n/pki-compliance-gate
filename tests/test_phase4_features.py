@@ -108,6 +108,31 @@ def test_waiver_without_expiry_or_ticket_is_not_applied(tmp_path: Path) -> None:
     assert signature["status"] == "fail"
 
 
+def test_invalid_waiver_json_fails_closed(tmp_path: Path) -> None:
+    policy_path = Path("policies/cabf_policy.yaml")
+    waiver_path = tmp_path / "waivers.json"
+    waiver_path.write_text("{invalid-json", encoding="utf-8")
+
+    report_path = tmp_path / "report.json"
+    evidence_dir = tmp_path / "audit_evidence"
+    engine = ComplianceGateEngine(policy_path=policy_path)
+    compliant, _ = engine.evaluate(
+        cert_path=Path("tests/certificates/valid_cert.pem"),
+        report_path=report_path,
+        evidence_dir=evidence_dir,
+        waiver_path=waiver_path,
+    )
+
+    assert compliant is False
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    waiver_check = next(item for item in report["checks"] if item["name"] == "waiver_file_validity")
+    assert waiver_check["status"] == "fail"
+    waiver_evidence = json.loads(
+        (evidence_dir / "waiver_results.json").read_text(encoding="utf-8")
+    )
+    assert waiver_evidence["status"] == "fail"
+
+
 def test_opa_enabled_with_missing_policy_file_fails_closed(tmp_path: Path) -> None:
     policy = _base_policy()
     policy["opa"]["enabled"] = True

@@ -27,12 +27,19 @@ class ApiTlsPostureAgent(BaseAgent):
                 errors=["APISEC mode requires an endpoint URL."],
             )
 
-        host, port = self._parse_endpoint(endpoint)
-        tls_posture = self._fetch_tls_posture(host, port)
-        pem = tls_posture["certificate_pem"]
-        tls_version = tls_posture["tls_version"]
-        cipher_suite = tls_posture["cipher_suite"]
-        cert = x509.load_pem_x509_certificate(pem.encode("utf-8"))
+        try:
+            host, port = self._parse_endpoint(endpoint)
+            tls_posture = self._fetch_tls_posture(host, port)
+            pem = tls_posture["certificate_pem"]
+            tls_version = tls_posture["tls_version"]
+            cipher_suite = tls_posture["cipher_suite"]
+            cert = x509.load_pem_x509_certificate(pem.encode("utf-8"))
+        except (KeyError, TypeError, ValueError, ssl.SSLError, OSError) as exc:
+            return AgentResult(
+                agent=self.name,
+                success=False,
+                errors=[f"Failed to evaluate endpoint TLS posture: {exc}"],
+            )
 
         expires_in_days = (cert.not_valid_after_utc - datetime.now(timezone.utc)).days
         signature = (

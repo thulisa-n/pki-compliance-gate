@@ -2,7 +2,7 @@
 
 This document tracks implemented capabilities in a detailed, phase-oriented format.
 
-## Current Features (Phase 1 + Phase 2 + Phase 3 Complete)
+## Current Features (Phase 1 through Phase 6 Complete)
 
 - **X.509 parsing agent**
   - subject, issuer, validity window, SAN, signature hash, key details
