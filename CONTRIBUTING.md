@@ -30,7 +30,7 @@ python src/main.py --mode watch \
   --standards-baseline policies/standards_baseline.yaml
 ```
 
-APITLS posture:
+API TLS posture:
 
 ```bash
 python src/main.py --mode apisec --endpoint https://example.com
@@ -48,6 +48,8 @@ python src/main.py --mode apisec --endpoint https://example.com
 - `compliance.yml`
 - `security-scans.yml`
 - `codeql.yml`
+- `secrets-scan.yml`
+- `iac-scan.yml`
 - `standards-sync.yml`
 - `standards-pr-guard.yml`
 - `kyverno-policy.yml`

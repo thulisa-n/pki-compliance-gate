@@ -1,0 +1,54 @@
+name: IaC Security Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deployments/**"
+      - ".github/workflows/iac-scan.yml"
+  pull_request:
+    paths:
+      - "deployments/**"
+      - ".github/workflows/iac-scan.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iac-scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov on Kubernetes manifests
+        run: |
+          mkdir -p artifacts/iac
+          checkov \
+            -d deployments/kyverno \
+            --framework kubernetes \
+            --skip-path deployments/kyverno/tests \
+            -o cli \
+            -o json \
+            --output-file-path console,artifacts/iac/checkov-report.json
+
+      - name: Upload IaC scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: iac-scan-artifacts-${{ github.run_id }}
+          path: artifacts/iac
+          if-no-files-found: warn
