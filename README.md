@@ -1,35 +1,18 @@
 # CertGuard Engine
 
-CertGuard Engine validates X.509 certificates against policy rules and writes audit evidence that can be used in CI.
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Tests](https://img.shields.io/badge/tests-pytest-informational)
+![CI](https://img.shields.io/badge/ci-github%20actions-black)
 
-## What It Does
+CertGuard Engine is a policy-as-code PKI gate for X.509 certificates.
+It runs security validation in CI and emits audit evidence artifacts.
 
-- Parses certificate metadata from PEM input.
-- Evaluates checks from YAML policy files.
-- Optionally runs `zlint`, `openssl asn1parse`, and OPA/Rego checks.
-- Produces machine-readable reports, sealed evidence, and review artifacts.
-- Exposes additional governance modes (`triage`, `assure`, `watch`, `heal`, `summary`, `trend`, `apisec`, `signals`).
-
-## Requirements
-
-- Python `3.11+`
-- OpenSSL (for local cert generation and optional ASN.1 linting)
-- Optional tooling for extended checks:
-  - `zlint`
-  - `opa`
-  - Docker (only for docs artifact rendering workflow)
-
-## Setup
+## In 30 seconds
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-## Run Evaluate Mode
-
-```bash
 python src/main.py --cert tests/certificates/valid_cert.pem
 ```
 
@@ -39,46 +22,70 @@ JSON output:
 python src/main.py --cert tests/certificates/valid_cert.pem --output json
 ```
 
-Evaluate mode exit codes (`_exit_code_from_report` in `src/main.py`):
+## How It Flows
+
+```mermaid
+flowchart LR
+    A[PEM Certificate] --> B[X509 Parser]
+    B --> C[Policy Validator]
+    C --> D[Compliance Report]
+    C --> E[Audit Evidence]
+    D --> F[Exit Code]
+```
+
+## Implemented Security Controls
+
+- Policy-as-code validation: `policies/*.yaml` + optional Rego (`policies/rego/validity.rego`)
+- CI compliance gate: `.github/workflows/compliance.yml`
+- SAST/SCA: `.github/workflows/security-scans.yml`
+- Code analysis: `.github/workflows/codeql.yml`
+- Secret detection: `.github/workflows/secrets-scan.yml`
+- IaC scan (Kubernetes manifests): `.github/workflows/iac-scan.yml`
+- API TLS posture checks: `--mode apisec`
+- Controlled exceptions: `--waiver-file` (ticket + expiry required)
+
+## Evaluate Exit Codes
 
 - `0`: compliant and no lint failure
 - `1`: only low-severity policy failures
-- `2`: medium/high policy failures or lint-only failure
+- `2`: medium/high failures or lint-only failure
 - `3`: critical policy failure
 
-## CLI Modes
+## Risk-Based Gating
 
-- `evaluate`: run full compliance evaluation and evidence generation.
-- `triage`: classify failed checks and suggest next action.
-- `assure`: verify control state from a report.
-- `watch`: detect drift between policy and standards baseline.
-- `heal`: generate remediation actions and optionally re-check a healed cert.
-- `summary`: write reviewer markdown summary from a report.
-- `trend`: write run-level trend snapshot.
-- `apisec`: evaluate endpoint TLS posture.
-- `signals`: convert curated external signals into control recommendations.
+- `critical` or `high/medium` failures block merge readiness (`exit 2/3`).
+- low-severity-only failures are isolated (`exit 1`) for targeted remediation.
+- time-bound exceptions are supported via waiver files with ticket and expiry requirements.
 
-Examples:
+## Current Scope
+
+- In scope: certificate policy validation, CI security gates, IaC manifest checks, API TLS posture checks.
+- Not in scope yet: container image scanning (no container images are built/published in this repo).
+
+## Common Commands
 
 ```bash
+# Evaluate
+python src/main.py --cert tests/certificates/valid_cert.pem
+
+# Triage an existing report
 python src/main.py --mode triage --report-input reports/compliance_report.json
-python src/main.py --mode watch --policy policies/cabf_policy.yaml --standards-baseline policies/standards_baseline.yaml
+
+# API TLS posture check
 python src/main.py --mode apisec --endpoint https://example.com
-python src/main.py --mode signals --external-signals examples/external_signals.json
 ```
+
+## Modes
+
+- `evaluate`, `triage`, `assure`, `watch`, `heal`, `summary`, `trend`, `apisec`, `signals`
 
 ## Inputs
 
-- Policy file: `--policy` (default `policies/cabf_policy.yaml`)
-- Certificate: `--cert` (required for `evaluate`)
-- DCV attestation JSON: `--dcv-attestation`
-- Issuance attestation JSON: `--issuance-attestation`
-- Waiver JSON: `--waiver-file`
-- Issuer cert (for path-linkage checks): `--issuer-cert`
+- `--cert` (required for `evaluate`)
+- `--policy` (default: `policies/cabf_policy.yaml`)
+- `--dcv-attestation`, `--issuance-attestation`, `--waiver-file`, `--issuer-cert`
 
-## Outputs
-
-Primary output paths:
+## Key Outputs
 
 - `reports/compliance_report.json`
 - `reports/compliance_report.json.seal`
@@ -89,53 +96,36 @@ Primary output paths:
 - `audit_evidence/evidence_manifest.json`
 - `audit_evidence/compliance_decisions.jsonl`
 
-Additional mode outputs:
-
-- `reports/compliance_summary.md` (`summary`)
-- `reports/compliance_trend_snapshot.json` (`trend`)
-- `reports/standards_watch_report.json` (`watch`)
-- `reports/external_signal_snapshot.json` and `reports/external_control_recommendations.json` (`signals`)
-
-## Policy Files
-
-- Base policy: `policies/cabf_policy.yaml`
-- Profile overlays: `policies/profiles/`
-- Standards baseline tracking: `policies/standards_baseline.yaml`
-- Standards sync metadata: `policies/standards_sync_snapshot.yaml`
-- Policy field reference: `policies/README.md`
-
 ## CI Workflows
 
-- `compliance.yml`: tests, compliance run, fixture matrix, strict profile smoke, SBOM, provenance artifacts.
-- `security-scans.yml`: Bandit and `pip-audit`.
-- `codeql.yml`: GitHub CodeQL analysis.
-- `standards-sync.yml`: scheduled CA/B Forum standards snapshot sync PRs.
-- `standards-pr-guard.yml`: PR validation for standards snapshot YAML structure.
-- `kyverno-policy.yml`: Kyverno policy tests.
-- `docs-render.yml`: DOCX/PDF + redline artifact generation for docs changes.
+- `compliance.yml`
+- `security-scans.yml`
+- `codeql.yml`
+- `secrets-scan.yml`
+- `iac-scan.yml`
+- `standards-sync.yml`
+- `standards-pr-guard.yml`
+- `kyverno-policy.yml`
+- `docs-render.yml`
 
-Required check policy is configured in GitHub branch protection/rulesets (repository settings), not in this repository.
+Required status checks are enforced via GitHub branch protection/rulesets.
 
-## Repository Layout
+## Repo Map
 
 ```text
-src/certguard/           Core agents and engine
-src/main.py              CLI entrypoint
-policies/                Policy definitions and profiles
-tests/                   Unit and integration-style tests
-deployments/kyverno/     Kyverno policies and tests
-scripts/                 Utility scripts
-.github/workflows/       CI/CD workflows
+src/certguard/      core agents + engine
+src/main.py         CLI entrypoint
+policies/           policy files and profiles
+tests/              automated tests
+deployments/kyverno/ kyverno policy examples
+.github/workflows/  CI/CD workflows
 ```
 
-## Documentation
+## More Docs
 
+- `CONTRIBUTING.md`
+- `docs/DEVSECOPS_ALIGNMENT.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/COMPLIANCE_DEBUG_WALKTHROUGH.md`
 - `docs/EVIDENCE_LIFECYCLE.md`
 - `docs/KYVERNO_POLICY_REPORTING.md`
-- `docs/compliance_mappings/CISA_MAPPING.md`
-
-## Contributing
-
-See `CONTRIBUTING.md`.
