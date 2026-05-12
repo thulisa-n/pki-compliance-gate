@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import os
 import subprocess
 from pathlib import Path
+
+PANDOC_IMAGE = os.getenv(
+    "PANDOC_LATEX_IMAGE",
+    "pandoc/latex@sha256:467bb9a70723627a34eb7003e46a1bb7c9344ea4580a46c4c978860784a6a754",
+)
 
 
 def main() -> int:
@@ -85,7 +91,7 @@ def _render_document(source_path: Path, output_path: Path, format_hint: Path) ->
         "--rm",
         "-v",
         f"{cwd}:/data",
-        "pandoc/latex:latest",
+        PANDOC_IMAGE,
         "--from",
         input_format,
         "--to",

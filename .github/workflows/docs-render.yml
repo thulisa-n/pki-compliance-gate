@@ -11,6 +11,13 @@ on:
       - "**/*.adoc"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-render-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   render-docs:
     runs-on: ubuntu-latest
@@ -30,6 +37,11 @@ jobs:
           else
             echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
 
       - name: Generate DOCX/PDF final and redline docs
         run: |
