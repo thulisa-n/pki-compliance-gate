@@ -1,0 +1,96 @@
+name: Standards PR Guard
+
+on:
+  pull_request:
+    paths:
+      - "policies/standards_baseline.yaml"
+      - "policies/standards_sync_snapshot.yaml"
+  workflow_dispatch:
+
+jobs:
+  validate-standards-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install validation dependency
+        run: pip install pyyaml
+
+      - name: Validate standards sync files
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          from datetime import date, datetime
+          from pathlib import Path
+          import sys
+
+          import yaml
+
+          baseline_path = Path("policies/standards_baseline.yaml")
+          snapshot_path = Path("policies/standards_sync_snapshot.yaml")
+
+          def fail(message: str) -> None:
+              print(f"ERROR: {message}")
+              sys.exit(1)
+
+          for path in (baseline_path, snapshot_path):
+              if not path.exists():
+                  fail(f"Missing required file: {path}")
+
+          try:
+              baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8")) or {}
+              snapshot = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
+          except yaml.YAMLError as exc:
+              fail(f"Invalid YAML: {exc}")
+
+          baseline_block = baseline.get("baseline")
+          if not isinstance(baseline_block, dict):
+              fail("`baseline` section must exist and be a mapping in standards_baseline.yaml")
+
+          required_baseline = ("version", "last_reviewed")
+          for key in required_baseline:
+              value = baseline_block.get(key)
+              if not value:
+                  fail(f"Missing required baseline key: baseline.{key}")
+
+          last_reviewed = baseline_block["last_reviewed"]
+          if not isinstance(last_reviewed, str):
+              fail("baseline.last_reviewed must be a string in YYYY-MM-DD format")
+          try:
+              date.fromisoformat(last_reviewed)
+          except ValueError:
+              fail("baseline.last_reviewed must be a valid ISO date (YYYY-MM-DD)")
+
+          sync_block = snapshot.get("sync")
+          if not isinstance(sync_block, dict):
+              fail("`sync` section must exist and be a mapping in standards_sync_snapshot.yaml")
+
+          required_sync = ("fetched_at", "source_sha256")
+          for key in required_sync:
+              value = sync_block.get(key)
+              if not value:
+                  fail(f"Missing required snapshot key: sync.{key}")
+
+          fetched_at = sync_block["fetched_at"]
+          if not isinstance(fetched_at, str):
+              fail("sync.fetched_at must be an ISO datetime string")
+          try:
+              datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+          except ValueError:
+              fail("sync.fetched_at must be a valid ISO datetime")
+
+          source_sha256 = sync_block["source_sha256"]
+          if not isinstance(source_sha256, str) or len(source_sha256) != 64:
+              fail("sync.source_sha256 must be a 64-character SHA-256 hex string")
+          if any(ch not in "0123456789abcdef" for ch in source_sha256.lower()):
+              fail("sync.source_sha256 must contain only hexadecimal characters")
+
+          print("Standards sync files validated successfully.")
+          PY
