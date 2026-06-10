@@ -50,6 +50,10 @@ jobs:
       - name: Create pull request if sync changed
         uses: peter-evans/create-pull-request@v8
         with:
+          # Use a repo secret token (classic PAT or fine-grained PAT) so follow-up
+          # PR workflows (Compliance Gate, Security Scans) trigger automatically.
+          # If not configured, fallback to github.token (checks may not auto-trigger).
+          token: ${{ secrets.STANDARDS_SYNC_PR_TOKEN != '' && secrets.STANDARDS_SYNC_PR_TOKEN || github.token }}
           commit-message: "chore(standards): sync CAB Forum baseline snapshot"
           title: "chore(standards): sync CAB Forum baseline snapshot"
           body: |
@@ -57,6 +61,7 @@ jobs:
             - sync CA/B Forum BR snapshot from upstream source
             - refresh `policies/standards_baseline.yaml`
             - update generated `policies/standards_sync_snapshot.yaml`
+            - note: auto-run PR checks require `STANDARDS_SYNC_PR_TOKEN` secret
           branch: chore/standards-sync
           base: main
           delete-branch: true

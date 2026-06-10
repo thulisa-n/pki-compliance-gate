@@ -54,3 +54,9 @@ python src/main.py --mode apisec --endpoint https://example.com
 - `standards-pr-guard.yml`
 - `kyverno-policy.yml`
 - `docs-render.yml`
+
+## Automation Secrets
+
+- `STANDARDS_SYNC_PR_TOKEN`: token used by `standards-sync.yml` when creating bot PRs.
+  Configure this secret so downstream PR workflows (`Compliance Gate`, `Security Scans`)
+  auto-trigger on standards-sync pull requests.
