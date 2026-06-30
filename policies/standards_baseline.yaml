@@ -1,8 +1,8 @@
 terms: []
 baseline:
   source: CA/Browser Forum BR (auto-synced)
-  version: 2026.06.23
-  last_reviewed: '2026-06-23'
+  version: 2026.06.30
+  last_reviewed: '2026-06-30'
   references:
   - CAB Forum Baseline Requirements
   - RFC 5280
