@@ -41,6 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install pytest-html
 
       - name: Install zlint
         run: |
@@ -58,7 +59,12 @@ jobs:
           opa version
 
       - name: Run unit tests
-        run: pytest -q
+        run: |
+          mkdir -p reports/test-results
+          pytest -q \
+            --junitxml=reports/test-results/pytest-junit.xml \
+            --html=reports/test-results/pytest-report.html \
+            --self-contained-html
 
       - name: Generate sample certificate
         run: |
@@ -193,6 +199,8 @@ jobs:
           cp reports/release_provenance.json.sig "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json.sig.meta.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_signing_public_key.b64 "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/test-results/pytest-junit.xml "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/test-results/pytest-report.html "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
