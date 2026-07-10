@@ -96,6 +96,14 @@ python src/main.py --mode apisec --endpoint https://example.com
 - `audit_evidence/evidence_manifest.json`
 - `audit_evidence/compliance_decisions.jsonl`
 
+## Test Evidence in GitHub
+
+- PR checks: `Compliance Gate` publishes a `Pytest Results` check from JUnit XML.
+- Run artifacts: download `certguard-compliance-artifacts-<run_id>` to get:
+  - `pytest-junit.xml`
+  - `pytest-report.html` (self-contained HTML report)
+- Evidence reports are CI-generated; local `reports/test-results/` is intentionally git-ignored.
+
 ## CI Workflows
 
 - `compliance.yml`

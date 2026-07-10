@@ -11,6 +11,7 @@ reports/*.sig.meta.json
 reports/*.b64
 reports/*.seal
 reports/*.md
+reports/test-results/
 audit_evidence/*.json
 audit_evidence/*.jsonl
 
