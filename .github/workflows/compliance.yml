@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: compliance-${{ github.workflow }}-${{ github.ref }}
@@ -65,6 +66,15 @@ jobs:
             --junitxml=reports/test-results/pytest-junit.xml \
             --html=reports/test-results/pytest-report.html \
             --self-contained-html
+
+      - name: Publish pytest results in checks
+        if: ${{ always() }}
+        uses: dorny/test-reporter@v1
+        with:
+          name: Pytest Results
+          path: reports/test-results/pytest-junit.xml
+          reporter: java-junit
+          fail-on-error: true
 
       - name: Generate sample certificate
         run: |
