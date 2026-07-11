@@ -30,6 +30,7 @@ CI bundles evidence under a run-specific path:
 - `artifacts/<github_run_id>/release_provenance.cosign.sig`
 - `artifacts/<github_run_id>/release_provenance.cosign.crt`
 - `artifacts/<github_run_id>/release_provenance.cosign.bundle`
+- GitHub native attestation entry (repository Attestations tab) for `release_provenance.json`
 
 This provides deterministic traceability from evidence to workflow execution context.
 
@@ -37,6 +38,7 @@ This provides deterministic traceability from evidence to workflow execution con
 
 - Runs using cosign keyless artifacts (`release_provenance.cosign.*`) are verified with GitHub OIDC identity + Rekor proof.
 - `release_provenance.*` is generated only for release-context workflow executions (`push` to `main`).
+- GitHub native attestation publication for `release_provenance.json` is also limited to `push` on `main`.
 - Older runs that only contain `release_signing_public_key.b64` / `release_provenance.json.sig` used the legacy co-located key model and are outside the keyless trust scope.
 
 ## Retention Guidance
