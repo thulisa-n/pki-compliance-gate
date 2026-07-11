@@ -36,6 +36,7 @@ This provides deterministic traceability from evidence to workflow execution con
 ### Trust model scope
 
 - Runs using cosign keyless artifacts (`release_provenance.cosign.*`) are verified with GitHub OIDC identity + Rekor proof.
+- `release_provenance.*` is generated only for release-context workflow executions (`push` to `main`).
 - Older runs that only contain `release_signing_public_key.b64` / `release_provenance.json.sig` used the legacy co-located key model and are outside the keyless trust scope.
 
 ## Retention Guidance
@@ -54,5 +55,4 @@ This provides deterministic traceability from evidence to workflow execution con
 6. Review trend signal (`compliance_trend_snapshot.json`).
 7. Verify release provenance signature with cosign keyless identity validation:
    - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' release_provenance.json`
-   - For PR workflow evidence, use `^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/pull/[0-9]+/merge$`.
 8. Record reviewer note in PR or issue using `compliance_summary.md`.
