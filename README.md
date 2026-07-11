@@ -107,7 +107,7 @@ python src/main.py --mode apisec --endpoint https://example.com
 
 ## Provenance Verification
 
-- `Compliance Gate` signs `release_provenance.json` with cosign keyless signing.
+- `Compliance Gate` signs `release_provenance.json` with cosign keyless signing only on `push` to `main` (release context).
 - Verification uses GitHub OIDC identity and Rekor transparency-log proof, not a co-located static key.
 - Evidence bundle includes:
   - `release_provenance.cosign.sig`
@@ -115,8 +115,6 @@ python src/main.py --mode apisec --endpoint https://example.com
   - `release_provenance.cosign.bundle`
 - Independent verification command (outside CI):
   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' release_provenance.json`
-- For PR workflow runs, replace identity regex with:
-  - `^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/pull/[0-9]+/merge$`
 - The cosign bundle is retained as portability evidence so provenance can be re-verified later without relying on repo-stored keys.
 
 ## CI Workflows

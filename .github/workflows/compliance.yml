@@ -160,6 +160,7 @@ jobs:
             --output-file reports/sbom.cdx.json
 
       - name: Generate release provenance manifest
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -188,6 +189,7 @@ jobs:
           PY
 
       - name: Sign provenance with cosign keyless
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           cosign sign-blob --yes \
             --bundle reports/release_provenance.cosign.bundle \
@@ -195,22 +197,15 @@ jobs:
             --output-signature reports/release_provenance.cosign.sig \
             reports/release_provenance.json
 
-      - name: Resolve expected workflow identity
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "COSIGN_CERT_IDENTITY_REGEX=^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/pull/[0-9]+/merge$" >> "$GITHUB_ENV"
-          else
-            echo "COSIGN_CERT_IDENTITY_REGEX=^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$" >> "$GITHUB_ENV"
-          fi
-
       - name: Verify cosign signature and identity
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           cosign verify-blob \
             --bundle reports/release_provenance.cosign.bundle \
             --certificate reports/release_provenance.cosign.crt \
             --signature reports/release_provenance.cosign.sig \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "${COSIGN_CERT_IDENTITY_REGEX}" \
+            --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' \
             reports/release_provenance.json
 
       - name: Prepare traceable artifact bundle
@@ -221,11 +216,13 @@ jobs:
           cp reports/compliance_summary.md "artifacts/${GITHUB_RUN_ID}/"
           cp reports/compliance_trend_snapshot.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/sbom.cdx.json "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.json.digest "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.cosign.sig "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.cosign.crt "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.cosign.bundle "artifacts/${GITHUB_RUN_ID}/"
+          if [ -f reports/release_provenance.json ]; then
+            cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
+            cp reports/release_provenance.json.digest "artifacts/${GITHUB_RUN_ID}/"
+            cp reports/release_provenance.cosign.sig "artifacts/${GITHUB_RUN_ID}/"
+            cp reports/release_provenance.cosign.crt "artifacts/${GITHUB_RUN_ID}/"
+            cp reports/release_provenance.cosign.bundle "artifacts/${GITHUB_RUN_ID}/"
+          fi
           cp reports/test-results/pytest-junit.xml "artifacts/${GITHUB_RUN_ID}/"
           cp reports/test-results/pytest-report.html "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
