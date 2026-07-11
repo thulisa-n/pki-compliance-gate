@@ -18,6 +18,7 @@ on:
 permissions:
   contents: read
   checks: write
+  id-token: write
 
 concurrency:
   group: compliance-${{ github.workflow }}-${{ github.ref }}
@@ -38,6 +39,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
 
       - name: Install dependencies
         run: |
@@ -155,13 +159,11 @@ jobs:
             --output-reproducible \
             --output-file reports/sbom.cdx.json
 
-      - name: Generate signed release provenance + verify signature
+      - name: Generate release provenance manifest
         run: |
           python - <<'PY'
           from pathlib import Path
-          from certguard.artifact_signing import generate_ed25519_keypair_b64
           from certguard.release_provenance import generate_release_provenance
-          from certguard.release_provenance import verify_release_provenance_signature
           artifacts = [
               Path("reports/compliance_report.json"),
               Path("reports/compliance_report.json.seal"),
@@ -175,26 +177,33 @@ jobs:
               Path("audit_evidence/evidence_manifest.json"),
               Path("audit_evidence/compliance_decisions.jsonl"),
           ]
-          private_key_b64, public_key_b64 = generate_ed25519_keypair_b64()
           manifest_path, _, signature_path = generate_release_provenance(
               artifact_paths=artifacts,
               output_path=Path("reports/release_provenance.json"),
-              signing_private_key_b64=private_key_b64,
-              signing_public_key_b64=public_key_b64,
           )
-          if signature_path is None:
-              raise SystemExit("Expected signed provenance output, got none.")
-          if not verify_release_provenance_signature(
-              manifest_path,
-              signature_path,
-              public_key_b64,
-          ):
-              raise SystemExit("Release provenance signature verification failed.")
-          Path("reports/release_signing_public_key.b64").write_text(
-              public_key_b64,
-              encoding="utf-8",
-          )
+          if signature_path is not None:
+              raise SystemExit("Expected unsigned provenance manifest before keyless signing.")
+          if not manifest_path.exists():
+              raise SystemExit("Release provenance manifest was not created.")
           PY
+
+      - name: Sign provenance with cosign keyless
+        run: |
+          cosign sign-blob --yes \
+            --bundle reports/release_provenance.cosign.bundle \
+            --output-certificate reports/release_provenance.cosign.crt \
+            --output-signature reports/release_provenance.cosign.sig \
+            reports/release_provenance.json
+
+      - name: Verify cosign signature and identity
+        run: |
+          cosign verify-blob \
+            --bundle reports/release_provenance.cosign.bundle \
+            --certificate reports/release_provenance.cosign.crt \
+            --signature reports/release_provenance.cosign.sig \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/(heads/.+|pull/.+/merge)$' \
+            reports/release_provenance.json
 
       - name: Prepare traceable artifact bundle
         run: |
@@ -206,9 +215,9 @@ jobs:
           cp reports/sbom.cdx.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json "artifacts/${GITHUB_RUN_ID}/"
           cp reports/release_provenance.json.digest "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.json.sig "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_provenance.json.sig.meta.json "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/release_signing_public_key.b64 "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.cosign.sig "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.cosign.crt "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/release_provenance.cosign.bundle "artifacts/${GITHUB_RUN_ID}/"
           cp reports/test-results/pytest-junit.xml "artifacts/${GITHUB_RUN_ID}/"
           cp reports/test-results/pytest-report.html "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
