@@ -83,3 +83,33 @@ def test_zlint_fallback_honors_fail_on_error(monkeypatch, tmp_path: Path) -> Non
 
     assert result["status"] == "pass"
     assert result["details"].startswith("zlint output not parseable")
+
+
+def test_zlint_fallback_fails_when_fail_on_error_enabled(monkeypatch, tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy.yaml"
+    _write_policy(policy_path, fail_severities=["error"], fail_on_error=True)
+    engine = ComplianceGateEngine(policy_path=policy_path)
+
+    def _fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(args=args, returncode=1, stdout="not-json", stderr="bad output")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = engine._run_zlint_if_enabled(Path("tests/certificates/valid_cert.pem"))
+
+    assert result["status"] == "fail"
+    assert result["details"].startswith("zlint output not parseable")
+
+
+def test_zlint_missing_binary_fails_closed(monkeypatch, tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy.yaml"
+    _write_policy(policy_path, fail_severities=["error", "fatal"], enable_zlint=True)
+    engine = ComplianceGateEngine(policy_path=policy_path)
+
+    def _missing_binary(*args, **kwargs):
+        raise FileNotFoundError()
+
+    monkeypatch.setattr(subprocess, "run", _missing_binary)
+    result = engine._run_zlint_if_enabled(Path("tests/certificates/valid_cert.pem"))
+
+    assert result["status"] == "fail"
+    assert "not installed" in result["details"]
