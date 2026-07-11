@@ -19,6 +19,7 @@ permissions:
   contents: read
   checks: write
   id-token: write
+  attestations: write
 
 concurrency:
   group: compliance-${{ github.workflow }}-${{ github.ref }}
@@ -207,6 +208,12 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' \
             reports/release_provenance.json
+
+      - name: Publish GitHub build attestation
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: reports/release_provenance.json
 
       - name: Prepare traceable artifact bundle
         run: |
