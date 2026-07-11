@@ -26,6 +26,16 @@ class ComplianceAssuranceAgent(BaseAgent):
                 success=False,
                 errors=["Compliance report is missing a valid 'checks' list."],
             )
+        check_map = self._normalize_checks(checks)
+        if check_map is None:
+            return AgentResult(
+                agent=self.name,
+                success=False,
+                errors=[
+                    "Compliance report contains malformed or duplicate checks; assurance "
+                    "requires unique check names and string statuses."
+                ],
+            )
 
         required_controls = context.get(
             "required_controls",
@@ -38,7 +48,6 @@ class ComplianceAssuranceAgent(BaseAgent):
             ],
         )
 
-        check_map = {item.get("name"): item.get("status") for item in checks}
         assurance_checks: list[CheckResult] = []
 
         for control in required_controls:
@@ -62,14 +71,26 @@ class ComplianceAssuranceAgent(BaseAgent):
                 CheckResult(name=f"assure_{control}", status=status, details=details)
             )
 
-        report_compliant = bool(report.get("compliant"))
+        report_compliant = report.get("compliant")
+        if not isinstance(report_compliant, bool):
+            return AgentResult(
+                agent=self.name,
+                success=False,
+                errors=["Compliance report 'compliant' flag must be a boolean value."],
+            )
+        lint_status = self._extract_lint_status(report.get("lint"))
+        expected_compliant = ("fail" not in set(check_map.values())) and lint_status != "fail"
         assurance_checks.append(
             CheckResult(
                 name="assure_final_compliance_flag",
-                status="pass" if report_compliant else "fail",
-                details="Final compliance flag is aligned."
-                if report_compliant
-                else "Final compliance flag indicates non-compliance.",
+                status="pass" if report_compliant == expected_compliant else "fail",
+                details=(
+                    f"Final compliance flag matches independently recomputed outcome "
+                    f"({expected_compliant})."
+                    if report_compliant == expected_compliant
+                    else f"Final compliance flag mismatch: report={report_compliant}, "
+                    f"recomputed={expected_compliant}."
+                ),
             )
         )
 
@@ -83,3 +104,31 @@ class ComplianceAssuranceAgent(BaseAgent):
                 "controls_verified": len(required_controls),
             },
         )
+
+    def _normalize_checks(self, checks: list[Any]) -> dict[str, str] | None:
+        allowed_statuses = {"pass", "fail", "waived"}
+        normalized: dict[str, str] = {}
+        for item in checks:
+            if not isinstance(item, dict):
+                return None
+            name = item.get("name")
+            status = item.get("status")
+            if not isinstance(name, str) or not name.strip():
+                return None
+            if not isinstance(status, str):
+                return None
+            normalized_status = status.strip().lower()
+            if normalized_status not in allowed_statuses:
+                return None
+            if name in normalized:
+                return None
+            normalized[name] = normalized_status
+        return normalized
+
+    def _extract_lint_status(self, lint: Any) -> str | None:
+        if not isinstance(lint, dict):
+            return None
+        status = lint.get("status")
+        if not isinstance(status, str):
+            return None
+        return status.strip().lower()

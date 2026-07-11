@@ -37,6 +37,58 @@ def test_compliance_assurance_agent_detects_missing_controls() -> None:
     assert len(failed_assurance) >= 1
 
 
+def test_compliance_assurance_agent_detects_flag_mismatch() -> None:
+    agent = ComplianceAssuranceAgent()
+    forged_report = {
+        "compliant": True,
+        "checks": [
+            {"name": "validity_days", "status": "pass", "details": "ok"},
+            {"name": "san_extension", "status": "pass", "details": "ok"},
+            {"name": "rsa_key_size", "status": "pass", "details": "ok"},
+            {"name": "signature_algorithm", "status": "fail", "details": "sha1 detected"},
+            {"name": "internal_domain_check", "status": "pass", "details": "ok"},
+        ],
+    }
+    result = agent.run({"report": forged_report})
+    assert result.success is False
+    flag_check = next(item for item in result.checks if item.name == "assure_final_compliance_flag")
+    assert flag_check.status == "fail"
+    assert "mismatch" in flag_check.details
+
+
+def test_compliance_assurance_agent_rejects_duplicate_check_names() -> None:
+    agent = ComplianceAssuranceAgent()
+    report = {
+        "compliant": True,
+        "checks": [
+            {"name": "validity_days", "status": "pass"},
+            {"name": "validity_days", "status": "fail"},
+        ],
+    }
+    result = agent.run({"report": report})
+    assert result.success is False
+    assert result.errors
+    assert "malformed or duplicate checks" in result.errors[0]
+
+
+def test_compliance_assurance_agent_rejects_non_boolean_compliant_flag() -> None:
+    agent = ComplianceAssuranceAgent()
+    report = {
+        "compliant": "true",
+        "checks": [
+            {"name": "validity_days", "status": "pass"},
+            {"name": "san_extension", "status": "pass"},
+            {"name": "rsa_key_size", "status": "pass"},
+            {"name": "signature_algorithm", "status": "pass"},
+            {"name": "internal_domain_check", "status": "pass"},
+        ],
+    }
+    result = agent.run({"report": report})
+    assert result.success is False
+    assert result.errors
+    assert "must be a boolean value" in result.errors[0]
+
+
 def test_standards_watch_agent_detects_policy_drift() -> None:
     agent = StandardsWatchAgent()
     policy = {
