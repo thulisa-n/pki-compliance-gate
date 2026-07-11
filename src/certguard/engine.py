@@ -180,6 +180,54 @@ class ComplianceGateEngine:
                 return entry_hash
         return None
 
+    def verify_decision_log_integrity(
+        self, decision_log_path: Path
+    ) -> tuple[bool, str]:
+        if not decision_log_path.exists():
+            return False, f"Decision log not found: {decision_log_path}"
+
+        lines = [line for line in decision_log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if not lines:
+            return False, "Decision log is empty."
+
+        previous_hash: str | None = None
+        for index, line in enumerate(lines, start=1):
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                return False, f"Line {index} is not valid JSON."
+            if not isinstance(entry, dict):
+                return False, f"Line {index} must be a JSON object."
+
+            entry_hash = entry.get("entry_hash")
+            if not isinstance(entry_hash, str) or not entry_hash:
+                return False, f"Line {index} is missing a valid entry_hash."
+
+            recorded_previous = entry.get("previous_entry_hash")
+            if recorded_previous != previous_hash:
+                return (
+                    False,
+                    f"Line {index} previous_entry_hash mismatch: "
+                    f"expected {previous_hash}, got {recorded_previous}.",
+                )
+
+            canonical_entry = dict(entry)
+            canonical_entry.pop("entry_hash", None)
+            canonical = json.dumps(
+                canonical_entry, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+            recomputed = hashlib.sha256(canonical).hexdigest()
+            if recomputed != entry_hash:
+                return (
+                    False,
+                    f"Line {index} entry_hash mismatch: expected {entry_hash}, "
+                    f"recomputed {recomputed}.",
+                )
+
+            previous_hash = entry_hash
+
+        return True, "Decision log integrity verified."
+
     def _run_opa_if_enabled(self, parser_data: dict[str, Any]) -> dict[str, Any]:
         opa_cfg = self.policy.get("opa", {})
         if not opa_cfg.get("enabled", False):
