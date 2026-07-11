@@ -37,3 +37,58 @@ def test_compliance_decision_log_written_and_chained(tmp_path: Path) -> None:
     assert entries[1]["entry_hash"]
     assert entries[0]["previous_entry_hash"] is None
     assert entries[1]["previous_entry_hash"] == entries[0]["entry_hash"]
+
+
+def test_verify_decision_log_integrity_passes_for_untampered_log(tmp_path: Path) -> None:
+    engine = ComplianceGateEngine(policy_path=Path("policies/cabf_policy.yaml"))
+    evidence_dir = tmp_path / "audit_evidence"
+
+    engine.evaluate(
+        cert_path=Path("tests/certificates/valid_cert.pem"),
+        report_path=tmp_path / "report_1.json",
+        evidence_dir=evidence_dir,
+    )
+    engine.evaluate(
+        cert_path=Path("tests/certificates/sha1_cert.pem"),
+        report_path=tmp_path / "report_2.json",
+        evidence_dir=evidence_dir,
+    )
+
+    ok, details = engine.verify_decision_log_integrity(
+        evidence_dir / "compliance_decisions.jsonl"
+    )
+    assert ok is True
+    assert "verified" in details.lower()
+
+
+def test_verify_decision_log_integrity_detects_tampered_middle_entry(
+    tmp_path: Path,
+) -> None:
+    engine = ComplianceGateEngine(policy_path=Path("policies/cabf_policy.yaml"))
+    evidence_dir = tmp_path / "audit_evidence"
+
+    engine.evaluate(
+        cert_path=Path("tests/certificates/valid_cert.pem"),
+        report_path=tmp_path / "report_1.json",
+        evidence_dir=evidence_dir,
+    )
+    engine.evaluate(
+        cert_path=Path("tests/certificates/sha1_cert.pem"),
+        report_path=tmp_path / "report_2.json",
+        evidence_dir=evidence_dir,
+    )
+    engine.evaluate(
+        cert_path=Path("tests/certificates/no_san_cert.pem"),
+        report_path=tmp_path / "report_3.json",
+        evidence_dir=evidence_dir,
+    )
+
+    log_path = evidence_dir / "compliance_decisions.jsonl"
+    entries = _read_jsonl(log_path)
+    entries[1]["compliant"] = True
+    tampered_lines = [json.dumps(entry, sort_keys=True) for entry in entries]
+    log_path.write_text("\n".join(tampered_lines) + "\n", encoding="utf-8")
+
+    ok, details = engine.verify_decision_log_integrity(log_path)
+    assert ok is False
+    assert "entry_hash mismatch" in details
