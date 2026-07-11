@@ -41,6 +41,7 @@ flowchart LR
 - Code analysis: `.github/workflows/codeql.yml`
 - Secret detection: `.github/workflows/secrets-scan.yml`
 - IaC scan (Kubernetes manifests): `.github/workflows/iac-scan.yml`
+- Keyless provenance signing (OIDC + Rekor): `.github/workflows/compliance.yml`
 - API TLS posture checks: `--mode apisec`
 - Controlled exceptions: `--waiver-file` (ticket + expiry required)
 
@@ -103,6 +104,15 @@ python src/main.py --mode apisec --endpoint https://example.com
   - `pytest-junit.xml`
   - `pytest-report.html` (self-contained HTML report)
 - Evidence reports are CI-generated; local `reports/test-results/` is intentionally git-ignored.
+
+## Provenance Verification
+
+- `Compliance Gate` signs `release_provenance.json` with cosign keyless signing.
+- Verification uses GitHub OIDC identity and Rekor transparency-log proof, not a co-located static key.
+- Evidence bundle includes:
+  - `release_provenance.cosign.sig`
+  - `release_provenance.cosign.crt`
+  - `release_provenance.cosign.bundle`
 
 ## CI Workflows
 

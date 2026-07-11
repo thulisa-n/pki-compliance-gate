@@ -27,9 +27,9 @@ CI bundles evidence under a run-specific path:
 - `artifacts/<github_run_id>/sbom.cdx.json`
 - `artifacts/<github_run_id>/release_provenance.json`
 - `artifacts/<github_run_id>/release_provenance.json.digest`
-- `artifacts/<github_run_id>/release_provenance.json.sig`
-- `artifacts/<github_run_id>/release_provenance.json.sig.meta.json`
-- `artifacts/<github_run_id>/release_signing_public_key.b64`
+- `artifacts/<github_run_id>/release_provenance.cosign.sig`
+- `artifacts/<github_run_id>/release_provenance.cosign.crt`
+- `artifacts/<github_run_id>/release_provenance.cosign.bundle`
 
 This provides deterministic traceability from evidence to workflow execution context.
 
@@ -47,5 +47,6 @@ This provides deterministic traceability from evidence to workflow execution con
 4. Verify waiver application (`waiver_results.json`).
 5. Review decision log integrity (`compliance_decisions.jsonl` hash chain).
 6. Review trend signal (`compliance_trend_snapshot.json`).
-7. Verify release provenance signature (`release_provenance.json.sig` against public key).
+7. Verify release provenance signature with cosign keyless identity validation:
+   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/(heads/.+|pull/.+/merge)$' release_provenance.json`
 8. Record reviewer note in PR or issue using `compliance_summary.md`.
