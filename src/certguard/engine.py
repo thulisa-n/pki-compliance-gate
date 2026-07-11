@@ -432,7 +432,23 @@ class ComplianceGateEngine:
                 cmd, capture_output=True, text=True, check=False
             )
         except FileNotFoundError:
-            return {"status": "skipped", "details": "zlint not installed"}
+            return {
+                "tool": "zlint",
+                "status": "fail",
+                "return_code": None,
+                "details": "zlint binary not installed while lint.enable_zlint=true.",
+                "summary": {
+                    "fail_severities": sorted(
+                        {
+                            self._normalize_severity(value)
+                            for value in lint_cfg.get("fail_severities", ["error", "fatal"])
+                        }
+                    ),
+                    "counts": {},
+                    "matched_failures": [],
+                },
+                "raw_output": "",
+            }
 
         fail_severities = {
             self._normalize_severity(value)

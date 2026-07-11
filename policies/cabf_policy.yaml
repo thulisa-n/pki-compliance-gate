@@ -44,15 +44,21 @@ domains:
     - ".intranet"
 
 lint:
+  # Default profile remains tool-portable for local/offline runs; CI lint profile
+  # (`policies/profiles/ci_lint_gate.yaml`) enforces zlint with fail-closed behavior.
   enable_zlint: false
   fail_on_error: true
   fail_severities:
     - "error"
     - "fatal"
+  # Disabled in baseline profile to avoid OpenSSL CLI dependency for local dry runs.
+  # Enabled in CI lint profile where the binary is installed and version-pinned.
   enable_asn1parse: false
   fail_on_asn1_error: true
 
 dcv:
+  # Staged rollout: baseline enforces cert structure first. Set true when your
+  # issuance pipeline consistently provides `--dcv-attestation` evidence.
   required: false
   allowed_methods:
     - "dns-01"
@@ -61,6 +67,8 @@ dcv:
   max_age_days: 30
 
 rfc5280:
+  # Optional strict-profile checks are disabled in baseline for gradual adoption.
+  # Enable in hardened profiles when issuer-chain evidence is available in CI.
   require_end_entity_not_ca: false
   require_key_usage: false
   required_key_usages:
@@ -77,16 +85,21 @@ rfc5280:
   require_path_aki_ski_match: false
 
 opa:
+  # OPA gate is optional in baseline; enabled in CI lint profile for policy-as-code.
   enabled: false
   policy_file: "policies/rego/validity.rego"
 
 issuance:
+  # Disabled until issuance attestation plumbing is consistently available.
   require_hsm_attestation: false
   min_fips_level: 2
 
 crypto_transition:
+  # Transition profile stays opt-in; enable when your program explicitly enforces
+  # post-baseline crypto agility controls in issuance.
   enabled: false
-  target_max_validity_days: 90
+  # CABF staged validity direction is 200 -> 100 -> 47 days; use 47 as end-state target.
+  target_max_validity_days: 47
   target_min_rsa_bits: 3072
   approved_signature_algorithms:
     - "sha256"
