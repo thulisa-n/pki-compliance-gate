@@ -109,12 +109,14 @@ python src/main.py --mode apisec --endpoint https://example.com
 
 - `Compliance Gate` signs `release_provenance.json` with cosign keyless signing only on `push` to `main` (release context).
 - `Compliance Gate` also publishes a GitHub native build attestation for `release_provenance.json` on `push` to `main`.
-- Verification uses GitHub OIDC identity and Rekor transparency-log proof, not a co-located static key.
+- Both verification paths are backed by the same Sigstore trust foundation (Fulcio/Rekor); the benefit is broader verification UX, not a separate root of trust.
 - Evidence bundle includes:
   - `release_provenance.cosign.sig`
   - `release_provenance.cosign.crt`
   - `release_provenance.cosign.bundle`
-- Independent verification command (outside CI):
+- Verify with GitHub CLI (recommended for most users):
+  - `gh attestation verify reports/release_provenance.json --repo thulisa-n/pki-compliance-gate --cert-identity-regex '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$'`
+- Verify with cosign + Rekor tooling:
   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' release_provenance.json`
 - The cosign bundle is retained as portability evidence so provenance can be re-verified later without relying on repo-stored keys.
 - GitHub-native attestations are visible in the repository **Attestations** tab for release-context runs.

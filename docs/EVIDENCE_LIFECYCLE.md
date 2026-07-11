@@ -39,6 +39,7 @@ This provides deterministic traceability from evidence to workflow execution con
 - Runs using cosign keyless artifacts (`release_provenance.cosign.*`) are verified with GitHub OIDC identity + Rekor proof.
 - `release_provenance.*` is generated only for release-context workflow executions (`push` to `main`).
 - GitHub native attestation publication for `release_provenance.json` is also limited to `push` on `main`.
+- GitHub native attestations and cosign verification are two client surfaces over the same Sigstore trust backbone.
 - Older runs that only contain `release_signing_public_key.b64` / `release_provenance.json.sig` used the legacy co-located key model and are outside the keyless trust scope.
 
 ## Retention Guidance
@@ -55,6 +56,8 @@ This provides deterministic traceability from evidence to workflow execution con
 4. Verify waiver application (`waiver_results.json`).
 5. Review decision log integrity (`compliance_decisions.jsonl` hash chain).
 6. Review trend signal (`compliance_trend_snapshot.json`).
-7. Verify release provenance signature with cosign keyless identity validation:
+7. Verify release provenance via GitHub CLI:
+   - `gh attestation verify release_provenance.json --repo thulisa-n/pki-compliance-gate --cert-identity-regex '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$'`
+8. Verify release provenance via cosign keyless identity validation:
    - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' release_provenance.json`
-8. Record reviewer note in PR or issue using `compliance_summary.md`.
+9. Record reviewer note in PR or issue using `compliance_summary.md`.
