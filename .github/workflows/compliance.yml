@@ -195,6 +195,14 @@ jobs:
             --output-signature reports/release_provenance.cosign.sig \
             reports/release_provenance.json
 
+      - name: Resolve expected workflow identity
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "COSIGN_CERT_IDENTITY_REGEX=^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/pull/[0-9]+/merge$" >> "$GITHUB_ENV"
+          else
+            echo "COSIGN_CERT_IDENTITY_REGEX=^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$" >> "$GITHUB_ENV"
+          fi
+
       - name: Verify cosign signature and identity
         run: |
           cosign verify-blob \
@@ -202,7 +210,7 @@ jobs:
             --certificate reports/release_provenance.cosign.crt \
             --signature reports/release_provenance.cosign.sig \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/(heads/.+|pull/.+/merge)$' \
+            --certificate-identity-regexp "${COSIGN_CERT_IDENTITY_REGEX}" \
             reports/release_provenance.json
 
       - name: Prepare traceable artifact bundle
