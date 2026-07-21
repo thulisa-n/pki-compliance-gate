@@ -74,7 +74,7 @@ jobs:
 
       - name: Publish pytest results in checks
         if: ${{ always() }}
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: Pytest Results
           path: reports/test-results/pytest-junit.xml
@@ -211,7 +211,7 @@ jobs:
 
       - name: Publish GitHub build attestation
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: reports/release_provenance.json
 
