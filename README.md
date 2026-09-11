@@ -4,7 +4,7 @@
 [![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Release](https://img.shields.io/badge/release-v0.2.1-blue)
+![Release](https://img.shields.io/badge/release-v0.2.2-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
 
@@ -16,7 +16,7 @@ One YAML policy profile is the source of truth for evaluation, CI gating, and ge
 
 ### Option 1: GitHub Action in CI/CD
 
-Pin an immutable release tag (there is no moving `v1` tag). `v0.2.1` is the
+Pin an immutable release tag (there is no moving `v1` tag). `v0.2.2` is the
 current source version; use the most recent published tag.
 
 > **Upgrading from 0.1.x is a breaking change.** Expiry and EC key policy are
@@ -27,7 +27,7 @@ current source version; use the most recent published tag.
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.2.1
+    uses: thulisa-n/pki-compliance-gate@v0.2.2
     with:
       cert: 'tests/certificates/valid_cert.pem'
 ```
@@ -35,7 +35,7 @@ steps:
 ### Option 2: Install from PyPI
 
 ```bash
-python3 -m pip install "pki-compliance-gate==0.2.1"
+python3 -m pip install "pki-compliance-gate==0.2.2"
 pki-gate --cert path/to/server.crt
 pki-gate --version
 ```
