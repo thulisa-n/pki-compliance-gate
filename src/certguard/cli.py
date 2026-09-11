@@ -95,6 +95,7 @@ def parse_args() -> argparse.Namespace:
             "signals",
             "readiness",
             "export-cps-doc",
+            "export-rego",
         ],
         default="evaluate",
         help="Execution mode",
@@ -269,6 +270,8 @@ def main() -> int:
             return _run_readiness(args)
         if args.mode == "export-cps-doc":
             return _run_export_cps_doc(args)
+        if args.mode == "export-rego":
+            return _run_export_rego(args)
         raise ValueError(f"Unsupported mode: {args.mode}")
     except (FileNotFoundError, PermissionError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -609,6 +612,17 @@ def _run_export_cps_doc(args: argparse.Namespace) -> int:
     print("Single Source of Truth Policy-as-Code Exporter")
     print(f"Policy: {args.policy}")
     print(f"CP/CPS Section 7 Documentation exported to: {out_path}")
+    return 0
+
+
+def _run_export_rego(args: argparse.Namespace) -> int:
+    from certguard.rego import export_policy_to_rego
+
+    out_path = args.summary_output or "policies/rego/validity.rego"
+    export_policy_to_rego(args.policy, out_path)
+    print("Generated OPA/Rego from the YAML policy")
+    print(f"Policy: {args.policy}")
+    print(f"Rego written to: {out_path}")
     return 0
 
 

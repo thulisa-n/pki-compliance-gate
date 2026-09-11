@@ -170,6 +170,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate file. |
 | `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
+| `export-rego` | `pki-gate --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
 | `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
 | `triage` | `pki-gate --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
 | `assure` | `pki-gate --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
@@ -186,7 +187,7 @@ flowchart LR
 src/certguard/          Core agents, CLI, bundled policy, and engine
 src/certguard/policy_exporter.py  CP/CPS exporter
 src/main.py             Backward-compatible repository entrypoint
-policies/               Policy YAML profiles and Rego rules
+policies/               Policy YAML profiles; optional generated Rego
 tests/                  Automated test suite
 action.yml              Composite GitHub Action
 .github/workflows/      CI workflows

@@ -125,7 +125,9 @@ rfc5280:
   require_path_aki_ski_match: false
 
 opa:
-  # OPA gate is optional in baseline; enabled in CI lint profile for policy-as-code.
+  # Optional OPA gate. When enabled, the engine generates Rego from
+  # certificate.max_validity_days; it does not read a hand-written .rego file.
+  # policy_file is only the default path for `pki-gate --mode export-rego`.
   enabled: false
   policy_file: "policies/rego/validity.rego"
 

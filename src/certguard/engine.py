@@ -18,6 +18,7 @@ from certguard.agents.x509_parser import X509ParserAgent
 from certguard.artifact_signing import sign_bytes, verify_signature
 from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy, policy_digest
+from certguard.rego import render_validity_rego
 
 
 class ComplianceGateEngine:
@@ -163,6 +164,11 @@ class ComplianceGateEngine:
         (evidence_dir / "opa_results.json").write_text(
             json.dumps(artifacts["opa_result"]["summary"], indent=2), encoding="utf-8"
         )
+        generated_rego = artifacts["opa_result"].get("rego")
+        if generated_rego:
+            (evidence_dir / "opa_policy.rego").write_text(
+                generated_rego, encoding="utf-8"
+            )
         digest_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
         if not digest_result.success:
             raise ValueError("; ".join(digest_result.errors))
@@ -208,6 +214,9 @@ class ComplianceGateEngine:
             evidence_dir / "opa_results.json",
             evidence_dir / "compliance_decisions.jsonl",
         ]
+        generated_rego_path = evidence_dir / "opa_policy.rego"
+        if generated_rego_path.exists():
+            listed.append(generated_rego_path)
         if waiver_path is not None:
             listed.append(waiver_path)
 
@@ -363,70 +372,75 @@ class ComplianceGateEngine:
         if not opa_cfg.get("enabled", False):
             return {
                 "check": None,
+                "rego": None,
                 "summary": {
                     "status": "skipped",
                     "details": "OPA policy evaluation disabled in policy.",
                 },
             }
 
-        policy_file = Path(str(opa_cfg.get("policy_file", "")))
-        if not policy_file.exists():
-            check = CheckResult(
-                name="opa_policy_gate",
-                status="fail",
-                details=f"OPA policy file not found: {policy_file}",
-                rule_id="OPA-POLICY",
-                category="POLICY",
-                severity="high",
-                standard_reference="OPA/Rego policy-as-code",
-            )
-            return {"check": check, "summary": {"status": "fail", "details": check.details}}
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as handle:
-            json.dump(parser_data, handle)
-            input_path = Path(handle.name)
-
-        cmd = [
-            "opa",
-            "eval",
-            "--format",
-            "raw",
-            "--data",
-            str(policy_file),
-            "--input",
-            str(input_path),
-            "data.pki.compliance.allow",
-        ]
-
+        rendered = render_validity_rego(self.policy)
+        max_days = int(self.policy["certificate"]["max_validity_days"])
+        input_path: Path | None = None
+        generated_path: Path | None = None
         try:
-            process = subprocess.run(  # nosec B603
-                cmd, capture_output=True, text=True, check=False
-            )
-        except FileNotFoundError:
-            input_path.unlink(missing_ok=True)
-            return {
-                "check": CheckResult(
-                    name="opa_policy_gate",
-                    status="fail",
-                    details="OPA binary not installed while opa.enabled=true.",
-                    rule_id="OPA-POLICY",
-                    category="POLICY",
-                    severity="high",
-                    standard_reference="OPA/Rego policy-as-code",
-                ),
-                "summary": {
-                    "status": "fail",
-                    "details": "OPA binary not installed while policy requires OPA.",
-                    "policy_file": str(policy_file),
-                },
-            }
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as handle:
+                json.dump(parser_data, handle)
+                input_path = Path(handle.name)
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".rego", delete=False
+            ) as handle:
+                handle.write(rendered)
+                generated_path = Path(handle.name)
 
-        input_path.unlink(missing_ok=True)
+            cmd = [
+                "opa",
+                "eval",
+                "--format",
+                "raw",
+                "--data",
+                str(generated_path),
+                "--input",
+                str(input_path),
+                "data.pki.compliance.allow",
+            ]
+            try:
+                process = subprocess.run(  # nosec B603
+                    cmd, capture_output=True, text=True, check=False
+                )
+            except FileNotFoundError:
+                return {
+                    "check": CheckResult(
+                        name="opa_policy_gate",
+                        status="fail",
+                        details="OPA binary not installed while opa.enabled=true.",
+                        rule_id="OPA-POLICY",
+                        category="POLICY",
+                        severity="high",
+                        standard_reference="OPA/Rego policy-as-code",
+                    ),
+                    "rego": rendered,
+                    "summary": {
+                        "status": "fail",
+                        "details": "OPA binary not installed while policy requires OPA.",
+                        "source": "certificate.max_validity_days",
+                        "max_validity_days": max_days,
+                    },
+                }
+        finally:
+            if input_path is not None:
+                input_path.unlink(missing_ok=True)
+            if generated_path is not None:
+                generated_path.unlink(missing_ok=True)
+
         output = (process.stdout or "").strip().lower()
         allowed = process.returncode == 0 and output == "true"
         status = "pass" if allowed else "fail"
         details = (
-            f"OPA evaluation result: {output or 'unknown'}"
+            f"OPA evaluation result: {output or 'unknown'} "
+            f"(max_validity_days={max_days} from YAML)"
             if process.returncode == 0
             else f"OPA evaluation command failed with code {process.returncode}"
         )
@@ -440,10 +454,12 @@ class ComplianceGateEngine:
                 severity="high",
                 standard_reference="OPA/Rego policy-as-code",
             ),
+            "rego": rendered,
             "summary": {
                 "status": status,
                 "details": details,
-                "policy_file": str(policy_file),
+                "source": "certificate.max_validity_days",
+                "max_validity_days": max_days,
                 "stdout": (process.stdout or "").strip(),
                 "stderr": (process.stderr or "").strip(),
             },

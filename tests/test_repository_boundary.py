@@ -97,5 +97,5 @@ def test_enterprise_console_script_is_private() -> None:
 
 def test_public_value_surfaces_stay_in_the_core() -> None:
     core = REPO_ROOT / "src" / "certguard"
-    for module in ("sarif.py", "github_output.py", "readiness.py", "controls.py"):
+    for module in ("sarif.py", "github_output.py", "readiness.py", "controls.py", "rego.py"):
         assert (core / module).is_file(), f"{module} must remain in the public core"

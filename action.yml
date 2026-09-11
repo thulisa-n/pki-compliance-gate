@@ -14,7 +14,7 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Execution mode (evaluate, readiness, apisec, summary, export-cps-doc, ...)'
+    description: 'Execution mode (evaluate, readiness, apisec, summary, export-cps-doc, export-rego, ...)'
     required: false
     default: 'evaluate'
   report:

@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Generate the optional OPA/Rego validity gate from
+  `certificate.max_validity_days` instead of reading a hand-written
+  `policies/rego/validity.rego`. A 2027 100-day profile no longer leaves a
+  200-day OPA allow rule behind.
+
 ## [0.2.2] - 2026-09-11
 
 Review-gap follow-up on 0.2.1. Verdicts for the default CABF profile stay the

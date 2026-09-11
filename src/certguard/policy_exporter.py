@@ -105,7 +105,7 @@ SECTION_MAP: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (
         "External policy engine",
         (
             ("OPA/Rego gate enabled", "opa.enabled", "bool"),
-            ("Rego policy file", "opa.policy_file", "code"),
+            ("Optional generated-Rego export path", "opa.policy_file", "code"),
         ),
     ),
     (

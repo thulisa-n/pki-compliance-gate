@@ -143,34 +143,12 @@ def test_invalid_waiver_json_fails_closed(tmp_path: Path) -> None:
     assert waiver_evidence["status"] == "fail"
 
 
-def test_opa_enabled_with_missing_policy_file_fails_closed(tmp_path: Path) -> None:
-    policy = _base_policy()
-    policy["opa"]["enabled"] = True
-    policy["opa"]["policy_file"] = str(tmp_path / "missing.rego")
-    policy_path = tmp_path / "policy.yaml"
-    policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
-
-    report_path = tmp_path / "report.json"
-    evidence_dir = tmp_path / "audit_evidence"
-    engine = ComplianceGateEngine(policy_path=policy_path)
-    compliant, _ = engine.evaluate(
-        cert_path=Path("tests/certificates/valid_cert.pem"),
-        report_path=report_path,
-        evidence_dir=evidence_dir,
-    )
-
-    assert compliant is False
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    opa_check = next(item for item in report["checks"] if item["name"] == "opa_policy_gate")
-    assert opa_check["status"] == "fail"
-
-
-def test_opa_enabled_with_missing_binary_fails_closed(
+def test_opa_enabled_without_binary_still_records_generated_rego(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     policy = _base_policy()
     policy["opa"]["enabled"] = True
-    policy["opa"]["policy_file"] = str(Path("policies/rego/validity.rego"))
+    policy["opa"]["policy_file"] = str(tmp_path / "unused.rego")
     policy_path = tmp_path / "policy.yaml"
     policy_path.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
 
@@ -192,6 +170,8 @@ def test_opa_enabled_with_missing_binary_fails_closed(
     report = json.loads(report_path.read_text(encoding="utf-8"))
     opa_check = next(item for item in report["checks"] if item["name"] == "opa_policy_gate")
     assert opa_check["status"] == "fail"
+    generated = (evidence_dir / "opa_policy.rego").read_text(encoding="utf-8")
+    assert "input.validity_days <=" in generated
 
 
 def test_rfc5280_extension_profile_checks_detect_edge_cases() -> None:
