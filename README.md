@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Release](https://img.shields.io/badge/release-v0.1.1-blue)
+![Release](https://img.shields.io/badge/release-v0.1.3-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
 
@@ -15,20 +15,25 @@ One YAML policy profile is the source of truth for evaluation, CI gating, and ge
 
 ### Option 1: GitHub Action in CI/CD
 
-Use the immutable `v0.1.1` release tag (there is no moving `v1` tag yet).
+Use the immutable `v0.1.3` release tag (there is no moving `v1` tag yet). The GitHub Marketplace listing tracks this Action.
 
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.1.1
+    uses: thulisa-n/pki-compliance-gate@v0.1.3
     with:
       cert: 'tests/certificates/valid_cert.pem'
 ```
 
-### Option 2: Run from a clone
+### Option 2: Install from PyPI
 
-The package name is reserved in `pyproject.toml`, but it is not published on PyPI. Use the repo locally:
+```bash
+python3 -m pip install "pki-compliance-gate==0.1.3"
+pki-gate --cert path/to/server.crt
+```
+
+### Option 3: Run from a clone
 
 ```bash
 python3 -m venv .venv
@@ -103,10 +108,10 @@ action.yml              Composite GitHub Action
 
 ## Distribution status
 
-GitHub release assets and PyPI trusted publishing are automated by
-`.github/workflows/publish.yml`. PyPI publication remains disabled until the
-project's trusted publisher is configured and the repository variable
-`PYPI_PUBLISH_ENABLED` is set to `true`.
+The GitHub Action, wheel, and sdist are published from the `v0.1.3` tag.
+Install the CLI with `pip install pki-compliance-gate==0.1.3`. Later GitHub
+releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
+(OIDC, no API token in the repository).
 
 ---
 
