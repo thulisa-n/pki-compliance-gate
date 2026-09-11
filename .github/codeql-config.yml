@@ -1,0 +1,7 @@
+name: CertGuard CodeQL configuration
+
+# This test-only factory deliberately generates RSA-1024 and P-192 keys to
+# prove CertGuard rejects them. Scanning it reports those fixtures as product
+# vulnerabilities; all production source remains included.
+paths-ignore:
+  - tests/support/certificates.py

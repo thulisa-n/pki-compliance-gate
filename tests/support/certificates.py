@@ -64,9 +64,7 @@ def _private_key(kind: KeyKind):
         return rsa.generate_private_key(public_exponent=65537, key_size=3072)
     if kind == "rsa1024":
         # Deliberately weak, for the key-size control.
-        return rsa.generate_private_key(  # lgtm[py/weak-crypto-key]
-            public_exponent=65537, key_size=1024
-        )
+        return rsa.generate_private_key(public_exponent=65537, key_size=1024)
     if kind == "ec256":
         return ec.generate_private_key(ec.SECP256R1())
     if kind == "ec384":
@@ -74,9 +72,7 @@ def _private_key(kind: KeyKind):
     if kind == "ec192":
         # Below the BR 6.1.5 floor and not an approved curve. This is the case
         # that previously evaluated as fully compliant.
-        return ec.generate_private_key(  # lgtm[py/weak-crypto-key]
-            ec.SECP192R1()
-        )
+        return ec.generate_private_key(ec.SECP192R1())
     if kind == "ed25519":
         return ed25519.Ed25519PrivateKey.generate()
     raise ValueError(f"Unsupported key kind: {kind}")
