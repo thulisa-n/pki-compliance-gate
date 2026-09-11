@@ -1,7 +1,7 @@
 # PKI Compliance Gate (CertGuard Engine)
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Tests](https://img.shields.io/badge/tests-87%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-81%20passed-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Release](https://img.shields.io/badge/release-v0.1.0-blue)
 
@@ -89,19 +89,14 @@ flowchart LR
 | `trend` | `python src/main.py --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
 | `signals` | `python src/main.py --mode signals` | Reads curated external signals JSON and writes recommendations. |
 
-Optional local API (not a hosted service): `PYTHONPATH=src uvicorn api.server:app --app-dir src`.
-
----
-
 ## Repository structure
 
 ```text
 src/certguard/          Core agents, X.509 parser, and engine
 src/certguard/policy_exporter.py  CP/CPS exporter
-src/api/server.py       Optional FastAPI wrapper
 src/main.py             CLI entrypoint
 policies/               Policy YAML profiles and Rego rules
-tests/                  Automated test suite (87 tests)
+tests/                  Automated test suite (81 tests)
 .github/action.yml      Composite GitHub Action
 .github/workflows/      CI workflows
 ```
