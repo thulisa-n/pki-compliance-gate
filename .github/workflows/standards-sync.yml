@@ -42,10 +42,27 @@ jobs:
           fi
           echo "sha=${source_sha}" >> "$GITHUB_OUTPUT"
 
-      - name: Sync CAB Forum baseline snapshot
+      # The script records the upstream digest only. It never rewrites the
+      # dated schedule in policies/standards_baseline.yaml -- a human reads the
+      # ballot and edits that file. The previous scraper hard-preferred the
+      # string "200" and would have reported "aligned" straight through the
+      # 2027-03-15 reduction to 100 days.
+      - name: Detect CAB Forum baseline change
+        id: detect
+        continue-on-error: true
         run: |
           python scripts/sync_cabf_baseline.py \
-            --source-url "https://raw.githubusercontent.com/cabforum/servercert/${{ steps.source.outputs.sha }}/docs/BR.md"
+            --source-url "https://raw.githubusercontent.com/cabforum/servercert/${{ steps.source.outputs.sha }}/docs/BR.md" \
+            --fail-on-change
+
+      - name: Report detection outcome
+        run: |
+          if [ "${{ steps.detect.outcome }}" = "failure" ]; then
+            echo "Upstream Baseline Requirements changed."
+            echo "A human must review policies/standards_baseline.yaml."
+          else
+            echo "Upstream digest unchanged; no review required."
+          fi
 
       - name: Create pull request if sync changed
         uses: peter-evans/create-pull-request@v8

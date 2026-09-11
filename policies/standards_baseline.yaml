@@ -1,17 +1,104 @@
-terms: []
+# Tracked standards baseline.
+#
+# This file is HAND-MAINTAINED and deliberately so. It previously carried
+# values produced by a regex scrape of the CA/Browser Forum BR markdown, which
+# hard-preferred the string "200" and would therefore have kept recommending a
+# 200-day maximum straight through the March 2027 reduction to 100 days -- the
+# feature meant to catch standards drift would have hidden it.
+#
+# `scripts/sync_cabf_baseline.py` now only detects that the upstream document
+# changed (by digest) and opens a PR asking a human to review this file. It
+# never rewrites the numbers below.
+#
+# Source: CA/Browser Forum Ballot SC-081v3, "Introduce Schedule of Reducing
+# Validity and Data Reuse Periods" (passed 11 April 2025).
+# https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/
+
 baseline:
-  source: CA/Browser Forum BR (auto-synced)
-  version: 2026.09.08
-  last_reviewed: '2026-09-08'
+  source: CA/Browser Forum Baseline Requirements
+  authority: Ballot SC-081v3
+  version: '2026.09.11'
+  last_reviewed: '2026-09-11'
+  reviewed_by: standards-owner
   references:
-  - CAB Forum Baseline Requirements
-  - RFC 5280
+    - CAB Forum Baseline Requirements
+    - CAB Forum Ballot SC-081v3
+    - RFC 5280
+
+# Dated schedule of maximum subscriber certificate validity and domain
+# validation reuse periods. The phase in force is the last entry whose
+# `effective` date is on or before the evaluation date. `standards_watch`
+# compares the active policy against the phase in force AND against the next
+# phase, so an upcoming tightening surfaces before it lands rather than after.
+schedule:
+  - effective: '2020-09-01'
+    max_validity_days: 398
+    dcv_reuse_days: 398
+    note: Pre-SC-081 baseline.
+  - effective: '2026-03-15'
+    max_validity_days: 200
+    dcv_reuse_days: 200
+    note: >-
+      First SC-081v3 reduction. Subject Identity Information reuse also drops
+      from 825 to 398 days.
+  - effective: '2027-03-15'
+    max_validity_days: 100
+    dcv_reuse_days: 100
+    note: Second SC-081v3 reduction.
+  - effective: '2029-03-15'
+    max_validity_days: 47
+    dcv_reuse_days: 10
+    note: >-
+      Final SC-081v3 target. Manual revalidation is impractical at this
+      cadence; issuance automation is effectively mandatory.
+
+# Non-dated expectations that apply across all phases.
 expected:
   certificate:
     max_validity_days: 200
+    reject_expired: true
+    reject_not_yet_valid: true
   key:
     minimum_rsa_bits: 2048
+    minimum_ec_bits: 256
+    allowed_ec_curves:
+      - secp256r1
+      - secp384r1
+      - secp521r1
   signature:
     prohibited_algorithms:
-    - md5
-    - sha1
+      - md5
+      - sha1
+
+# Normative terms the policy profiles are expected to cite. Previously an empty
+# list, because the sync script overwrote the file and dropped them, leaving the
+# term-alignment comparison with nothing to check.
+terms:
+  - id: CABF-BR-6.3.2
+    title: Certificate Validity Period
+    summary: >-
+      Subscriber certificate validity must not exceed the maximum for the
+      SC-081v3 phase currently in force.
+  - id: CABF-BR-6.1.5
+    title: Minimum Key Size
+    summary: >-
+      RSA keys must be at least 2048 bits. ECDSA keys must use NIST P-256,
+      P-384 or P-521.
+  - id: CABF-BR-7.1.3
+    title: Prohibited Signature Algorithms
+    summary: SHA-1 and MD5 must not be used to sign subscriber certificates.
+  - id: CABF-BR-7.1.4.2
+    title: Internal Name Prohibition
+    summary: >-
+      Certificates must not contain internal server names or reserved IP
+      addresses.
+  - id: CABF-BR-3.2.2.4
+    title: Domain Control Validation
+    summary: >-
+      CAs must verify applicant control of the domain using an approved DCV
+      method.
+  - id: RFC-5280-4.1.2.5
+    title: Validity Window
+    summary: >-
+      A certificate is valid only between its notBefore and notAfter times;
+      outside that window it provides no assurance.
