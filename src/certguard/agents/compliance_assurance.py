@@ -61,7 +61,29 @@ class ComplianceAssuranceAgent(BaseAgent):
                 )
                 continue
 
-            status = "pass" if check_map[control] == "pass" else "fail"
+            reported = check_map[control]
+            # A control the policy did not enable is reported as such. Calling
+            # it a failure would punish a deliberate policy choice; calling it
+            # a pass would repeat the dishonesty this status exists to fix.
+            if reported == "not_applicable":
+                assurance_checks.append(
+                    CheckResult(
+                        name=f"assure_{control}",
+                        status="not_applicable",
+                        details="Control is defined but not enabled by policy.",
+                    )
+                )
+                continue
+            if reported == "waived":
+                assurance_checks.append(
+                    CheckResult(
+                        name=f"assure_{control}",
+                        status="waived",
+                        details="Control failed and was suppressed by an approved waiver.",
+                    )
+                )
+                continue
+            status = "pass" if reported == "pass" else "fail"
             details = (
                 "Control is present and passing."
                 if status == "pass"
@@ -94,19 +116,24 @@ class ComplianceAssuranceAgent(BaseAgent):
             )
         )
 
-        success = all(item.status == "pass" for item in assurance_checks)
+        success = not any(item.status == "fail" for item in assurance_checks)
         return AgentResult(
             agent=self.name,
             success=success,
             checks=assurance_checks,
             data={
                 "required_controls": required_controls,
-                "controls_verified": len(required_controls),
+                "controls_verified": len(
+                    [i for i in assurance_checks if i.status in {"pass", "fail", "waived"}]
+                ),
+                "controls_not_applicable": len(
+                    [i for i in assurance_checks if i.status == "not_applicable"]
+                ),
             },
         )
 
     def _normalize_checks(self, checks: list[Any]) -> dict[str, str] | None:
-        allowed_statuses = {"pass", "fail", "waived"}
+        allowed_statuses = {"pass", "fail", "waived", "not_applicable"}
         normalized: dict[str, str] = {}
         for item in checks:
             if not isinstance(item, dict):

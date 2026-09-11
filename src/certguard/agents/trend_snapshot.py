@@ -35,6 +35,10 @@ class TrendSnapshotAgent(BaseAgent):
         checks = report.get("checks", [])
         passed = len([item for item in checks if item.get("status") == "pass"])
         failed = len([item for item in checks if item.get("status") == "fail"])
+        waived = len([item for item in checks if item.get("status") == "waived"])
+        not_applicable = len(
+            [item for item in checks if item.get("status") == "not_applicable"]
+        )
         total = len(checks)
 
         snapshot = {
@@ -43,9 +47,16 @@ class TrendSnapshotAgent(BaseAgent):
             "trigger": trigger,
             "certificate": report.get("certificate"),
             "compliant": bool(report.get("compliant")),
-            "score": report.get("score"),
             "risk_level": report.get("risk_level"),
-            "counts": {"total": total, "passed": passed, "failed": failed},
+            "findings": report.get("findings"),
+            "coverage": report.get("coverage"),
+            "counts": {
+                "total": total,
+                "passed": passed,
+                "failed": failed,
+                "waived": waived,
+                "not_applicable": not_applicable,
+            },
         }
 
         output_path = Path(str(output_path_raw))

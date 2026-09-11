@@ -65,10 +65,20 @@ def test_waiver_can_suppress_known_false_positive(tmp_path: Path) -> None:
         waiver_path=waiver_path,
     )
 
-    assert compliant is True
+    # sha1_cert.pem cannot be regenerated (cryptography >= 42 refuses SHA-1
+    # signatures) and is therefore also expired, which the expiry control added
+    # in 0.2.0 correctly reports. The waiver covers only signature_algorithm,
+    # so the certificate stays non-compliant -- a waiver suppresses the control
+    # it names and nothing else. test_waiver_makes_a_single_failure_compliant
+    # covers the fully-waived case.
+    assert compliant is False
     report = json.loads(report_path.read_text(encoding="utf-8"))
     signature = next(item for item in report["checks"] if item["name"] == "signature_algorithm")
     assert signature["status"] == "waived"
+    expiry = next(
+        item for item in report["checks"] if item["name"] == "certificate_not_expired"
+    )
+    assert expiry["status"] == "fail"
     waiver_evidence = json.loads(
         (evidence_dir / "waiver_results.json").read_text(encoding="utf-8")
     )
@@ -326,3 +336,36 @@ def test_crypto_transition_checks_pass_when_targets_met() -> None:
     assert validity.status == "pass"
     assert rsa_target.status == "pass"
     assert hash_target.status == "pass"
+
+
+def test_waiver_makes_a_single_failure_compliant(make_cert, tmp_path: Path) -> None:
+    """The clean waiver path: one failing control, one matching waiver."""
+    waiver_path = tmp_path / "waivers.json"
+    waiver_path.write_text(
+        json.dumps(
+            {
+                "waivers": [
+                    {
+                        "check": "rsa_key_size",
+                        "reason": "Legacy appliance, replacement scheduled",
+                        "ticket": "PKI-1001",
+                        "expires_on": "2099-01-01",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    engine = ComplianceGateEngine(policy_path=Path("policies/cabf_policy.yaml"))
+    compliant, report = engine.evaluate(
+        cert_path=make_cert(key="rsa1024"),
+        report_path=tmp_path / "report.json",
+        evidence_dir=tmp_path / "evidence",
+        waiver_path=waiver_path,
+    )
+
+    assert compliant is True
+    assert report.coverage["waived"] == 1
+    # The gate opens; the risk statement does not soften.
+    assert report.risk_level == "HIGH"

@@ -12,7 +12,14 @@ from certguard.models import AgentResult, CheckResult
 
 
 class EvidenceVaultAgent(BaseAgent):
-    """Seal evidence files with immutable SHA-256 fingerprint metadata."""
+    """Record a SHA-256 digest of the compliance report alongside run context.
+
+    This detects accidental change and single-file tampering. It is NOT a
+    signature: anyone able to rewrite the report can recompute the digest.
+    Tamper-evident custody comes from the cosign keyless signature produced in
+    CI over the evidence manifest. The file keeps the ``.seal`` suffix for
+    backwards compatibility with existing pipelines.
+    """
 
     def __init__(self) -> None:
         super().__init__(name="evidence_vault_agent")
@@ -46,7 +53,8 @@ class EvidenceVaultAgent(BaseAgent):
         manifest = {
             "evidence_file": report_path.name,
             "sha256_fingerprint": fingerprint,
-            "sealed_at": datetime.now(timezone.utc).isoformat(),
+            "integrity_note": "SHA-256 digest, not a signature.",
+            "digest_recorded_at": datetime.now(timezone.utc).isoformat(),
             "environment": os.getenv("GITHUB_WORKFLOW", "local-dev"),
             "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
             "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
@@ -62,7 +70,7 @@ class EvidenceVaultAgent(BaseAgent):
                 CheckResult(
                     name="evidence_seal",
                     status="pass",
-                    details=f"Report sealed at {seal_file} with SHA-256 fingerprint.",
+                    details=f"Report digest recorded at {seal_file} (SHA-256, not a signature).",
                 )
             ],
             data={"seal_path": str(seal_file), "fingerprint": fingerprint},

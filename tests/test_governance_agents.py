@@ -93,20 +93,100 @@ def test_standards_watch_agent_detects_policy_drift() -> None:
     agent = StandardsWatchAgent()
     policy = {
         "certificate": {"max_validity_days": 500},
-        "key": {"minimum_rsa_bits": 2048},
+        "key": {"minimum_rsa_bits": 2048, "minimum_ec_bits": 256},
         "signature": {"prohibited_algorithms": ["md5", "sha1"]},
+        "dcv": {"max_age_days": 30},
     }
     baseline = {
         "baseline": {"version": "2026.03", "last_reviewed": "2026-03-16"},
+        "schedule": [
+            {
+                "effective": "2026-03-15",
+                "max_validity_days": 200,
+                "dcv_reuse_days": 200,
+            }
+        ],
         "expected": {
             "certificate": {"max_validity_days": 200},
-            "key": {"minimum_rsa_bits": 2048},
+            "key": {"minimum_rsa_bits": 2048, "minimum_ec_bits": 256},
             "signature": {"prohibited_algorithms": ["md5", "sha1"]},
         },
     }
-    result = agent.run({"policy": policy, "baseline": baseline})
+    result = agent.run(
+        {"policy": policy, "baseline": baseline, "as_of": "2026-09-11"}
+    )
     assert result.success is False
     assert result.data["drift_count"] >= 1
+    drift_fields = {item["field"] for item in result.data["drifts"]}
+    assert "max_validity_days" in drift_fields
+
+
+def test_compliance_assurance_reports_not_applicable_controls() -> None:
+    """A control the policy did not enable is neither a pass nor a failure."""
+    agent = ComplianceAssuranceAgent()
+    report = {
+        "compliant": True,
+        "checks": [
+            {"name": "validity_days", "status": "pass"},
+            {"name": "san_extension", "status": "pass"},
+            {"name": "rsa_key_size", "status": "pass"},
+            {"name": "signature_algorithm", "status": "pass"},
+            {"name": "internal_domain_check", "status": "not_applicable"},
+        ],
+    }
+    result = agent.run({"report": report})
+
+    assert result.success is True
+    check = next(
+        item for item in result.checks if item.name == "assure_internal_domain_check"
+    )
+    assert check.status == "not_applicable"
+    assert result.data["controls_not_applicable"] == 1
+
+
+def test_compliance_assurance_reports_waived_controls() -> None:
+    agent = ComplianceAssuranceAgent()
+    report = {
+        "compliant": True,
+        "checks": [
+            {"name": "validity_days", "status": "pass"},
+            {"name": "san_extension", "status": "pass"},
+            {"name": "rsa_key_size", "status": "waived"},
+            {"name": "signature_algorithm", "status": "pass"},
+            {"name": "internal_domain_check", "status": "pass"},
+        ],
+    }
+    result = agent.run({"report": report})
+
+    check = next(item for item in result.checks if item.name == "assure_rsa_key_size")
+    assert check.status == "waived"
+    assert "approved waiver" in check.details
+
+
+def test_bug_triage_uses_severity_from_the_report() -> None:
+    """Triage must not disagree with the verdict it is triaging.
+
+    The local severity table said validity_days was medium while the engine
+    said high; the report is now the authority.
+    """
+    agent = BugTriageAgent()
+    report = {
+        "compliant": False,
+        "checks": [
+            {
+                "name": "validity_days",
+                "status": "fail",
+                "details": "too long",
+                "severity": "high",
+                "recommendation": "Shorten the validity period.",
+            }
+        ],
+    }
+    result = agent.run({"report": report})
+
+    finding = result.data["findings"][0]
+    assert finding["severity"] == "high"
+    assert finding["recommendation"] == "Shorten the validity period."
 
 
 def test_remediation_agent_returns_actions_for_failed_controls() -> None:
@@ -117,7 +197,7 @@ def test_remediation_agent_returns_actions_for_failed_controls() -> None:
     assert len(result.data["actions"]) == 2
 
 
-def test_evidence_vault_agent_seals_report(tmp_path: Path) -> None:
+def test_evidence_vault_agent_records_report_digest(tmp_path: Path) -> None:
     report_path = tmp_path / "compliance_report.json"
     report_path.write_text(json.dumps({"compliant": True}), encoding="utf-8")
 
@@ -130,3 +210,6 @@ def test_evidence_vault_agent_seals_report(tmp_path: Path) -> None:
     manifest = json.loads(seal_path.read_text(encoding="utf-8"))
     assert manifest["evidence_file"] == "compliance_report.json"
     assert len(manifest["sha256_fingerprint"]) == 64
+    # A digest is not a signature and the artefact must not imply otherwise.
+    assert manifest["integrity_note"] == "SHA-256 digest, not a signature."
+    assert "digest_recorded_at" in manifest

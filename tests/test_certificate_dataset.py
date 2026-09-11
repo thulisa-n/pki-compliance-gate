@@ -18,6 +18,9 @@ def test_certificate_fixture_dataset_exists_and_is_parseable() -> None:
         "weak_key_cert.pem",
         "no_san_cert.pem",
         "sha1_cert.pem",
+        # Permanent artefacts for the two false negatives fixed in 0.2.0.
+        "expired_cert.pem",
+        "ec_p192_cert.pem",
     }
     assert expected_files.issubset({file.name for file in pem_files})
 

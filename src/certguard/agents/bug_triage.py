@@ -33,7 +33,7 @@ class BugTriageAgent(BaseAgent):
 
         for check in failed:
             check_name = check.get("name", "unknown_check")
-            severity, recommendation = self._classify(check_name)
+            severity, recommendation = self._classify(check_name, check)
             findings.append(
                 {
                     "check": check_name,
@@ -65,7 +65,25 @@ class BugTriageAgent(BaseAgent):
             data=summary,
         )
 
-    def _classify(self, check_name: str) -> tuple[str, str]:
+    def _classify(
+        self, check_name: str, check: dict[str, Any] | None = None
+    ) -> tuple[str, str]:
+        """Resolve severity and remediation advice for a failed control.
+
+        Severity and recommendation are taken from the report itself where the
+        engine supplied them, so triage cannot disagree with the verdict. The
+        local table is only a fallback for reports produced by older engines.
+        """
+        reported_severity = None
+        reported_recommendation = None
+        if isinstance(check, dict):
+            value = check.get("severity")
+            if isinstance(value, str) and value.strip():
+                reported_severity = value.strip().lower()
+            advice = check.get("recommendation")
+            if isinstance(advice, str) and advice.strip():
+                reported_recommendation = advice.strip()
+
         severity_map = {
             "signature_algorithm": (
                 "critical",
@@ -88,9 +106,13 @@ class BugTriageAgent(BaseAgent):
                 "Reduce validity period to meet policy threshold.",
             ),
         }
-        return severity_map.get(
+        fallback_severity, fallback_recommendation = severity_map.get(
             check_name,
             ("medium", "Review policy mapping and certificate profile for this check."),
+        )
+        return (
+            reported_severity or fallback_severity,
+            reported_recommendation or fallback_recommendation,
         )
 
     def _overall_severity(self, findings: list[dict[str, str]]) -> str:

@@ -92,8 +92,13 @@ def test_compliant_certificate_passes(tmp_path: Path) -> None:
     assert report["compliant"] is True
     assert len(report["checks"]) >= 5
     assert report_path.with_suffix(".json.seal").exists()
-    assert report["score"] == 100.0
+    # Report schema 2.0 replaced the percentage score with severity buckets and
+    # an explicit coverage breakdown.
+    assert "score" not in report
     assert report["risk_level"] == "LOW"
+    assert sum(report["findings"].values()) == 0
+    assert report["coverage"]["failed"] == 0
+    assert report["coverage"]["controls_evaluated"] >= 5
 
 
 def test_internal_domain_fails_policy(tmp_path: Path) -> None:
@@ -153,4 +158,4 @@ def test_signature_algorithm_blocks_sha1_fixture(tmp_path: Path) -> None:
     assert signature_check["standard_reference"] == "CA/B Forum BR 7.1.3"
     assert signature_check["severity"] == "critical"
     assert report["risk_level"] == "HIGH"
-    assert report["score"] < 100
+    assert report["findings"]["critical"] >= 1

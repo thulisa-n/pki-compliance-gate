@@ -1,13 +1,14 @@
 metadata:
+  policy_schema_version: "2.0"
   standard: "CA/Browser Forum Baseline Requirements"
-  version: "1.0.0"
-  last_updated: "2026-03-16"
-  terms: "CABF Baseline Requirements policy profile for CertGuard MVP"
+  version: "2.0.0"
+  last_updated: "2026-09-11"
+  terms: "CABF Baseline Requirements policy profile"
 
 terms:
   - id: "CABF-BR-6.3.2"
     title: "Certificate Validity Period"
-    summary: "Subscriber certificates SHALL NOT exceed 398 days; CertGuard MVP uses 200 days."
+    summary: "Subscriber certificate validity SHALL NOT exceed the maximum for the SC-081v3 phase in force: 200 days from 2026-03-15, 100 days from 2027-03-15, 47 days from 2029-03-15."
   - id: "CABF-BR-7.1.2"
     title: "Subject Alternative Name Required"
     summary: "All certificates MUST include at least one SAN value."
@@ -16,10 +17,13 @@ terms:
     summary: "SHA-1 and MD5 SHALL NOT be used for signing subscriber certificates."
   - id: "CABF-BR-6.1.5"
     title: "Minimum Key Size"
-    summary: "RSA keys MUST be at least 2048 bits."
+    summary: "RSA keys MUST be at least 2048 bits. ECDSA keys MUST use NIST P-256, P-384 or P-521."
   - id: "CABF-BR-7.1.4.2"
     title: "Internal Name Prohibition"
     summary: "Certificates SHALL NOT contain internal server names or reserved IP addresses."
+  - id: "RFC-5280-4.1.2.5"
+    title: "Validity Window"
+    summary: "A certificate provides no assurance outside its notBefore/notAfter window; expired certificates MUST be rejected."
   - id: "CABF-BR-3.2.2.4"
     title: "Domain Control Validation"
     summary: "CAs MUST verify applicant control of the domain using approved DCV methods."
@@ -27,9 +31,31 @@ terms:
 certificate:
   max_validity_days: 200
   require_san: true
+  # Expiry enforcement is on by default from policy schema 2.0. Before this,
+  # only the LENGTH of the validity window was checked, so a certificate that
+  # had already expired evaluated as fully compliant.
+  reject_expired: true
+  reject_not_yet_valid: true
+  # Renewal pressure is operational, not a compliance defect: a certificate
+  # valid for another 10 days is still compliant. Set a positive number of days
+  # to surface it as a low-severity finding (exit code 1).
+  warn_if_expires_within_days: 0
 
 key:
   minimum_rsa_bits: 2048
+  # Key policy applies to every algorithm from schema 2.0. Previously any
+  # non-RSA key skipped key-strength checks entirely, so a 192-bit EC
+  # certificate passed unchallenged.
+  allowed_algorithms:
+    - rsa
+    - ec
+  minimum_ec_bits: 256
+  # CA/Browser Forum BR 6.1.5 permits only these NIST curves for subscriber
+  # ECDSA keys.
+  allowed_ec_curves:
+    - secp256r1
+    - secp384r1
+    - secp521r1
 
 signature:
   prohibited_algorithms:

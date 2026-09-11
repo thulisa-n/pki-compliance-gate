@@ -1,6 +1,7 @@
 metadata:
+  policy_schema_version: "2.0"
   standard: "CP/CPS Control Profile"
-  version: "2026.1"
+  version: "2026.2"
   last_updated: "2026-04-01"
   terms: "CP/CPS-aligned control overlay for CertGuard governance simulation"
 
@@ -21,9 +22,31 @@ terms:
 certificate:
   max_validity_days: 200
   require_san: true
+  # Expiry enforcement is on by default from policy schema 2.0. Before this,
+  # only the LENGTH of the validity window was checked, so a certificate that
+  # had already expired evaluated as fully compliant.
+  reject_expired: true
+  reject_not_yet_valid: true
+  # Renewal pressure is operational, not a compliance defect: a certificate
+  # valid for another 10 days is still compliant. Set a positive number of days
+  # to surface it as a low-severity finding (exit code 1).
+  warn_if_expires_within_days: 0
 
 key:
   minimum_rsa_bits: 2048
+  # Key policy applies to every algorithm from schema 2.0. Previously any
+  # non-RSA key skipped key-strength checks entirely, so a 192-bit EC
+  # certificate passed unchallenged.
+  allowed_algorithms:
+    - rsa
+    - ec
+  minimum_ec_bits: 256
+  # CA/Browser Forum BR 6.1.5 permits only these NIST curves for subscriber
+  # ECDSA keys.
+  allowed_ec_curves:
+    - secp256r1
+    - secp384r1
+    - secp521r1
 
 signature:
   prohibited_algorithms:

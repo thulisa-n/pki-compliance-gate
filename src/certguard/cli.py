@@ -20,18 +20,56 @@ from certguard.agents.external_signal_watch import ExternalSignalWatchAgent
 from certguard.agents.trend_snapshot import TrendSnapshotAgent
 from certguard.engine import ComplianceGateEngine
 from certguard.governance import enforce_protected_context
+from certguard.models import SEVERITY_ORDER, ComplianceReport
+from certguard import __version__
+
+def packaged_policy_path() -> str:
+    return str(files("certguard.data").joinpath("cabf_policy.yaml"))
 
 
 def default_policy_path() -> str:
-    """Return the repository policy when present, otherwise the packaged copy."""
+    """Return the repository policy when present, otherwise the packaged copy.
+
+    Auto-detection is a convenience for running inside a checkout, but it means
+    the effective policy depends on the working directory. Callers are told
+    which file was chosen (see ``_announce_policy_source``) so evidence never
+    records a verdict against an unidentified policy.
+    """
     repository_policy = Path("policies/cabf_policy.yaml")
     if repository_policy.exists():
         return str(repository_policy)
-    return str(files("certguard.data").joinpath("cabf_policy.yaml"))
+    return packaged_policy_path()
+
+
+def _announce_policy_source(args: argparse.Namespace) -> None:
+    """Warn when the policy was inferred from the working directory."""
+    if getattr(args, "_policy_explicit", False):
+        return
+    resolved = Path(args.policy)
+    if resolved == Path("policies/cabf_policy.yaml"):
+        print(
+            f"NOTE: using policy auto-detected from the working directory: {resolved}. "
+            "Pass --policy explicitly to pin it.",
+            file=sys.stderr,
+        )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="CertGuard compliance gate runner")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"certguard {__version__}",
+        help="Print the engine version and exit",
+    )
+    parser.add_argument(
+        "--fail-on-waived",
+        action="store_true",
+        help=(
+            "Treat waived findings as failures. Use for audit runs where an "
+            "approved exception must still block rather than pass the gate."
+        ),
+    )
     parser.add_argument(
         "--mode",
         choices=[
@@ -150,7 +188,13 @@ def parse_args() -> argparse.Namespace:
         default="reports/external_control_recommendations.json",
         help="Path to external signal recommendation output JSON",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    # Record whether --policy was supplied so auto-detection can be flagged.
+    args._policy_explicit = any(
+        token == "--policy" or token.startswith("--policy=")
+        for token in sys.argv[1:]
+    )
+    return args
 
 
 def main() -> int:
@@ -187,6 +231,7 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         raise ValueError("--cert is required in evaluate mode.")
     if args.protected_run:
         enforce_protected_context(os.environ)
+    _announce_policy_source(args)
     engine = ComplianceGateEngine(policy_path=Path(args.policy))
 
     compliant, report = engine.evaluate(
@@ -205,27 +250,65 @@ def _run_evaluate(args: argparse.Namespace) -> int:
     if args.output == "json":
         print(json.dumps(report.to_dict(), indent=2))
     else:
-        print("Certificate:", report.certificate)
-        print("Compliant:", "YES" if compliant else "NO")
-        print(f"Policy Version: {report.policy_version}")
-        print(f"Compliance Score: {report.score}%")
-        print(f"Risk Level: {report.risk_level}")
-        for check in report.checks:
-            rule_tag = f"[{check.rule_id}] " if check.rule_id else ""
-            print(
-                f"- [{check.category}] {rule_tag}{check.name}: {check.status.upper()} "
-                f"({check.details})"
-            )
-            if args.explain:
-                if check.rule_id:
-                    print(f"  Rule ID: {check.rule_id}")
-                print(f"  Why this matters: {check.rationale}")
-                print(f"  Standard: {check.standard_reference}")
-                print(f"  Recommendation: {check.recommendation}")
-        print("Lint:", report.lint.get("status"))
+        _print_report(report, compliant=compliant, explain=args.explain)
         print(f"Report written to {args.report}")
         print(f"Evidence written to {args.evidence_dir}")
-    return _exit_code_from_report(report)
+    return _exit_code_from_report(report, fail_on_waived=args.fail_on_waived)
+
+
+STATUS_LABELS = {
+    "pass": "PASS",
+    "fail": "FAIL",
+    "waived": "WAIVED",
+    "not_applicable": "N/A",
+}
+
+
+def _print_report(
+    report: ComplianceReport, *, compliant: bool, explain: bool
+) -> None:
+    """Render a verdict without a single percentage.
+
+    A percentage was removed in report schema 2.0: controls disabled by policy
+    counted toward it, so an almost-empty profile read 100%, and a critical
+    failure could still present as ~95%. Findings by severity plus an explicit
+    coverage line say what actually happened.
+    """
+    print("Certificate:", report.certificate)
+    print("Compliant:", "YES" if compliant else "NO")
+    print(f"Risk Level: {report.risk_level}")
+    print(f"Engine Version: {report.engine_version}")
+    print(f"Policy Version: {report.policy_version}")
+
+    findings = ", ".join(
+        f"{severity}={report.findings.get(severity, 0)}"
+        for severity in SEVERITY_ORDER
+        if report.findings.get(severity)
+    )
+    print(f"Findings: {findings or 'none'}")
+    coverage = report.coverage
+    print(
+        f"Coverage: {coverage['controls_evaluated']} of "
+        f"{coverage['controls_defined']} controls evaluated "
+        f"({coverage['passed']} pass, {coverage['failed']} fail, "
+        f"{coverage['waived']} waived, {coverage['not_applicable']} not applicable)"
+    )
+    print("Lint:", report.lint.get("status"))
+    print("")
+
+    for check in report.checks:
+        rule_tag = f"[{check.rule_id}] " if check.rule_id else ""
+        label = STATUS_LABELS.get(check.status, check.status.upper())
+        print(
+            f"- [{check.category}] {rule_tag}{check.name}: {label} ({check.details})"
+        )
+        if explain:
+            if check.rule_id:
+                print(f"  Rule ID: {check.rule_id}")
+            print(f"  Severity: {check.normalized_severity()}")
+            print(f"  Why this matters: {check.rationale}")
+            print(f"  Standard: {check.standard_reference}")
+            print(f"  Recommendation: {check.recommendation}")
 
 
 def _run_triage(args: argparse.Namespace) -> int:
@@ -438,8 +521,16 @@ def _read_yaml(path: Path) -> Any:
         raise ValueError(f"Invalid YAML in {path}: {exc}") from exc
 
 
-def _exit_code_from_report(report) -> int:
-    failed = [check for check in report.checks if check.status == "fail"]
+def _exit_code_from_report(report, fail_on_waived: bool = False) -> int:
+    """Map a report onto the documented exit codes.
+
+    0 no failing checks, 1 low-severity only, 2 medium/high or lint failure,
+    3 at least one critical failure. With ``fail_on_waived`` a waived finding is
+    counted as if it had failed, so an approved exception still blocks an audit
+    run rather than silently passing the gate.
+    """
+    blocking_statuses = {"fail", "waived"} if fail_on_waived else {"fail"}
+    failed = [check for check in report.checks if check.status in blocking_statuses]
     lint_failed = report.lint.get("status") == "fail"
     if not failed:
         return 2 if lint_failed else 0

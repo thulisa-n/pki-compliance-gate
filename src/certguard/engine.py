@@ -11,11 +11,12 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+from certguard import __version__
 from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
 from certguard.models import CheckResult, ComplianceReport
-from certguard.policy import load_policy
+from certguard.policy import load_policy, policy_digest
 
 
 class ComplianceGateEngine:
@@ -36,13 +37,21 @@ class ComplianceGateEngine:
         issuer_cert_path: Path | None = None,
         waiver_path: Path | None = None,
     ) -> tuple[bool, ComplianceReport]:
-        parser_result = self.parser_agent.run({"cert_path": str(cert_path)})
+        # One evaluation instant for the whole run, so the leaf and the issuer
+        # are judged against the same clock and the report can state it.
+        evaluated_at = datetime.now(timezone.utc)
+
+        parser_result = self.parser_agent.run(
+            {"cert_path": str(cert_path), "evaluated_at": evaluated_at}
+        )
         if not parser_result.success:
             raise ValueError("; ".join(parser_result.errors))
 
         issuer_parser_data: dict[str, Any] | None = None
         if issuer_cert_path is not None:
-            issuer_result = self.parser_agent.run({"cert_path": str(issuer_cert_path)})
+            issuer_result = self.parser_agent.run(
+                {"cert_path": str(issuer_cert_path), "evaluated_at": evaluated_at}
+            )
             if not issuer_result.success:
                 raise ValueError("; ".join(issuer_result.errors))
             issuer_parser_data = issuer_result.data
@@ -98,38 +107,81 @@ class ComplianceGateEngine:
         seal_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
         if not seal_result.success:
             raise ValueError("; ".join(seal_result.errors))
-        self._write_evidence_manifest(
-            evidence_dir=evidence_dir,
-            report_path=report_path,
-            seal_path=Path(seal_result.data["seal_path"]),
-        )
         self._append_compliance_decision_log(
             evidence_dir=evidence_dir,
             report=report,
             failed_checks=policy_failures,
             lint_status=lint_result.get("status", "unknown"),
+            waiver_path=waiver_path,
+        )
+        # Written last so the decision log it covers is already on disk and its
+        # digest is recorded.
+        self._write_evidence_manifest(
+            evidence_dir=evidence_dir,
+            report_path=report_path,
+            seal_path=Path(seal_result.data["seal_path"]),
+            cert_path=cert_path,
+            waiver_path=waiver_path,
         )
 
         return compliant, report
 
     def _write_evidence_manifest(
-        self, evidence_dir: Path, report_path: Path, seal_path: Path
+        self,
+        evidence_dir: Path,
+        report_path: Path,
+        seal_path: Path,
+        cert_path: Path,
+        waiver_path: Path | None,
     ) -> None:
+        """Record every evidence file with its SHA-256 digest.
+
+        The manifest previously listed only file paths, which made it an index
+        rather than evidence: nothing in it could detect that a listed file had
+        changed. Digests plus the engine and policy versions make the bundle
+        self-describing and independently checkable.
+        """
         manifest_path = evidence_dir / "evidence_manifest.json"
+        listed = [
+            report_path,
+            seal_path,
+            evidence_dir / "policy_checks.json",
+            evidence_dir / "lint_results.json",
+            evidence_dir / "waiver_results.json",
+            evidence_dir / "opa_results.json",
+            evidence_dir / "compliance_decisions.jsonl",
+        ]
+        if waiver_path is not None:
+            listed.append(waiver_path)
+
         payload = {
+            "manifest_version": "2.0",
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "engine_version": __version__,
+            "policy_version": self.policy.get("metadata", {}).get("version", "unknown"),
+            "policy_sha256": policy_digest(self.policy),
+            "policy_source": str(self.policy_path),
+            "certificate_sha256": _sha256_path(cert_path),
             "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
             "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
             "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
+            "commit_sha": os.getenv("GITHUB_SHA", "local-commit"),
             "report_file": str(report_path),
             "seal_file": str(seal_path),
             "evidence_files": [
-                str(evidence_dir / "policy_checks.json"),
-                str(evidence_dir / "lint_results.json"),
-                str(evidence_dir / "waiver_results.json"),
-                str(evidence_dir / "opa_results.json"),
-                str(evidence_dir / "compliance_decisions.jsonl"),
+                {
+                    "path": str(path),
+                    "sha256": _sha256_path(path),
+                    "size_bytes": path.stat().st_size if path.is_file() else None,
+                }
+                for path in listed
             ],
+            "integrity_note": (
+                "SHA-256 digests detect accidental or single-file modification. "
+                "They are not signatures: a party able to rewrite the bundle can "
+                "recompute them. Use the cosign keyless signature over this "
+                "manifest for tamper-evident custody."
+            ),
         }
         manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -139,23 +191,35 @@ class ComplianceGateEngine:
         report: ComplianceReport,
         failed_checks: list[CheckResult],
         lint_status: str,
+        waiver_path: Path | None = None,
     ) -> None:
         decision_log_path = evidence_dir / "compliance_decisions.jsonl"
         prev_hash = self._last_decision_hash(decision_log_path)
-        waived_checks = [check.name for check in report.checks if check.status == "waived"]
+        waived_checks = [
+            check.name for check in report.checks if check.status == "waived"
+        ]
         entry: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "engine_version": __version__,
             "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
             "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
             "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
             "commit_sha": os.getenv("GITHUB_SHA", "local-commit"),
             "policy_version": report.policy_version,
+            "policy_sha256": policy_digest(self.policy),
             "certificate": report.certificate,
             "compliant": report.compliant,
-            "score": report.score,
             "risk_level": report.risk_level,
+            "findings": report.findings,
+            "coverage": report.coverage,
             "failed_checks": [check.name for check in failed_checks],
             "waived_checks": waived_checks,
+            # Waivers can suppress a failing gate, so the bytes that authorised
+            # the suppression are part of the decision record.
+            "waiver_file": str(waiver_path) if waiver_path is not None else None,
+            "waiver_file_sha256": (
+                _sha256_path(waiver_path) if waiver_path is not None else None
+            ),
             "lint_status": lint_status,
             "previous_entry_hash": prev_hash,
         }
@@ -406,10 +470,14 @@ class ComplianceGateEngine:
 
         now = datetime.now(timezone.utc).date()
         applied: list[dict[str, Any]] = []
+        resulting_checks: list[CheckResult] = []
 
         for check in mutable_checks:
             if check.status != "fail":
+                resulting_checks.append(check)
                 continue
+
+            waived_check: CheckResult | None = None
             for waiver in waivers:
                 if not isinstance(waiver, dict):
                     continue
@@ -427,12 +495,18 @@ class ComplianceGateEngine:
                     continue
                 if expiry < now:
                     continue
-                check.status = "waived"
                 reason = waiver.get("reason", "No reason provided")
-                check.details = f"{check.details} Waived: {reason} (ticket: {ticket})."
+                # Return a copy rather than mutating: the CheckResult objects
+                # belong to the validator agent's result and must not be
+                # rewritten after the fact.
+                waived_check = check.replace_status(
+                    "waived",
+                    f"{check.details} Waived: {reason} (ticket: {ticket}).",
+                )
                 applied.append(
                     {
                         "check": check.name,
+                        "severity": check.normalized_severity(),
                         "reason": reason,
                         "ticket": ticket,
                         "expires_on": expires_on,
@@ -440,8 +514,10 @@ class ComplianceGateEngine:
                 )
                 break
 
+            resulting_checks.append(waived_check if waived_check is not None else check)
+
         return {
-            "checks": mutable_checks,
+            "checks": resulting_checks,
             "summary": {
                 "status": "applied" if applied else "none",
                 "details": f"Applied {len(applied)} waiver(s).",
@@ -505,10 +581,10 @@ class ComplianceGateEngine:
         fail_on_error = lint_cfg.get("fail_on_error", True)
         parsed = self._parse_zlint_output(process.stdout or "")
 
+        matched: list[dict[str, str]] = [
+            entry for entry in parsed["entries"] if entry["severity"] in fail_severities
+        ]
         if parsed["entries"]:
-            matched = [
-                entry for entry in parsed["entries"] if entry["severity"] in fail_severities
-            ]
             status = "fail" if matched else "pass"
             details = f"zlint parsed {len(parsed['entries'])} checks"
         else:
@@ -526,7 +602,7 @@ class ComplianceGateEngine:
             "summary": {
                 "fail_severities": sorted(fail_severities),
                 "counts": parsed["counts"],
-                "matched_failures": [entry["lint"] for entry in matched] if parsed["entries"] else [],
+                "matched_failures": [entry["lint"] for entry in matched],
             },
             "raw_output": combined_output.strip(),
         }
@@ -588,3 +664,14 @@ class ComplianceGateEngine:
             "not applicable": "na",
         }
         return aliases.get(normalized, normalized)
+
+
+def _sha256_path(path: Path) -> str | None:
+    """SHA-256 of a file, or None when it is absent."""
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()

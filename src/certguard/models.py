@@ -2,13 +2,29 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
+
+from certguard import REPORT_SCHEMA_VERSION, __version__
+
+#: A control either passed, failed, was waived by an approved exception, or was
+#: never evaluated because policy did not enable it.
+#:
+#: ``not_applicable`` exists so that an evidence artefact never claims a control
+#: passed on a run where it was not assessed. Prior to report schema 2.0 these
+#: were recorded as ``pass``, which inflated results and misrepresented the
+#: evidence to a reviewer.
+Status = Literal["pass", "fail", "waived", "not_applicable"]
+
+VALID_STATUSES: frozenset[str] = frozenset({"pass", "fail", "waived", "not_applicable"})
+
+#: Ordered most to least serious. Used for risk derivation and report ordering.
+SEVERITY_ORDER: tuple[str, ...] = ("critical", "high", "medium", "low", "unknown")
 
 
 @dataclass
 class CheckResult:
     name: str
-    status: str
+    status: Status
     details: str
     rule_id: str | None = None
     category: str | None = None
@@ -21,6 +37,21 @@ class CheckResult:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def normalized_severity(self) -> str:
+        value = (self.severity or "unknown").strip().lower()
+        return value if value in SEVERITY_ORDER else "unknown"
+
+    def replace_status(self, status: Status, details: str) -> "CheckResult":
+        """Return a copy with a new status, leaving the original untouched.
+
+        Waiver application uses this rather than mutating in place, so the
+        result returned by an agent is never retroactively rewritten.
+        """
+        clone = CheckResult(**asdict(self))
+        clone.status = status
+        clone.details = details
+        return clone
 
 
 @dataclass
@@ -43,16 +74,31 @@ class AgentResult:
 
 @dataclass
 class ComplianceReport:
+    """A single certificate evaluation.
+
+    Report schema 2.0 deliberately carries no single percentage score. A
+    percentage invited two misreadings that a compliance artefact cannot
+    afford: controls disabled by policy counted as passes (so an almost-empty
+    profile read 100%), and a certificate failing a *critical* control could
+    still present as ~95% because most controls happened to pass. Findings are
+    reported by severity, and coverage is reported separately, so a reviewer can
+    see both what failed and how much was actually assessed.
+    """
+
     certificate: str
     generated_at: str
     compliant: bool
     checks: list[CheckResult]
     parser_data: dict[str, Any]
     lint: dict[str, Any]
-    score: float
     risk_level: str
+    findings: dict[str, int]
+    coverage: dict[str, int]
     failed_controls: list[dict[str, Any]]
+    waived_controls: list[dict[str, Any]]
     policy_version: str
+    engine_version: str = __version__
+    report_schema_version: str = REPORT_SCHEMA_VERSION
 
     @classmethod
     def new(
@@ -65,21 +111,28 @@ class ComplianceReport:
         policy_version: str,
     ) -> "ComplianceReport":
         failed_controls = [
-            {
-                "name": check.name,
-                "rule_id": check.rule_id,
-                "severity": (check.severity or "unknown").lower(),
-                "standard_reference": check.standard_reference,
-            }
-            for check in checks
-            if check.status == "fail"
+            _control_summary(check) for check in checks if check.status == "fail"
         ]
-        total_checks = len(checks)
-        passed_checks = len(
-            [check for check in checks if check.status in {"pass", "waived"}]
-        )
-        score = round((passed_checks / total_checks) * 100, 2) if total_checks else 0.0
-        risk_level = _risk_from_failed_controls(failed_controls)
+        waived_controls = [
+            _control_summary(check) for check in checks if check.status == "waived"
+        ]
+
+        findings = {severity: 0 for severity in SEVERITY_ORDER}
+        for check in checks:
+            if check.status == "fail":
+                findings[check.normalized_severity()] += 1
+
+        coverage = {
+            "controls_defined": len(checks),
+            "controls_evaluated": len(
+                [c for c in checks if c.status in {"pass", "fail", "waived"}]
+            ),
+            "passed": len([c for c in checks if c.status == "pass"]),
+            "failed": len([c for c in checks if c.status == "fail"]),
+            "waived": len([c for c in checks if c.status == "waived"]),
+            "not_applicable": len([c for c in checks if c.status == "not_applicable"]),
+        }
+
         return cls(
             certificate=certificate,
             generated_at=datetime.now(timezone.utc).isoformat(),
@@ -87,33 +140,71 @@ class ComplianceReport:
             checks=checks,
             parser_data=parser_data,
             lint=lint,
-            score=score,
-            risk_level=risk_level,
+            risk_level=risk_level_for(
+                failed_controls=failed_controls,
+                waived_controls=waived_controls,
+                lint_status=str(lint.get("status", "unknown")),
+            ),
+            findings=findings,
+            coverage=coverage,
             failed_controls=failed_controls,
+            waived_controls=waived_controls,
             policy_version=policy_version,
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "report_schema_version": self.report_schema_version,
+            "engine_version": self.engine_version,
             "certificate": self.certificate,
             "generated_at": self.generated_at,
             "compliant": self.compliant,
+            "risk_level": self.risk_level,
+            "findings": self.findings,
+            "coverage": self.coverage,
             "checks": [check.to_dict() for check in self.checks],
             "parser_data": self.parser_data,
             "lint": self.lint,
-            "score": self.score,
-            "risk_level": self.risk_level,
             "failed_controls": self.failed_controls,
+            "waived_controls": self.waived_controls,
             "policy_version": self.policy_version,
         }
 
+    def has_failures(self) -> bool:
+        return any(check.status == "fail" for check in self.checks)
 
-def _risk_from_failed_controls(failed_controls: list[dict[str, Any]]) -> str:
+
+def _control_summary(check: CheckResult) -> dict[str, Any]:
+    return {
+        "name": check.name,
+        "rule_id": check.rule_id,
+        "severity": check.normalized_severity(),
+        "standard_reference": check.standard_reference,
+    }
+
+
+def risk_level_for(
+    failed_controls: list[dict[str, Any]],
+    waived_controls: list[dict[str, Any]],
+    lint_status: str,
+) -> str:
+    """Derive a risk level from failures, waivers, and lint outcome.
+
+    A waiver suppresses the *gate* (the pipeline is allowed to continue) but it
+    must never suppress the *risk statement*: the underlying weakness is still
+    present in the certificate. A waived critical finding therefore still yields
+    HIGH. Lint failure contributes at least MEDIUM, since previously a
+    lint-only failure reported LOW while the certificate was non-compliant.
+    """
     severities = {item.get("severity", "unknown") for item in failed_controls}
+    severities |= {item.get("severity", "unknown") for item in waived_controls}
+
     if "critical" in severities:
         return "HIGH"
     if "high" in severities or "medium" in severities:
         return "MEDIUM"
-    if "low" in severities:
+    if lint_status.strip().lower() == "fail":
+        return "MEDIUM"
+    if "low" in severities or "unknown" in severities:
         return "LOW"
     return "LOW"

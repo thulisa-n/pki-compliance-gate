@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from certguard.agents.base import BaseAgent
-from certguard.models import AgentResult, CheckResult
+from certguard.models import AgentResult, CheckResult, Status
 
 CHECK_METADATA: dict[str, dict[str, str]] = {
     "validity_days": {
@@ -15,6 +15,30 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rationale": "Long validity windows increase exposure when private keys are compromised.",
         "recommendation": "Reissue certificate with validity at or below policy threshold.",
     },
+    "certificate_not_expired": {
+        "rule_id": "RFC-5280-4.1.2.5",
+        "category": "VALIDITY",
+        "severity": "critical",
+        "standard_reference": "RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2",
+        "rationale": "An expired certificate is rejected by relying parties and provides no assurance.",
+        "recommendation": "Renew or replace the certificate before deploying it.",
+    },
+    "certificate_not_yet_valid": {
+        "rule_id": "RFC-5280-4.1.2.5",
+        "category": "VALIDITY",
+        "severity": "high",
+        "standard_reference": "RFC 5280 4.1.2.5",
+        "rationale": "A certificate used before its notBefore time fails path validation.",
+        "recommendation": "Wait until the notBefore time or reissue with a current validity window.",
+    },
+    "certificate_expiry_window": {
+        "rule_id": "OPS-RENEWAL-WINDOW",
+        "category": "VALIDITY",
+        "severity": "low",
+        "standard_reference": "Operational renewal policy",
+        "rationale": "Certificates renewed inside a short window risk an outage if automation fails.",
+        "recommendation": "Renew the certificate before it enters the configured warning window.",
+    },
     "san_extension": {
         "rule_id": "RFC-5280-4.2.1.6",
         "category": "IDENTITY",
@@ -23,6 +47,14 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "rationale": "Modern TLS clients rely on SAN for hostname validation.",
         "recommendation": "Issue certificate with SAN entries matching intended hostnames.",
     },
+    "key_algorithm_allowed": {
+        "rule_id": "CAB-BR-6.1.5",
+        "category": "CRYPTOGRAPHY",
+        "severity": "critical",
+        "standard_reference": "CA/B Forum BR 6.1.5",
+        "rationale": "Only approved public key algorithms carry assurance under the policy profile.",
+        "recommendation": "Reissue using a public key algorithm permitted by policy.",
+    },
     "rsa_key_size": {
         "rule_id": "CAB-BR-6.1.5",
         "category": "CRYPTOGRAPHY",
@@ -30,6 +62,22 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "standard_reference": "CA/B Forum BR 6.1.5",
         "rationale": "Weak RSA keys reduce cryptographic strength and trust assurance.",
         "recommendation": "Generate key pair with RSA 2048+ before issuance.",
+    },
+    "ec_key_size": {
+        "rule_id": "CAB-BR-6.1.5",
+        "category": "CRYPTOGRAPHY",
+        "severity": "critical",
+        "standard_reference": "CA/B Forum BR 6.1.5",
+        "rationale": "Undersized elliptic curve keys fall below the required security level.",
+        "recommendation": "Generate an EC key of at least the policy minimum size (P-256 or stronger).",
+    },
+    "ec_curve_allowed": {
+        "rule_id": "CAB-BR-6.1.5",
+        "category": "CRYPTOGRAPHY",
+        "severity": "critical",
+        "standard_reference": "CA/B Forum BR 6.1.5",
+        "rationale": "Only NIST P-256, P-384 and P-521 are permitted for publicly trusted ECDSA keys.",
+        "recommendation": "Reissue using an approved named curve (secp256r1, secp384r1, secp521r1).",
     },
     "signature_algorithm": {
         "rule_id": "CAB-BR-7.1.3",
@@ -161,6 +209,10 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
     },
 }
 
+#: Every control this agent can emit. Used by the CP/CPS exporter and by
+#: tests that assert documentation covers the full enforced control set.
+ALL_CONTROL_NAMES: tuple[str, ...] = tuple(CHECK_METADATA)
+
 
 class PolicyValidatorAgent(BaseAgent):
     def __init__(self) -> None:
@@ -172,9 +224,33 @@ class PolicyValidatorAgent(BaseAgent):
         dcv_attestation = context.get("dcv_attestation")
         issuer_parser_data = context.get("issuer_parser_data")
         issuance_attestation = context.get("issuance_attestation")
+
+        checks: list[CheckResult] = []
+        checks.extend(self._validity_checks(policy, parser_data))
+        checks.extend(self._san_checks(policy, parser_data))
+        checks.extend(self._key_checks(policy, parser_data))
+        checks.extend(self._signature_checks(policy, parser_data))
+        checks.extend(self._internal_domain_checks(policy, parser_data))
+        checks.extend(self._dcv_checks(policy, dcv_attestation))
+        checks.extend(self._rfc5280_checks(policy, parser_data, issuer_parser_data))
+        checks.extend(self._issuance_checks(policy, issuance_attestation))
+        checks.extend(self._crypto_transition_checks(policy, parser_data))
+
+        # A run succeeds when nothing failed. Controls that policy did not
+        # enable are not_applicable and must not count against the run, but
+        # neither may they be reported as passes.
+        success = not any(check.status == "fail" for check in checks)
+        return AgentResult(agent=self.name, success=success, checks=checks)
+
+    # ---------------------------------------------------------------- validity
+
+    def _validity_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
+        cert_cfg = policy["certificate"]
         checks: list[CheckResult] = []
 
-        max_validity = policy["certificate"]["max_validity_days"]
+        max_validity = cert_cfg["max_validity_days"]
         validity_days = parser_data["validity_days"]
         checks.append(
             self._check(
@@ -186,59 +262,245 @@ class PolicyValidatorAgent(BaseAgent):
             )
         )
 
+        not_after = parser_data.get("not_after")
+        evaluated_at = parser_data.get("evaluated_at")
+        days_until_expiry = parser_data.get("days_until_expiry")
+
+        if cert_cfg["reject_expired"]:
+            is_expired = bool(parser_data.get("is_expired"))
+            checks.append(
+                self._check(
+                    "certificate_not_expired",
+                    not is_expired,
+                    (
+                        f"Certificate expired on {not_after} "
+                        f"({abs(days_until_expiry)} days ago as at {evaluated_at})."
+                        if is_expired
+                        else f"Certificate is within its validity window; expires {not_after}."
+                    ),
+                    policy_value="notAfter must be in the future",
+                    actual_value=not_after,
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "certificate_not_expired",
+                    "Expiry enforcement disabled by policy (certificate.reject_expired=false).",
+                    policy_value=False,
+                    actual_value=not_after,
+                )
+            )
+
+        if cert_cfg["reject_not_yet_valid"]:
+            not_yet = bool(parser_data.get("is_not_yet_valid"))
+            checks.append(
+                self._check(
+                    "certificate_not_yet_valid",
+                    not not_yet,
+                    (
+                        f"Certificate is not valid until {parser_data.get('not_before')}."
+                        if not_yet
+                        else "Certificate notBefore time has passed."
+                    ),
+                    policy_value="notBefore must be in the past",
+                    actual_value=parser_data.get("not_before"),
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "certificate_not_yet_valid",
+                    "notBefore enforcement disabled by policy "
+                    "(certificate.reject_not_yet_valid=false).",
+                    policy_value=False,
+                    actual_value=parser_data.get("not_before"),
+                )
+            )
+
+        warn_days = cert_cfg["warn_if_expires_within_days"]
+        if warn_days > 0:
+            inside_window = (
+                isinstance(days_until_expiry, int) and days_until_expiry <= warn_days
+            )
+            checks.append(
+                self._check(
+                    "certificate_expiry_window",
+                    not inside_window,
+                    (
+                        f"Certificate expires in {days_until_expiry} days, inside the "
+                        f"{warn_days}-day renewal window."
+                        if inside_window
+                        else f"Certificate expires in {days_until_expiry} days, outside the "
+                        f"{warn_days}-day renewal window."
+                    ),
+                    policy_value=warn_days,
+                    actual_value=days_until_expiry,
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "certificate_expiry_window",
+                    "Renewal window warning disabled by policy "
+                    "(certificate.warn_if_expires_within_days=0).",
+                    policy_value=0,
+                    actual_value=days_until_expiry,
+                )
+            )
+
+        return checks
+
+    def _san_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
         require_san = policy["certificate"]["require_san"]
         san_dns = parser_data["san_dns"]
-        checks.append(
+        if not require_san:
+            return [
+                self._na(
+                    "san_extension",
+                    "SAN requirement disabled by policy (certificate.require_san=false).",
+                    policy_value=False,
+                    actual_value=bool(san_dns),
+                )
+            ]
+        return [
             self._check(
                 "san_extension",
-                (not require_san) or bool(san_dns),
+                bool(san_dns),
                 "SAN extension present" if san_dns else "SAN extension missing",
                 policy_value=require_san,
                 actual_value=bool(san_dns),
             )
-        )
+        ]
 
-        min_rsa_bits = policy["key"]["minimum_rsa_bits"]
-        is_rsa = parser_data["is_rsa"]
-        rsa_bits = parser_data["rsa_key_size"]
-        rsa_ok = (not is_rsa) or (rsa_bits is not None and rsa_bits >= min_rsa_bits)
-        checks.append(
+    # --------------------------------------------------------------------- key
+
+    def _key_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
+        key_cfg = policy["key"]
+        algorithm = self._key_algorithm(parser_data)
+        size_bits = self._key_size_bits(parser_data)
+        curve = parser_data.get("ec_curve")
+        allowed_algorithms = {
+            value.strip().lower() for value in key_cfg["allowed_algorithms"]
+        }
+
+        checks: list[CheckResult] = [
             self._check(
-                "rsa_key_size",
-                rsa_ok,
+                "key_algorithm_allowed",
+                algorithm in allowed_algorithms,
                 (
-                    f"RSA key size is {rsa_bits} bits (min {min_rsa_bits})"
-                    if is_rsa
-                    else "Non-RSA key; RSA size check not applicable"
+                    f"Public key algorithm '{algorithm}' is permitted."
+                    if algorithm in allowed_algorithms
+                    else f"Public key algorithm '{algorithm}' is not permitted by policy."
                 ),
-                policy_value=min_rsa_bits,
-                actual_value=rsa_bits,
+                policy_value=sorted(allowed_algorithms),
+                actual_value=algorithm,
             )
-        )
+        ]
 
+        min_rsa_bits = key_cfg["minimum_rsa_bits"]
+        if algorithm == "rsa":
+            checks.append(
+                self._check(
+                    "rsa_key_size",
+                    isinstance(size_bits, int) and size_bits >= min_rsa_bits,
+                    f"RSA key size is {size_bits} bits (min {min_rsa_bits})",
+                    policy_value=min_rsa_bits,
+                    actual_value=size_bits,
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "rsa_key_size",
+                    f"Key algorithm is '{algorithm}'; RSA key size check not applicable.",
+                    policy_value=min_rsa_bits,
+                    actual_value=None,
+                )
+            )
+
+        min_ec_bits = key_cfg["minimum_ec_bits"]
+        allowed_curves = {
+            value.strip().lower() for value in key_cfg["allowed_ec_curves"]
+        }
+        if algorithm == "ec":
+            checks.append(
+                self._check(
+                    "ec_key_size",
+                    isinstance(size_bits, int) and size_bits >= min_ec_bits,
+                    f"EC key size is {size_bits} bits (min {min_ec_bits})",
+                    policy_value=min_ec_bits,
+                    actual_value=size_bits,
+                )
+            )
+            checks.append(
+                self._check(
+                    "ec_curve_allowed",
+                    isinstance(curve, str) and curve.lower() in allowed_curves,
+                    (
+                        f"EC curve '{curve}' is permitted."
+                        if isinstance(curve, str) and curve.lower() in allowed_curves
+                        else f"EC curve '{curve or 'unknown'}' is not permitted by policy."
+                    ),
+                    policy_value=sorted(allowed_curves),
+                    actual_value=curve,
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "ec_key_size",
+                    f"Key algorithm is '{algorithm}'; EC key size check not applicable.",
+                    policy_value=min_ec_bits,
+                    actual_value=None,
+                )
+            )
+            checks.append(
+                self._na(
+                    "ec_curve_allowed",
+                    f"Key algorithm is '{algorithm}'; EC curve check not applicable.",
+                    policy_value=sorted(allowed_curves),
+                    actual_value=None,
+                )
+            )
+
+        return checks
+
+    def _signature_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
         forbidden_algorithms = {
             algo.lower() for algo in policy["signature"]["prohibited_algorithms"]
         }
-        signature_algorithm = parser_data["signature_algorithm"].lower()
-        checks.append(
+        signature_hash = str(parser_data["signature_algorithm"]).lower()
+        signature_name = str(parser_data.get("signature_algorithm_name", signature_hash))
+        # Match on both the bare digest and the full algorithm identifier so a
+        # policy can prohibit either "sha1" or "sha1withrsaencryption".
+        offending = sorted(
+            value
+            for value in forbidden_algorithms
+            if value == signature_hash or value in signature_name
+        )
+        return [
             self._check(
                 "signature_algorithm",
-                signature_algorithm not in forbidden_algorithms,
-                f"Signature algorithm is {signature_algorithm}",
+                not offending,
+                (
+                    f"Signature algorithm is {signature_hash} ({signature_name})"
+                    if not offending
+                    else f"Signature algorithm is {signature_hash} ({signature_name}); "
+                    f"prohibited: {', '.join(offending)}"
+                ),
                 policy_value=sorted(forbidden_algorithms),
-                actual_value=signature_algorithm,
+                actual_value=signature_hash,
             )
-        )
+        ]
 
-        domain_checks = self._internal_domain_checks(policy, parser_data)
-        checks.extend(domain_checks)
-        checks.extend(self._dcv_checks(policy, dcv_attestation))
-        checks.extend(self._rfc5280_checks(policy, parser_data, issuer_parser_data))
-        checks.extend(self._issuance_checks(policy, issuance_attestation))
-        checks.extend(self._crypto_transition_checks(policy, parser_data))
-
-        success = all(check.status == "pass" for check in checks)
-        return AgentResult(agent=self.name, success=success, checks=checks)
+    # --------------------------------------------------------------------- dcv
 
     def _dcv_checks(
         self, policy: dict[str, Any], dcv_attestation: dict[str, Any] | None
@@ -246,19 +508,17 @@ class PolicyValidatorAgent(BaseAgent):
         dcv_cfg = policy["dcv"]
         if not dcv_cfg["required"]:
             return [
-                self._check(
+                self._na(
                     "dcv_method",
-                    True,
-                    "DCV checks disabled by policy",
-                    policy_value=False,
-                    actual_value=False,
+                    "DCV checks disabled by policy (dcv.required=false).",
+                    policy_value=dcv_cfg["allowed_methods"],
+                    actual_value=None,
                 ),
-                self._check(
+                self._na(
                     "dcv_recency",
-                    True,
-                    "DCV recency checks disabled by policy",
-                    policy_value=False,
-                    actual_value=False,
+                    "DCV recency checks disabled by policy (dcv.required=false).",
+                    policy_value=dcv_cfg["max_age_days"],
+                    actual_value=None,
                 ),
             ]
 
@@ -326,8 +586,18 @@ class PolicyValidatorAgent(BaseAgent):
         if age_days < 0:
             return False, "DCV validated_at is in the future.", age_days
         if age_days <= max_age_days:
-            return True, f"DCV attestation age is {age_days} days (max {max_age_days}).", age_days
-        return False, f"DCV attestation age is {age_days} days (max {max_age_days}).", age_days
+            return (
+                True,
+                f"DCV attestation age is {age_days} days (max {max_age_days}).",
+                age_days,
+            )
+        return (
+            False,
+            f"DCV attestation age is {age_days} days (max {max_age_days}).",
+            age_days,
+        )
+
+    # ----------------------------------------------------------------- rfc5280
 
     def _rfc5280_checks(
         self,
@@ -355,12 +625,11 @@ class PolicyValidatorAgent(BaseAgent):
             )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_end_entity_ca",
-                    True,
                     "RFC 5280 end-entity CA check disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=parser_data.get("basic_constraints_ca"),
                 )
             )
 
@@ -383,12 +652,15 @@ class PolicyValidatorAgent(BaseAgent):
             )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_key_usage_profile",
-                    True,
                     "RFC 5280 key usage profile check disabled by policy.",
-                    policy_value=False,
-                    actual_value=False,
+                    policy_value=sorted(
+                        value.lower() for value in rfc_cfg["required_key_usages"]
+                    ),
+                    actual_value=sorted(
+                        value.lower() for value in parser_data.get("key_usage", [])
+                    ),
                 )
             )
 
@@ -407,12 +679,11 @@ class PolicyValidatorAgent(BaseAgent):
             )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_subject_key_identifier",
-                    True,
                     "RFC 5280 SKI check disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=bool(parser_data.get("has_subject_key_identifier")),
                 )
             )
 
@@ -431,20 +702,23 @@ class PolicyValidatorAgent(BaseAgent):
             )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_authority_key_identifier",
-                    True,
                     "RFC 5280 AKI check disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=bool(parser_data.get("has_authority_key_identifier")),
                 )
             )
 
         allowed_critical = {
-            value.strip() for value in rfc_cfg["allowed_critical_extensions"] if value.strip()
+            value.strip()
+            for value in rfc_cfg["allowed_critical_extensions"]
+            if value.strip()
         }
         critical_oids = {
-            value.strip() for value in parser_data.get("critical_extension_oids", []) if value
+            value.strip()
+            for value in parser_data.get("critical_extension_oids", [])
+            if value
         }
         if allowed_critical:
             unknown_critical = sorted(critical_oids - allowed_critical)
@@ -463,10 +737,10 @@ class PolicyValidatorAgent(BaseAgent):
             )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_critical_extension_profile",
-                    True,
-                    "Critical extension profile linting disabled by policy.",
+                    "Critical extension profile linting disabled by policy "
+                    "(rfc5280.allowed_critical_extensions is empty).",
                     policy_value=[],
                     actual_value=sorted(critical_oids),
                 )
@@ -484,7 +758,9 @@ class PolicyValidatorAgent(BaseAgent):
                     )
                 )
             else:
-                issuer_match = parser_data.get("issuer") == issuer_parser_data.get("subject")
+                issuer_match = parser_data.get("issuer") == issuer_parser_data.get(
+                    "subject"
+                )
                 checks.append(
                     self._check(
                         "rfc5280_path_issuer_subject_match",
@@ -498,12 +774,11 @@ class PolicyValidatorAgent(BaseAgent):
                 )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_path_issuer_subject_match",
-                    True,
                     "RFC 5280 issuer-subject path check disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=None,
                 )
             )
 
@@ -535,16 +810,17 @@ class PolicyValidatorAgent(BaseAgent):
                 )
         else:
             checks.append(
-                self._check(
+                self._na(
                     "rfc5280_path_aki_ski_match",
-                    True,
                     "RFC 5280 AKI/SKI path check disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=None,
                 )
             )
 
         return checks
+
+    # -------------------------------------------------------- crypto transition
 
     def _crypto_transition_checks(
         self, policy: dict[str, Any], parser_data: dict[str, Any]
@@ -552,74 +828,88 @@ class PolicyValidatorAgent(BaseAgent):
         cfg = policy["crypto_transition"]
         if not cfg["enabled"]:
             return [
-                self._check(
+                self._na(
                     "crypto_transition_validity_target",
-                    True,
                     "Crypto transition validity target check disabled by policy.",
-                    policy_value=False,
-                    actual_value=False,
+                    policy_value=cfg["target_max_validity_days"],
+                    actual_value=parser_data.get("validity_days"),
                 ),
-                self._check(
+                self._na(
                     "crypto_transition_rsa_target",
-                    True,
                     "Crypto transition RSA target check disabled by policy.",
-                    policy_value=False,
-                    actual_value=False,
+                    policy_value=cfg["target_min_rsa_bits"],
+                    actual_value=parser_data.get("rsa_key_size"),
                 ),
-                self._check(
+                self._na(
                     "crypto_transition_signature_hash",
-                    True,
                     "Crypto transition signature hash check disabled by policy.",
-                    policy_value=False,
-                    actual_value=False,
+                    policy_value=sorted(cfg["approved_signature_algorithms"]),
+                    actual_value=parser_data.get("signature_algorithm"),
                 ),
             ]
 
         target_validity = cfg["target_max_validity_days"]
         validity_days = parser_data.get("validity_days")
-        is_rsa = bool(parser_data.get("is_rsa"))
+        is_rsa = self._key_algorithm(parser_data) == "rsa"
         rsa_bits = parser_data.get("rsa_key_size")
+        if not isinstance(rsa_bits, int) and is_rsa:
+            rsa_bits = self._key_size_bits(parser_data)
         target_rsa = cfg["target_min_rsa_bits"]
         signature_algorithm = str(parser_data.get("signature_algorithm", "")).lower()
         approved_hashes = {
-            value.lower() for value in cfg["approved_signature_algorithms"] if value.strip()
+            value.lower()
+            for value in cfg["approved_signature_algorithms"]
+            if value.strip()
         }
 
-        validity_ok = isinstance(validity_days, int) and validity_days <= target_validity
-        rsa_ok = (not is_rsa) or (isinstance(rsa_bits, int) and rsa_bits >= target_rsa)
-        hash_ok = signature_algorithm in approved_hashes
-
-        return [
+        checks = [
             self._check(
                 "crypto_transition_validity_target",
-                validity_ok,
+                isinstance(validity_days, int) and validity_days <= target_validity,
                 (
-                    f"Certificate validity is {validity_days} days (target <= {target_validity})."
+                    f"Certificate validity is {validity_days} days "
+                    f"(target <= {target_validity})."
                     if isinstance(validity_days, int)
                     else "Certificate validity value missing for crypto transition check."
                 ),
                 policy_value=target_validity,
                 actual_value=validity_days,
-            ),
-            self._check(
-                "crypto_transition_rsa_target",
-                rsa_ok,
-                (
-                    f"RSA key size is {rsa_bits} bits (target >= {target_rsa})."
-                    if is_rsa
-                    else "Non-RSA key; RSA transition target not applicable."
-                ),
-                policy_value=target_rsa,
-                actual_value=rsa_bits,
-            ),
+            )
+        ]
+
+        if is_rsa:
+            checks.append(
+                self._check(
+                    "crypto_transition_rsa_target",
+                    isinstance(rsa_bits, int) and rsa_bits >= target_rsa,
+                    f"RSA key size is {rsa_bits} bits (target >= {target_rsa}).",
+                    policy_value=target_rsa,
+                    actual_value=rsa_bits,
+                )
+            )
+        else:
+            checks.append(
+                self._na(
+                    "crypto_transition_rsa_target",
+                    f"Key algorithm is '{self._key_algorithm(parser_data)}'; "
+                    "RSA transition target not applicable.",
+                    policy_value=target_rsa,
+                    actual_value=None,
+                )
+            )
+
+        checks.append(
             self._check(
                 "crypto_transition_signature_hash",
-                hash_ok,
+                signature_algorithm in approved_hashes,
                 f"Signature algorithm is {signature_algorithm or 'missing'}.",
                 policy_value=sorted(approved_hashes),
                 actual_value=signature_algorithm or None,
-            ),
-        ]
+            )
+        )
+        return checks
+
+    # ---------------------------------------------------------------- issuance
 
     def _issuance_checks(
         self, policy: dict[str, Any], issuance_attestation: dict[str, Any] | None
@@ -627,19 +917,17 @@ class PolicyValidatorAgent(BaseAgent):
         issuance_cfg = policy["issuance"]
         if not issuance_cfg["require_hsm_attestation"]:
             return [
-                self._check(
+                self._na(
                     "issuance_hsm_attestation",
-                    True,
                     "Issuance HSM attestation checks disabled by policy.",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=None,
                 ),
-                self._check(
+                self._na(
                     "issuance_fips_level",
-                    True,
                     "Issuance FIPS level checks disabled by policy.",
                     policy_value=issuance_cfg["min_fips_level"],
-                    actual_value=issuance_cfg["min_fips_level"],
+                    actual_value=None,
                 ),
             ]
 
@@ -663,7 +951,9 @@ class PolicyValidatorAgent(BaseAgent):
 
         hsm_backed = bool(issuance_attestation.get("hsm_backed"))
         fips_level = issuance_attestation.get("fips_level")
-        fips_ok = isinstance(fips_level, int) and fips_level >= issuance_cfg["min_fips_level"]
+        fips_ok = isinstance(fips_level, int) and fips_level >= issuance_cfg[
+            "min_fips_level"
+        ]
 
         return [
             self._check(
@@ -678,30 +968,33 @@ class PolicyValidatorAgent(BaseAgent):
             self._check(
                 "issuance_fips_level",
                 fips_ok,
-                f"Attested FIPS level is {fips_level} (min {issuance_cfg['min_fips_level']}).",
+                f"Attested FIPS level is {fips_level} "
+                f"(min {issuance_cfg['min_fips_level']}).",
                 policy_value=issuance_cfg["min_fips_level"],
                 actual_value=fips_level,
             ),
         ]
 
+    # ----------------------------------------------------------------- domains
+
     def _internal_domain_checks(
         self, policy: dict[str, Any], parser_data: dict[str, Any]
     ) -> list[CheckResult]:
         domains_cfg = policy["domains"]
+        san_dns = [d.lower() for d in parser_data["san_dns"]]
         if not domains_cfg["forbid_internal_names"]:
             return [
-                self._check(
+                self._na(
                     "internal_domain_check",
-                    True,
-                    "Internal domain check disabled by policy",
+                    "Internal domain check disabled by policy "
+                    "(domains.forbid_internal_names=false).",
                     policy_value=False,
-                    actual_value=False,
+                    actual_value=san_dns,
                 )
             ]
 
         blocked_suffixes = tuple(s.lower() for s in domains_cfg["blocked_suffixes"])
-        san_dns = [d.lower() for d in parser_data["san_dns"]]
-        offending = [d for d in san_dns if d.endswith(blocked_suffixes)]
+        offending = [d for d in san_dns if blocked_suffixes and d.endswith(blocked_suffixes)]
         return [
             self._check(
                 "internal_domain_check",
@@ -716,6 +1009,29 @@ class PolicyValidatorAgent(BaseAgent):
             )
         ]
 
+    # ----------------------------------------------------------------- helpers
+
+    def _key_algorithm(self, parser_data: dict[str, Any]) -> str:
+        """Resolve the key algorithm, tolerating pre-2.0 parser payloads.
+
+        The parser now emits a normalised ``key_algorithm``, but external
+        callers and stored reports may still carry only ``is_rsa``.
+        """
+        algorithm = parser_data.get("key_algorithm")
+        if isinstance(algorithm, str) and algorithm.strip():
+            return algorithm.strip().lower()
+        if parser_data.get("is_rsa"):
+            return "rsa"
+        if parser_data.get("ec_curve"):
+            return "ec"
+        return "unknown"
+
+    def _key_size_bits(self, parser_data: dict[str, Any]) -> Any:
+        size = parser_data.get("key_size_bits")
+        if isinstance(size, int):
+            return size
+        return parser_data.get("rsa_key_size")
+
     def _check(
         self,
         name: str,
@@ -724,10 +1040,41 @@ class PolicyValidatorAgent(BaseAgent):
         policy_value: Any = None,
         actual_value: Any = None,
     ) -> CheckResult:
+        return self._result(
+            name,
+            "pass" if condition else "fail",
+            details,
+            policy_value,
+            actual_value,
+        )
+
+    def _na(
+        self,
+        name: str,
+        details: str,
+        policy_value: Any = None,
+        actual_value: Any = None,
+    ) -> CheckResult:
+        """Record a control policy did not enable.
+
+        Emitting ``not_applicable`` rather than a synthetic ``pass`` is what
+        keeps the evidence honest: the report states the control was defined
+        but not assessed, instead of claiming it succeeded.
+        """
+        return self._result(name, "not_applicable", details, policy_value, actual_value)
+
+    def _result(
+        self,
+        name: str,
+        status: Status,
+        details: str,
+        policy_value: Any,
+        actual_value: Any,
+    ) -> CheckResult:
         meta = CHECK_METADATA.get(name, {})
         return CheckResult(
             name=name,
-            status="pass" if condition else "fail",
+            status=status,
             details=details,
             rule_id=meta.get("rule_id"),
             category=meta.get("category"),
