@@ -376,7 +376,7 @@ class StandardsWatchAgent(BaseAgent):
             name=f"{name}_alignment",
             status="pass" if not missing else "fail",
             details=(
-                f"Policy prohibits every algorithm the baseline requires."
+                "Policy prohibits every algorithm the baseline requires."
                 if not missing
                 else f"Policy does not prohibit: {', '.join(missing)}."
             ),
