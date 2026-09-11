@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -38,3 +39,31 @@ def test_root_action_wires_documented_outputs() -> None:
         "${{ steps.gate.outputs.report_path }}"
     )
     assert any(step.get("id") == "gate" for step in action["runs"]["steps"])
+
+
+def test_readme_action_tag_matches_the_packaged_version() -> None:
+    """Stop the README pointing at a tag that does not exist.
+
+    Before 0.2.0 the README told Marketplace users
+    ``uses: thulisa-n/pki-compliance-gate@v0.1.3`` while the newest tag in the
+    repository was v0.1.2. Asserting Action pins, pip pins, and the release
+    badge agree with ``pyproject.toml`` makes that drift a test failure.
+    """
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    version = re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1)
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    action_tags = set(re.findall(r"pki-compliance-gate@v([0-9][^\s`\"']*)", readme))
+    pip_pins = set(re.findall(r"pki-compliance-gate==([0-9][^\s`\"']*)", readme))
+    badges = set(re.findall(r"badge/release-v([^-\s)]+)", readme))
+
+    assert action_tags, "README no longer shows an Action usage example"
+    assert action_tags == {version}, (
+        f"README Action tag(s) {sorted(action_tags)} but package version is {version}"
+    )
+    assert pip_pins == {version}, (
+        f"README pip pin(s) {sorted(pip_pins)} but package version is {version}"
+    )
+    assert badges == {version}, (
+        f"README release badge(s) {sorted(badges)} but package version is {version}"
+    )
