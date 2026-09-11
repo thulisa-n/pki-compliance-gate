@@ -215,8 +215,12 @@ jobs:
             --certificate-identity "$EXPECTED_IDENTITY" \
             reports/release_provenance.json
 
+      # GitHub-hosted attestation storage is not available for user-owned private
+      # repositories. The cosign keyless bundle above is the portable evidence
+      # path and always runs; this step adds the lower-friction
+      # `gh attestation verify` route wherever the platform supports it.
       - name: Publish GitHub build attestation
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.visibility == 'public' }}
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: reports/release_provenance.json

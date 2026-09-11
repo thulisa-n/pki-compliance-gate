@@ -38,7 +38,8 @@ This provides deterministic traceability from evidence to workflow execution con
 
 - Runs using cosign keyless artifacts (`release_provenance.cosign.*`) are verified with GitHub OIDC identity + Rekor proof.
 - `release_provenance.*` is generated only for release-context workflow executions (`push` to `main`).
-- GitHub native attestation publication for `release_provenance.json` is also limited to `push` on `main`.
+- GitHub native attestation publication for `release_provenance.json` is also limited to `push` on `main`, and to public repositories because GitHub-hosted attestation storage is unavailable for user-owned private repositories. The cosign bundle is the portable path that is always produced.
+- The signer identity asserted during verification is derived from the workflow run context and recorded in `release_provenance.identity.txt`, so renaming or forking the repository does not silently weaken or break the binding.
 - GitHub native attestations and cosign verification are two client surfaces over the same Sigstore trust backbone.
 - Older runs that only contain `release_signing_public_key.b64` / `release_provenance.json.sig` used the legacy co-located key model and are outside the keyless trust scope.
 
