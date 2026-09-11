@@ -10,9 +10,9 @@ inputs:
     description: 'Path to PEM certificate file'
     required: false
   policy:
-    description: 'Path to custom policy YAML file'
+    description: 'Optional path to a policy YAML file in the caller workspace'
     required: false
-    default: 'policies/cabf_policy.yaml'
+    default: ''
   mode:
     description: 'Execution mode (evaluate, apisec, summary, export-cps-doc, ...)'
     required: false
@@ -32,8 +32,10 @@ inputs:
 outputs:
   exit_code:
     description: 'Compliance gate status code (0: compliant, 1: low, 2: med/high, 3: critical)'
+    value: ${{ steps.gate.outputs.exit_code }}
   report_path:
     description: 'Path to generated JSON compliance report'
+    value: ${{ steps.gate.outputs.report_path }}
 
 runs:
   using: 'composite'
@@ -43,19 +45,41 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Install CertGuard Dependencies
-      run: pip install cryptography pyyaml requests pydantic
+    - name: Install PKI Compliance Gate
+      run: python -m pip install "${{ github.action_path }}"
       shell: bash
 
     - name: Run PKI Compliance Gate
+      id: gate
       env:
-        PYTHONPATH: ${{ github.action_path }}/src
+        INPUT_CERT: ${{ inputs.cert }}
+        INPUT_ENDPOINT: ${{ inputs.endpoint }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_POLICY: ${{ inputs.policy }}
+        INPUT_REPORT: ${{ inputs.report }}
       run: |
-        python ${{ github.action_path }}/src/main.py \
-          --mode "${{ inputs.mode }}" \
-          --policy "${{ inputs.policy }}" \
-          --report "${{ inputs.report }}" \
-          --output "${{ inputs.output }}" \
-          ${{ inputs.cert && format('--cert "{0}"', inputs.cert) || '' }} \
-          ${{ inputs.endpoint && format('--endpoint "{0}"', inputs.endpoint) || '' }}
+        policy="${INPUT_POLICY:-${{ github.action_path }}/policies/cabf_policy.yaml}"
+        args=(
+          --mode "$INPUT_MODE"
+          --policy "$policy"
+          --report "$INPUT_REPORT"
+          --output "$INPUT_OUTPUT"
+        )
+        if [ -n "$INPUT_CERT" ]; then
+          args+=(--cert "$INPUT_CERT")
+        fi
+        if [ -n "$INPUT_ENDPOINT" ]; then
+          args+=(--endpoint "$INPUT_ENDPOINT")
+        fi
+
+        set +e
+        pki-gate "${args[@]}"
+        code=$?
+        set -e
+        {
+          echo "exit_code=$code"
+          echo "report_path=$INPUT_REPORT"
+        } >> "$GITHUB_OUTPUT"
+        exit "$code"
       shell: bash

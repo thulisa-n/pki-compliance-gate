@@ -4,30 +4,44 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pki-compliance-gate"
-version = "0.1.0"
+version = "0.1.1"
 description = "Automated PKI Compliance Engine for X.509 certificates and Policy-as-Code governance"
 readme = "README.md"
 authors = [{ name = "Thulisa Nikani", email = "thulie1@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Security :: Cryptography",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13"
 ]
 dependencies = [
     "cryptography>=41.0.0",
-    "pyyaml>=6.0",
-    "requests>=2.31.0",
-    "pydantic>=2.0.0"
+    "pyyaml>=6.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "cyclonedx-bom>=7.0",
+    "pytest>=9.0"
 ]
 
 [project.scripts]
-pki-gate = "main:main"
+pki-gate = "certguard.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["certguard*"]
+
+[tool.setuptools.package-data]
+"certguard.data" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

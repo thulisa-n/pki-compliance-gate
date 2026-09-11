@@ -1,0 +1,52 @@
+name: Distribution Contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Build wheel and source distribution
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Verify installed CLI outside repository
+        run: |
+          python -m venv /tmp/certguard-smoke
+          /tmp/certguard-smoke/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/certguard-smoke/bin/pki-gate \
+            --cert "$GITHUB_WORKSPACE/tests/certificates/valid_cert.pem" \
+            --report /tmp/certguard-report.json \
+            --evidence-dir /tmp/certguard-evidence
+          test -s /tmp/certguard-report.json
+
+  action-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run repository Action as a consumer
+        id: gate
+        uses: ./
+        with:
+          cert: tests/certificates/valid_cert.pem
+          report: /tmp/action-compliance-report.json
+      - name: Verify Action outputs
+        env:
+          EXIT_CODE: ${{ steps.gate.outputs.exit_code }}
+          REPORT_PATH: ${{ steps.gate.outputs.report_path }}
+        run: |
+          test "$EXIT_CODE" = "0"
+          test "$REPORT_PATH" = "/tmp/action-compliance-report.json"
+          test -s "$REPORT_PATH"

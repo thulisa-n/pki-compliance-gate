@@ -24,9 +24,10 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - `reports/sbom.cdx.json`
   - `reports/release_provenance.json`
   - `reports/release_provenance.json.digest`
-  - `reports/release_provenance.json.sig`
-  - `reports/release_provenance.json.sig.meta.json`
-  - `reports/release_signing_public_key.b64`
+  - `reports/release_provenance.cosign.sig`
+  - `reports/release_provenance.cosign.crt`
+  - `reports/release_provenance.cosign.bundle`
+  - `reports/release_provenance.identity.txt`
   - `audit_evidence/policy_checks.json`
   - `audit_evidence/lint_results.json`
   - `audit_evidence/waiver_results.json`
@@ -48,7 +49,7 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
 
 ## Completed Phases
 
-- **Phase 4 (enterprise alignment) - completed**
+- **Phase 4 (advanced controls) - completed**
   - APISEC expanded with TLS version policy checks, cipher posture checks, and chain posture signals
   - DCV attestation guardrails added (allowed methods + recency windows)
   - waiver-based false-positive controls added with audit traceability
@@ -64,10 +65,10 @@ This document tracks implemented capabilities in a detailed, phase-oriented form
   - dedicated profile added: `policies/profiles/crypto_agility_pqc_readiness.yaml`
   - Kyverno lifecycle coverage added (validation, mutation, generation, CLI tests, policy reporting guidance)
   - Kyverno supply chain and lifecycle hygiene controls added (`verifyImages` and `ClusterCleanupPolicy`)
-  - Ed25519-signed release provenance with in-CI verification
+  - keyless cosign release provenance with OIDC identity and Rekor verification
   - append-only hash-chained compliance decision log
 - **Phase 6 (hardening) - completed**
-  - dedicated X509ParserAgent and fixture compliance tests (64 total)
+  - dedicated X509ParserAgent and fixture compliance tests
   - CABF BR term references populated across all policy profiles
   - zlint and OPA integrations proven in CI via `ci_lint_gate` profile
   - stale documentation and BR citation inconsistencies resolved

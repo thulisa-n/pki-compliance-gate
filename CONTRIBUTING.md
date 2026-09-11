@@ -5,7 +5,7 @@
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 ## Run Tests
@@ -19,13 +19,13 @@ pytest -q
 Evaluate:
 
 ```bash
-python src/main.py --cert tests/certificates/valid_cert.pem
+pki-gate --cert tests/certificates/valid_cert.pem
 ```
 
 Watch:
 
 ```bash
-python src/main.py --mode watch \
+pki-gate --mode watch \
   --policy policies/cabf_policy.yaml \
   --standards-baseline policies/standards_baseline.yaml
 ```
@@ -33,7 +33,7 @@ python src/main.py --mode watch \
 API TLS posture:
 
 ```bash
-python src/main.py --mode apisec --endpoint https://example.com
+pki-gate --mode apisec --endpoint https://example.com
 ```
 
 ## Pull Request Expectations

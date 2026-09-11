@@ -1,9 +1,9 @@
 # PKI Compliance Gate (CertGuard Engine)
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Tests](https://img.shields.io/badge/tests-81%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Release](https://img.shields.io/badge/release-v0.1.0-blue)
+![Release](https://img.shields.io/badge/release-v0.1.1-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
 
@@ -15,16 +15,15 @@ One YAML policy profile is the source of truth for evaluation, CI gating, and ge
 
 ### Option 1: GitHub Action in CI/CD
 
-The published tag is `v0.1.0` (there is no `v1` tag yet).
+Use the immutable `v0.1.1` release tag (there is no moving `v1` tag yet).
 
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.1.0
+    uses: thulisa-n/pki-compliance-gate@v0.1.1
     with:
       cert: 'tests/certificates/valid_cert.pem'
-      policy: 'policies/cabf_policy.yaml'
 ```
 
 ### Option 2: Run from a clone
@@ -34,14 +33,13 @@ The package name is reserved in `pyproject.toml`, but it is not published on PyP
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-export PYTHONPATH=src
+pip install -e ".[dev]"
 
 # Evaluate a certificate
-python src/main.py --cert tests/certificates/valid_cert.pem --policy policies/cabf_policy.yaml
+pki-gate --cert tests/certificates/valid_cert.pem
 
 # Export CP/CPS Section 7 documentation from the policy YAML
-python src/main.py --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-output CPS_SECTION_7.md
+pki-gate --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-output CPS_SECTION_7.md
 ```
 
 ---
@@ -78,28 +76,37 @@ flowchart LR
 
 | Mode | Example | What the code does |
 | :--- | :--- | :--- |
-| `evaluate` | `python src/main.py --cert server.crt` | Full policy evaluation of a certificate file. |
-| `export-cps-doc` | `python src/main.py --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
-| `apisec` | `python src/main.py --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
-| `triage` | `python src/main.py --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
-| `assure` | `python src/main.py --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
-| `watch` | `python src/main.py --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
-| `heal` | `python src/main.py --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
-| `summary` | `python src/main.py --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
-| `trend` | `python src/main.py --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
-| `signals` | `python src/main.py --mode signals` | Reads curated external signals JSON and writes recommendations. |
+| `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate file. |
+| `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
+| `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
+| `triage` | `pki-gate --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
+| `assure` | `pki-gate --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
+| `watch` | `pki-gate --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
+| `heal` | `pki-gate --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
+| `summary` | `pki-gate --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
+| `trend` | `pki-gate --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
+| `signals` | `pki-gate --mode signals` | Reads curated external signals JSON and writes recommendations. |
 
 ## Repository structure
 
 ```text
-src/certguard/          Core agents, X.509 parser, and engine
+src/certguard/          Core agents, CLI, bundled policy, and engine
 src/certguard/policy_exporter.py  CP/CPS exporter
-src/main.py             CLI entrypoint
+src/main.py             Backward-compatible repository entrypoint
 policies/               Policy YAML profiles and Rego rules
-tests/                  Automated test suite (81 tests)
-.github/action.yml      Composite GitHub Action
+tests/                  Automated test suite
+action.yml              Composite GitHub Action
 .github/workflows/      CI workflows
 ```
+
+---
+
+## Distribution status
+
+GitHub release assets and PyPI trusted publishing are automated by
+`.github/workflows/publish.yml`. PyPI publication remains disabled until the
+project's trusted publisher is configured and the repository variable
+`PYPI_PUBLISH_ENABLED` is set to `true`.
 
 ---
 

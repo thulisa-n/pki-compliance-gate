@@ -5,7 +5,7 @@ import sys
 from types import SimpleNamespace
 from pathlib import Path
 
-from main import _exit_code_from_report
+from certguard.cli import _exit_code_from_report
 
 
 def test_exit_code_zero_for_compliant_fixture(tmp_path: Path) -> None:
