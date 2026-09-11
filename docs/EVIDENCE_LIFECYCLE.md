@@ -56,8 +56,12 @@ This provides deterministic traceability from evidence to workflow execution con
 4. Verify waiver application (`waiver_results.json`).
 5. Review decision log integrity (`compliance_decisions.jsonl` hash chain).
 6. Review trend signal (`compliance_trend_snapshot.json`).
-7. Verify release provenance via GitHub CLI:
-   - `gh attestation verify release_provenance.json --repo thulisa-n/pki-compliance-gate --cert-identity-regex '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$'`
-8. Verify release provenance via cosign keyless identity validation:
-   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity-regexp '^https://github.com/thulisa-n/pki-compliance-gate/.github/workflows/compliance.yml@refs/heads/main$' release_provenance.json`
-9. Record reviewer note in PR or issue using `compliance_summary.md`.
+7. Confirm the signer identity that CI asserted (`release_provenance.identity.txt`).
+   The commands below use that value; it is derived from the run context, so it
+   tracks the repository that produced the evidence instead of a hardcoded name.
+8. Verify release provenance via GitHub CLI:
+   - `IDENTITY="$(cat release_provenance.identity.txt)"`
+   - `gh attestation verify release_provenance.json --repo OWNER/REPO --cert-identity "$IDENTITY"`
+9. Verify release provenance via cosign keyless identity validation:
+   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$IDENTITY" release_provenance.json`
+10. Record reviewer note in PR or issue using `compliance_summary.md`.

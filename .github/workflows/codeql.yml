@@ -35,13 +35,21 @@ jobs:
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4.37.9
 
+      # Code scanning ingestion requires GitHub Advanced Security on private
+      # repositories. Analysis always runs and the SARIF is always kept as an
+      # artifact; only the upload to the Security tab is conditional, so the
+      # same workflow works on public repos and on private forks without GHAS.
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4.37.9
+        with:
+          output: artifacts/codeql/results
+          upload: ${{ (github.event.repository.visibility == 'public' || vars.CODE_SCANNING_UPLOAD == 'true') && 'always' || 'never' }}
 
       - name: Capture CodeQL run metadata
         if: always()
         run: |
           mkdir -p artifacts/codeql
+          echo "code_scanning_upload=${{ (github.event.repository.visibility == 'public' || vars.CODE_SCANNING_UPLOAD == 'true') && 'enabled' || 'artifact-only' }}" > artifacts/codeql/upload-mode.txt
           {
             echo "run_id=${GITHUB_RUN_ID}"
             echo "run_attempt=${GITHUB_RUN_ATTEMPT}"

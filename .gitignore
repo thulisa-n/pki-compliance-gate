@@ -14,6 +14,7 @@ reports/*.md
 reports/test-results/
 audit_evidence/*.json
 audit_evidence/*.jsonl
+artifacts/
 
 # Private learning materials (not for public repo)
 docs/COMMANDS_AND_LEARNING_GUIDE.md

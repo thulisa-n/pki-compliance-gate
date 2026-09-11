@@ -12,6 +12,16 @@ PANDOC_IMAGE = os.getenv(
     "pandoc/latex@sha256:467bb9a70723627a34eb7003e46a1bb7c9344ea4580a46c4c978860784a6a754",
 )
 
+# Pandoc defaults to pdflatex, which aborts on any character outside its input
+# encoding (emoji, arrows, smart quotes). xelatex and lualatex are Unicode-native
+# and downgrade unknown glyphs to a warning, so they are tried first and pdflatex
+# is kept only as a last-resort fallback.
+PDF_ENGINES: tuple[str, ...] = tuple(
+    engine.strip()
+    for engine in os.getenv("PANDOC_PDF_ENGINES", "xelatex,lualatex,pdflatex").split(",")
+    if engine.strip()
+)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -93,11 +103,40 @@ def _render_document(
     source_path: Path, output_path: Path, format_hint: Path, best_effort: bool = False
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    input_format = _input_format(format_hint)
+    engines: tuple[str | None, ...] = (
+        PDF_ENGINES if output_path.suffix == ".pdf" else (None,)
+    )
+    last_error: subprocess.CalledProcessError | None = None
+
+    for engine in engines:
+        command = _docker_command(source_path, output_path, format_hint, engine)
+        try:
+            subprocess.run(command, check=True)  # nosec B603
+            return
+        except subprocess.CalledProcessError as exc:
+            last_error = exc
+            if engine is not None:
+                print(
+                    f"WARNING: {output_path.name} failed with pdf engine "
+                    f"'{engine}'; trying next engine.",
+                    file=sys.stderr,
+                )
+
+    if not best_effort:
+        raise last_error  # type: ignore[misc]
+    print(
+        f"WARNING: Failed to render {output_path.name} (continuing): {last_error}",
+        file=sys.stderr,
+    )
+
+
+def _docker_command(
+    source_path: Path, output_path: Path, format_hint: Path, engine: str | None
+) -> list[str]:
     cwd = Path.cwd()
     source_rel = source_path.relative_to(cwd)
     output_rel = output_path.relative_to(cwd)
-    docker_cmd = [
+    command = [
         "docker",
         "run",
         "--rm",
@@ -105,22 +144,18 @@ def _render_document(
         f"{cwd}:/data",
         PANDOC_IMAGE,
         "--from",
-        input_format,
+        _input_format(format_hint),
         "--to",
         "pdf" if output_path.suffix == ".pdf" else "docx",
+    ]
+    if engine is not None:
+        command.append(f"--pdf-engine={engine}")
+    command += [
         "--output",
         f"/data/{output_rel.as_posix()}",
         f"/data/{source_rel.as_posix()}",
     ]
-    try:
-        subprocess.run(docker_cmd, check=True)  # nosec B603
-    except subprocess.CalledProcessError as exc:
-        if not best_effort:
-            raise
-        print(
-            f"WARNING: Failed to render {output_path.name} (continuing): {exc}",
-            file=sys.stderr,
-        )
+    return command
 
 
 def _input_format(path: Path) -> str:

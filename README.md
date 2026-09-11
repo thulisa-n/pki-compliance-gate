@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Tests](https://img.shields.io/badge/tests-83%20passed-brightgreen)
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
 ![GitHub Action](https://img.shields.io/badge/github--action-v1-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is an automated Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture governance.
@@ -98,4 +98,4 @@ tests/                Automated test suite (83 tests)
 
 ## 📄 License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [MIT License](LICENSE).
