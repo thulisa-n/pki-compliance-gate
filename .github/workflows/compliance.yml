@@ -64,13 +64,18 @@ jobs:
           chmod +x /usr/local/bin/opa
           opa version
 
+      - name: Regenerate time-sensitive certificate fixtures
+        run: python scripts/generate_test_certificates.py
+
       - name: Run unit tests
         run: |
           mkdir -p reports/test-results
           pytest -q \
             --junitxml=reports/test-results/pytest-junit.xml \
             --html=reports/test-results/pytest-report.html \
-            --self-contained-html
+            --self-contained-html \
+            --cov --cov-report=term-missing \
+            --cov-report=xml:reports/test-results/coverage.xml
 
       - name: Publish pytest results in checks
         if: ${{ always() }}
@@ -243,6 +248,7 @@ jobs:
           fi
           cp reports/test-results/pytest-junit.xml "artifacts/${GITHUB_RUN_ID}/"
           cp reports/test-results/pytest-report.html "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/test-results/coverage.xml "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
@@ -277,6 +283,11 @@ jobs:
             expected_exit: 3
           - fixture: tests/certificates/sha1_cert.pem
             expected_exit: 3
+          # Regression fixtures for the two false negatives fixed in 0.2.0.
+          - fixture: tests/certificates/expired_cert.pem
+            expected_exit: 3
+          - fixture: tests/certificates/ec_p192_cert.pem
+            expected_exit: 3
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -286,6 +297,13 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      # Committed PEM fixtures rot: every one was minted with notBefore
+      # 2026-03-16 and five of six had expired by September 2026, including the
+      # cert this matrix asserts exits 0. Regenerating here keeps the matrix
+      # honest regardless of how old the checkout is. sha1_cert.pem is not
+      # regenerated (cryptography refuses SHA-1) and is expected to be expired.
+      - name: Regenerate time-sensitive certificate fixtures
+        run: python scripts/generate_test_certificates.py
       - name: Evaluate fixture scenario
         run: |
           set +e
@@ -313,6 +331,8 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Regenerate time-sensitive certificate fixtures
+        run: python scripts/generate_test_certificates.py
       - name: Evaluate strict profile baseline
         run: |
           set +e

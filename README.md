@@ -1,9 +1,10 @@
 # PKI Compliance Gate (CertGuard Engine)
 
+[![Compliance Gate](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml)
+[![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Release](https://img.shields.io/badge/release-v0.1.3-blue)
+![Release](https://img.shields.io/badge/release-v0.2.0-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
 
@@ -15,13 +16,18 @@ One YAML policy profile is the source of truth for evaluation, CI gating, and ge
 
 ### Option 1: GitHub Action in CI/CD
 
-Use the immutable `v0.1.3` release tag (there is no moving `v1` tag yet). The GitHub Marketplace listing tracks this Action.
+Pin an immutable release tag (there is no moving `v1` tag). `v0.2.0` is the
+current source version; use the most recent published tag.
+
+> **Upgrading from 0.1.x is a breaking change.** Expiry and EC key policy are
+> now enforced by default, and the report no longer carries a `score` field.
+> See [`CHANGELOG.md`](CHANGELOG.md).
 
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.1.3
+    uses: thulisa-n/pki-compliance-gate@v0.2.0
     with:
       cert: 'tests/certificates/valid_cert.pem'
 ```
@@ -29,8 +35,9 @@ steps:
 ### Option 2: Install from PyPI
 
 ```bash
-python3 -m pip install "pki-compliance-gate==0.1.3"
+python3 -m pip install "pki-compliance-gate>=0.2.0"
 pki-gate --cert path/to/server.crt
+pki-gate --version
 ```
 
 ### Option 3: Run from a clone
@@ -49,19 +56,98 @@ pki-gate --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-outp
 
 ---
 
-## What this repo actually enforces
+## What this repo enforces
 
-- **Baseline policy** (`policies/cabf_policy.yaml`): max validity **200 days**, RSA >= 2048, no SHA-1/MD5, SAN required, blocked internal suffixes (`.local`, `.internal`, `.intranet`).
-- **Optional crypto-transition overlay** (`crypto_transition.*`, disabled by default): target max validity **47 days** and RSA >= 3072 when you opt in.
-- **API TLS posture** (`--mode apisec --endpoint example.com`): live TLS version, weak-cipher, expiry, and certificate checks.
-- **Keyless provenance in this repository's CI**: on `push` to `main`, `reports/release_provenance.json` is signed with cosign. GitHub native attestations are published only on public repositories.
-- **Exit codes from evaluation**:
-  - `0`: no failing checks (and lint not failed)
-  - `1`: only low-severity check failures
-  - `2`: medium/high failures, lint failure, or CLI usage/input errors
-  - `3`: at least one critical check failure
+The default profile (`policies/cabf_policy.yaml`) enforces:
 
----
+- **Validity**: maximum 200 days; certificate must be inside its notBefore/notAfter window.
+- **Key material**: RSA >= 2048; ECDSA >= 256 bits on P-256/P-384/P-521 only; RSA and EC are the only permitted algorithms.
+- **Signature**: no SHA-1 or MD5.
+- **Identity**: SAN required; internal suffixes blocked (`.local`, `.internal`, `.intranet`).
+- **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, OPA/Rego gate, zlint and `openssl asn1parse`.
+- **API TLS posture** (`--mode apisec --endpoint example.com`): live TLS version, weak-cipher, expiry and certificate checks.
+
+### Coverage matrix
+
+Every control the engine can emit. A control the active profile does not enable
+is reported as `not_applicable` -- defined but **not assessed** -- and is never
+counted as a pass.
+
+| Control | Rule ID | Category | Severity | Standard reference |
+| :--- | :--- | :--- | :--- | :--- |
+| `certificate_expiry_window` | OPS-RENEWAL-WINDOW | VALIDITY | low | Operational renewal policy |
+| `certificate_not_expired` | RFC-5280-4.1.2.5 | VALIDITY | critical | RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2 |
+| `certificate_not_yet_valid` | RFC-5280-4.1.2.5 | VALIDITY | high | RFC 5280 4.1.2.5 |
+| `crypto_transition_rsa_target` | CRYPTO-AGILITY-RSA | CRYPTO-TRANSITION | medium | Crypto transition readiness profile |
+| `crypto_transition_signature_hash` | CRYPTO-AGILITY-HASH | CRYPTO-TRANSITION | high | Crypto transition readiness profile |
+| `crypto_transition_validity_target` | CRYPTO-AGILITY-VALIDITY | CRYPTO-TRANSITION | high | Crypto transition readiness profile |
+| `dcv_method` | CAB-BR-3.2.2.4 | DCV | high | CA/B Forum BR 3.2.2.4 |
+| `dcv_recency` | CAB-BR-4.2.1 | DCV | high | CA/B Forum BR 4.2.1 |
+| `ec_curve_allowed` | CAB-BR-6.1.5 | CRYPTOGRAPHY | critical | CA/B Forum BR 6.1.5 |
+| `ec_key_size` | CAB-BR-6.1.5 | CRYPTOGRAPHY | critical | CA/B Forum BR 6.1.5 |
+| `internal_domain_check` | CAB-BR-7.1.4.2.1 | POLICY | high | CA/B Forum BR 7.1.4.2.1 |
+| `issuance_fips_level` | FIPS-140-CONTROL | ISSUANCE | medium | FIPS 140-2/140-3 |
+| `issuance_hsm_attestation` | PKCS11-HSM-ATTESTATION | ISSUANCE | high | PKCS#11 / FIPS operations |
+| `key_algorithm_allowed` | CAB-BR-6.1.5 | CRYPTOGRAPHY | critical | CA/B Forum BR 6.1.5 |
+| `rfc5280_authority_key_identifier` | RFC-5280-4.2.1.1 | RFC5280 | medium | RFC 5280 4.2.1.1 |
+| `rfc5280_critical_extension_profile` | RFC-5280-4.2 | RFC5280 | high | RFC 5280 4.2 |
+| `rfc5280_end_entity_ca` | RFC-5280-4.2.1.9 | RFC5280 | high | RFC 5280 4.2.1.9 |
+| `rfc5280_key_usage_profile` | RFC-5280-4.2.1.3 | RFC5280 | high | RFC 5280 4.2.1.3 |
+| `rfc5280_path_aki_ski_match` | RFC-5280-4.2.1.1 | RFC5280 | medium | RFC 5280 4.2.1.1 |
+| `rfc5280_path_issuer_subject_match` | RFC-5280-6 | RFC5280 | high | RFC 5280 6.1 |
+| `rfc5280_subject_key_identifier` | RFC-5280-4.2.1.2 | RFC5280 | medium | RFC 5280 4.2.1.2 |
+| `rsa_key_size` | CAB-BR-6.1.5 | CRYPTOGRAPHY | critical | CA/B Forum BR 6.1.5 |
+| `san_extension` | RFC-5280-4.2.1.6 | IDENTITY | high | CA/B Forum BR 7.1.4.2.1 |
+| `signature_algorithm` | CAB-BR-7.1.3 | CRYPTOGRAPHY | critical | CA/B Forum BR 7.1.3 |
+| `validity_days` | CAB-BR-6.3.2 | VALIDITY | high | CA/B Forum BR 6.3.2 |
+
+### Not covered yet
+
+Stated plainly so the matrix above is not mistaken for full BR conformance.
+None of the following are implemented: revocation checking (CRL/OCSP),
+OCSP must-staple, Certificate Transparency / SCT embedding, chain building and
+full path validation, `extendedKeyUsage` profiles, CN-in-SAN consistency,
+wildcard placement rules, reserved or internal **IP addresses** in SANs (only
+DNS suffixes are checked), and serial-number entropy.
+
+### Evidence and integrity
+
+Each run writes a compliance report, per-control evidence, and an
+`evidence_manifest.json` that records a **SHA-256 digest of every evidence
+file**, the engine version, and the digest of the policy bytes that produced
+the verdict.
+
+Digests detect accidental change and single-file tampering. They are **not
+signatures** -- a party able to rewrite the whole bundle can recompute them.
+Tamper-evident custody comes from the cosign keyless signature produced in this
+repository's CI on `push` to `main` (GitHub native attestations are published
+only on public repositories). The `.seal` file is a digest, not a seal; the
+name is retained for pipeline compatibility.
+
+### Exit codes
+
+- `0`: no failing checks (and lint not failed)
+- `1`: only low-severity check failures
+- `2`: medium/high failures, lint failure, or CLI usage/input errors
+- `3`: at least one critical check failure
+
+`--fail-on-waived` counts waived findings as failures, for audit runs where an
+approved exception must still block.
+
+### Reports carry no percentage score
+
+A single percentage was removed in report schema 2.0. It counted controls the
+policy had never enabled, so an almost-empty profile read 100%, and a
+certificate failing a *critical* control could still present as ~95%. Reports
+now carry `findings` bucketed by severity and a `coverage` block stating how
+much was actually assessed:
+
+```text
+Compliant: NO
+Risk Level: HIGH
+Findings: critical=2
+Coverage: 10 of 25 controls evaluated (8 pass, 2 fail, 0 waived, 15 not applicable)
+```
 
 ## How it flows
 
@@ -108,8 +194,8 @@ action.yml              Composite GitHub Action
 
 ## Distribution status
 
-The GitHub Action, wheel, and sdist are published from the `v0.1.3` tag.
-Install the CLI with `pip install pki-compliance-gate==0.1.3`. Later GitHub
+The GitHub Action, wheel, and sdist are published from the `v0.2.0` tag.
+Install the CLI with `pip install pki-compliance-gate==0.2.0`. Later GitHub
 releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 (OIDC, no API token in the repository).
 

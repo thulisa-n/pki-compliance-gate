@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pki-compliance-gate"
-version = "0.1.3"
+version = "0.2.0"
 description = "Automated PKI Compliance Engine for X.509 certificates and Policy-as-Code governance"
 readme = "README.md"
-authors = [{ name = "Thulisa Nikani", email = "thulie1@gmail.com" }]
+authors = [{ name = "Thulisa Nikani", email = "thulisa.nikani@rethinkit.co.za" }]
 license = "MIT"
 requires-python = ">=3.11"
 classifiers = [
@@ -27,7 +27,10 @@ dependencies = [
 dev = [
     "build>=1.2",
     "cyclonedx-bom>=7.0",
-    "pytest>=9.0"
+    "mypy>=1.11",
+    "pytest>=9.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6"
 ]
 
 [project.scripts]
@@ -44,5 +47,44 @@ include = ["certguard*"]
 "certguard.data" = ["*.yaml"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# "." keeps tests.support importable from conftest and from
+# scripts/generate_test_certificates.py.
+pythonpath = ["src", "."]
 testpaths = ["tests"]
+addopts = "--strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+    # Long lines in policy/standard reference strings are more readable intact.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests deliberately build long literal fixtures.
+"tests/*" = ["B011"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true
+warn_unreachable = true
+# Third-party stubs are not shipped for these.
+[[tool.mypy.overrides]]
+module = ["yaml", "cyclonedx.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/certguard"]
+branch = true
+
+[tool.coverage.report]
+# Raise this floor as coverage improves; it exists to stop regression.
+fail_under = 70
+show_missing = true
+skip_covered = true
