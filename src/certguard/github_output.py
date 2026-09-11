@@ -25,8 +25,9 @@ _ANNOTATION_COMMAND: dict[str, str] = {
     "unknown": "warning",
 }
 
+# Human-readable result labels; "PASS" is not a credential.
 _STATUS_ICON: dict[str, str] = {
-    "pass": "PASS",
+    "pass": "PASS",  # nosec B105
     "fail": "FAIL",
     "waived": "WAIVED",
     "not_applicable": "n/a",
