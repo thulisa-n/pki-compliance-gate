@@ -43,6 +43,24 @@ pki-gate --mode apisec --endpoint https://example.com
 - Keep docs aligned with runtime behavior (CLI flags, exit codes, workflow names).
 - Ensure GitHub Actions checks are green before merge.
 
+## Public and enterprise boundary
+
+This repository is the open-source core. Core work starts from `origin/main` on
+a `public/*` branch and is pushed only to the `origin` remote. The private
+enterprise repository may merge or cherry-pick reviewed public commits.
+
+Do not push these commercial surfaces to the public remote:
+
+- `src/certguard_enterprise/`
+- `requirements-enterprise.txt`
+- enterprise API and document-publisher tests
+- customer, tenant, billing, hosted-service, or proprietary workflow code
+
+The repository-boundary test fails public CI if known enterprise paths or
+framework dependencies reappear. If a feature is useful to both editions,
+implement its generic contract in public first and add commercial orchestration
+in the private namespace.
+
 ## CI Workflow Inventory
 
 - `compliance.yml`
