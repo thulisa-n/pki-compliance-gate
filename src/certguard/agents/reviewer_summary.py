@@ -73,8 +73,9 @@ class ReviewerSummaryAgent(BaseAgent):
             "",
         ]
 
+        # Human-readable result labels; "PASS" is not a credential.
         labels = {
-            "pass": "PASS",
+            "pass": "PASS",  # nosec B105
             "fail": "FAIL",
             "waived": "WAIVED",
             "not_applicable": "N/A",

@@ -191,8 +191,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     # Record whether --policy was supplied so auto-detection can be flagged.
     args._policy_explicit = any(
-        token == "--policy" or token.startswith("--policy=")
-        for token in sys.argv[1:]
+        argument == "--policy" or argument.startswith("--policy=")
+        for argument in sys.argv[1:]
     )
     return args
 
@@ -256,8 +256,9 @@ def _run_evaluate(args: argparse.Namespace) -> int:
     return _exit_code_from_report(report, fail_on_waived=args.fail_on_waived)
 
 
+# Human-readable result labels; "PASS" is not a credential.
 STATUS_LABELS = {
-    "pass": "PASS",
+    "pass": "PASS",  # nosec B105
     "fail": "FAIL",
     "waived": "WAIVED",
     "not_applicable": "N/A",
