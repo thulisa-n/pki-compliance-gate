@@ -14,7 +14,7 @@ inputs:
     required: false
     default: 'policies/cabf_policy.yaml'
   mode:
-    description: 'Execution mode (evaluate, apisec, summary, export-cps-doc)'
+    description: 'Execution mode (evaluate, apisec, summary, export-cps-doc, ...)'
     required: false
     default: 'evaluate'
   report:
@@ -25,6 +25,9 @@ inputs:
     description: 'Output format (text, json)'
     required: false
     default: 'text'
+  endpoint:
+    description: 'Target host or URL for apisec mode'
+    required: false
 
 outputs:
   exit_code:
@@ -45,11 +48,14 @@ runs:
       shell: bash
 
     - name: Run PKI Compliance Gate
+      env:
+        PYTHONPATH: ${{ github.action_path }}/src
       run: |
         python ${{ github.action_path }}/src/main.py \
           --mode "${{ inputs.mode }}" \
           --policy "${{ inputs.policy }}" \
           --report "${{ inputs.report }}" \
           --output "${{ inputs.output }}" \
-          ${{ inputs.cert && format('--cert "{0}"', inputs.cert) || '' }}
+          ${{ inputs.cert && format('--cert "{0}"', inputs.cert) || '' }} \
+          ${{ inputs.endpoint && format('--endpoint "{0}"', inputs.endpoint) || '' }}
       shell: bash

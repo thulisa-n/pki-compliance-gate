@@ -8,13 +8,13 @@ version = "0.1.0"
 description = "Automated PKI Compliance Engine for X.509 certificates and Policy-as-Code governance"
 readme = "README.md"
 authors = [{ name = "Thulisa Nikani", email = "thulie1@gmail.com" }]
-license = { text = "Apache-2.0" }
+license = { text = "MIT" }
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Security :: Cryptography",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13"

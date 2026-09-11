@@ -1,101 +1,113 @@
 # PKI Compliance Gate (CertGuard Engine)
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Tests](https://img.shields.io/badge/tests-83%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-87%20passed-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![GitHub Action](https://img.shields.io/badge/github--action-v1-blue)
+![Release](https://img.shields.io/badge/release-v0.1.0-blue)
 
-**PKI Compliance Gate** (CertGuard Engine) is an automated Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture governance.
+**PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
 
-It serves as the **Single Source of Truth** for digital certificate profiles, preventing prose-to-code policy drift and mass certificate revocation events.
+One YAML policy profile is the source of truth for evaluation, CI gating, and generated CP/CPS Section 7 documentation.
 
 ---
 
-## ⚡ Quick Start (30 Seconds)
+## Quick Start
 
-### Option 1: GitHub Action in CI/CD (Recommended)
-Add PKI Compliance Gate to your `.github/workflows/compliance.yml`:
+### Option 1: GitHub Action in CI/CD
+
+The published tag is `v0.1.0` (there is no `v1` tag yet).
 
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v1
+    uses: thulisa-n/pki-compliance-gate@v0.1.0
     with:
       cert: 'tests/certificates/valid_cert.pem'
       policy: 'policies/cabf_policy.yaml'
 ```
 
-### Option 2: Local CLI Installation
+### Option 2: Run from a clone
+
+The package name is reserved in `pyproject.toml`, but it is not published on PyPI. Use the repo locally:
+
 ```bash
-# Install package
-pip install pki-compliance-gate
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export PYTHONPATH=src
 
-# Evaluate certificate
-pki-gate --cert server.crt --policy policies/cabf_policy.yaml
+# Evaluate a certificate
+python src/main.py --cert tests/certificates/valid_cert.pem --policy policies/cabf_policy.yaml
 
-# Export Single Source of Truth CP/CPS Section 7 Documentation
-pki-gate --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-output CPS_SECTION_7.md
+# Export CP/CPS Section 7 documentation from the policy YAML
+python src/main.py --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-output CPS_SECTION_7.md
 ```
 
 ---
 
-## 🛡️ Key Features
+## What this repo actually enforces
 
-- **Single Source of Truth Policy Engine**: One YAML/Rego profile (`policies/cabf_policy.yaml`) drives pre-issuance linting, CI/CD gates, and auto-generates human-readable CP/CPS Section 7 documentation (`--mode export-cps-doc`).
-- **Policy-as-Code Validation**: Enforces max certificate validity (e.g. 90-day/200-day transition), minimum key sizes (RSA >= 2048), prohibited signature algorithms (SHA-1/MD5), and blocked internal domain suffixes.
-- **Active API TLS Posture Scanning**: `--mode apisec --endpoint example.com` checks live endpoints for cipher suite security, TLS version compliance, and certificate expiration.
-- **OIDC & Keyless Provenance Signing**: Signs compliance reports with Sigstore / Rekor provenance attestation (`release_provenance.json`).
-- **Risk-Based Exit Codes**:
-  - `0`: Fully compliant
-  - `1`: Isolated low-severity warnings
-  - `2`: Medium/High severity or lint failures
-  - `3`: Critical security violation (blocks merge)
+- **Baseline policy** (`policies/cabf_policy.yaml`): max validity **200 days**, RSA >= 2048, no SHA-1/MD5, SAN required, blocked internal suffixes (`.local`, `.internal`, `.intranet`).
+- **Optional crypto-transition overlay** (`crypto_transition.*`, disabled by default): target max validity **47 days** and RSA >= 3072 when you opt in.
+- **API TLS posture** (`--mode apisec --endpoint example.com`): live TLS version, weak-cipher, expiry, and certificate checks.
+- **Keyless provenance in this repository's CI**: on `push` to `main`, `reports/release_provenance.json` is signed with cosign. GitHub native attestations are published only on public repositories.
+- **Exit codes from evaluation**:
+  - `0`: no failing checks (and lint not failed)
+  - `1`: only low-severity check failures
+  - `2`: medium/high failures, lint failure, or CLI usage/input errors
+  - `3`: at least one critical check failure
 
 ---
 
-## 🔄 How It Flows
+## How it flows
 
 ```mermaid
 flowchart LR
-    A[PEM Certificate / Domain] --> B[X509 & TLS Parser]
+    A[PEM Certificate / Domain] --> B[X509 and TLS Parser]
     B --> C[Policy Validator Engine]
     C --> D[Compliance Report]
     C --> E[CP/CPS Docs Exporter]
-    C --> F[Audit Evidence Vault]
+    C --> F[Audit Evidence]
     D --> G[CI Exit Code 0..3]
 ```
 
 ---
 
-## 🛠️ Execution Modes
+## Execution modes
 
-| Mode | Command Example | Description |
+| Mode | Example | What the code does |
 | :--- | :--- | :--- |
-| `evaluate` | `pki-gate --cert server.crt` | Runs full policy validation on a certificate file. |
-| `export-cps-doc` | `pki-gate --mode export-cps-doc` | Compiles YAML policy into CP/CPS Section 7 Markdown documentation. |
-| `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans live domain endpoint for TLS posture and certificate status. |
-| `triage` | `pki-gate --mode triage --report-input report.json` | Analyzes compliance findings and prioritizes bug tickets. |
-| `assure` | `pki-gate --mode assure --report-input report.json` | Validates audit evidence integrity. |
-| `watch` | `pki-gate --mode watch` | Checks policy against external security standards baselines. |
-| `heal` | `pki-gate --mode heal --healed-cert new_cert.pem` | Generates remediation plan and evaluates re-issued certificate. |
+| `evaluate` | `python src/main.py --cert server.crt` | Full policy evaluation of a certificate file. |
+| `export-cps-doc` | `python src/main.py --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
+| `apisec` | `python src/main.py --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
+| `triage` | `python src/main.py --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
+| `assure` | `python src/main.py --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
+| `watch` | `python src/main.py --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
+| `heal` | `python src/main.py --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
+| `summary` | `python src/main.py --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
+| `trend` | `python src/main.py --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
+| `signals` | `python src/main.py --mode signals` | Reads curated external signals JSON and writes recommendations. |
+
+Optional local API (not a hosted service): `PYTHONPATH=src uvicorn api.server:app --app-dir src`.
 
 ---
 
-## 📁 Repository Structure
+## Repository structure
 
 ```text
-src/certguard/        Core agents, X.509 parser, & engine logic
-src/certguard/policy_exporter.py  CP/CPS Single Source of Truth exporter
-src/main.py           CLI entrypoint
-policies/             Policy YAML profiles & Rego rules
-tests/                Automated test suite (83 tests)
-.github/action.yml    GitHub Action Marketplace definition file
-.github/workflows/    CI/CD workflows & compliance guardrails
+src/certguard/          Core agents, X.509 parser, and engine
+src/certguard/policy_exporter.py  CP/CPS exporter
+src/api/server.py       Optional FastAPI wrapper
+src/main.py             CLI entrypoint
+policies/               Policy YAML profiles and Rego rules
+tests/                  Automated test suite (87 tests)
+.github/action.yml      Composite GitHub Action
+.github/workflows/      CI workflows
 ```
 
 ---
 
-## 📄 License
+## License
 
 Licensed under the [MIT License](LICENSE).
