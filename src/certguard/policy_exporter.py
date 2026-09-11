@@ -58,6 +58,10 @@ SECTION_MAP: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (
         "Signature",
         (
             ("Prohibited hash algorithms", "signature.prohibited_algorithms", "list_upper"),
+            ("Allowed signature algorithm OIDs", "signature.allowed_oids", "list"),
+            ("Minimum serial entropy", "certificate.min_serial_bits", "bits"),
+            ("Require embedded SCTs", "certificate.require_sct", "bool"),
+            ("Required EKU profile", "certificate.require_eku", "bool"),
         ),
     ),
     (

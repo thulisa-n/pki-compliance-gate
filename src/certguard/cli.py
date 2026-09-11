@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from certguard import __version__
+from certguard import __version__, github_output
 from certguard.agents.api_tls_posture import ApiTlsPostureAgent
 from certguard.agents.bug_triage import BugTriageAgent
 from certguard.agents.compliance_assurance import ComplianceAssuranceAgent
@@ -19,10 +19,19 @@ from certguard.agents.remediation import RemediationAgent
 from certguard.agents.reviewer_summary import ReviewerSummaryAgent
 from certguard.agents.standards_watch import StandardsWatchAgent
 from certguard.agents.trend_snapshot import TrendSnapshotAgent
+from certguard.agents.x509_parser import X509ParserAgent
 from certguard.engine import ComplianceGateEngine
 from certguard.governance import enforce_protected_context
 from certguard.models import SEVERITY_ORDER, ComplianceReport
 from certguard.policy import load_policy
+from certguard.readiness import (
+    assess_readiness,
+    load_baseline,
+    readiness_exit_code,
+    render_readiness_markdown,
+    render_readiness_text,
+)
+from certguard.sarif import to_sarif
 
 
 def packaged_policy_path() -> str:
@@ -84,6 +93,7 @@ def parse_args() -> argparse.Namespace:
             "trend",
             "apisec",
             "signals",
+            "readiness",
             "export-cps-doc",
         ],
         default="evaluate",
@@ -122,7 +132,38 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--as-of",
-        help="ISO date used by watch mode instead of today's UTC date (YYYY-MM-DD)",
+        help="ISO date used by watch and readiness modes instead of today's UTC date (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        "--sarif-output",
+        help=(
+            "Write SARIF 2.1.0 to this path for GitHub code scanning "
+            "(github/codeql-action/upload-sarif)."
+        ),
+    )
+    parser.add_argument(
+        "--github-summary",
+        action="store_true",
+        help="Append a findings table to $GITHUB_STEP_SUMMARY.",
+    )
+    parser.add_argument(
+        "--github-summary-output",
+        help="Write the job-summary markdown to this path instead of $GITHUB_STEP_SUMMARY.",
+    )
+    parser.add_argument(
+        "--annotations",
+        action="store_true",
+        help="Emit GitHub Actions workflow annotations for each finding.",
+    )
+    parser.add_argument(
+        "--readiness-output",
+        default="reports/validity_readiness.json",
+        help="Path for the validity readiness assessment JSON.",
+    )
+    parser.add_argument(
+        "--require-signed-waivers",
+        action="store_true",
+        help="Reject unsigned waiver files even if the policy leaves them optional.",
     )
     parser.add_argument(
         "--healed-cert",
@@ -145,7 +186,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        choices=["text", "json"],
+        choices=["text", "json", "sarif"],
         default="text",
         help="Output format for evaluation results",
     )
@@ -224,6 +265,8 @@ def main() -> int:
             return _run_apisec(args)
         if args.mode == "signals":
             return _run_signals(args)
+        if args.mode == "readiness":
+            return _run_readiness(args)
         if args.mode == "export-cps-doc":
             return _run_export_cps_doc(args)
         raise ValueError(f"Unsupported mode: {args.mode}")
@@ -252,13 +295,33 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         else None,
         issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
+        require_signed_waivers=args.require_signed_waivers or None,
     )
     if args.output == "json":
         print(json.dumps(report.to_dict(), indent=2))
+    elif args.output == "sarif":
+        print(json.dumps(to_sarif(report, policy_path=args.policy), indent=2))
     else:
         _print_report(report, compliant=compliant, explain=args.explain)
         print(f"Report written to {args.report}")
         print(f"Evidence written to {args.evidence_dir}")
+    if args.sarif_output:
+        sarif_path = Path(args.sarif_output)
+        sarif_path.parent.mkdir(parents=True, exist_ok=True)
+        sarif_path.write_text(
+            json.dumps(to_sarif(report, policy_path=args.policy), indent=2),
+            encoding="utf-8",
+        )
+        if args.output != "sarif":
+            print(f"SARIF written to {sarif_path}")
+    if args.github_summary or args.github_summary_output:
+        github_output.write_job_summary(
+            report,
+            policy_path=args.policy,
+            summary_path=args.github_summary_output,
+        )
+    if args.annotations:
+        github_output.emit_annotations(report, sys.stdout)
     return _exit_code_from_report(report, fail_on_waived=args.fail_on_waived)
 
 
@@ -411,6 +474,7 @@ def _run_heal(args: argparse.Namespace) -> int:
         else None,
         issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
+        require_signed_waivers=args.require_signed_waivers or None,
     )
 
     assurance = ComplianceAssuranceAgent().run({"report": healed_report.to_dict()})
@@ -418,6 +482,44 @@ def _run_heal(args: argparse.Namespace) -> int:
     print("Assurance:", "YES" if assurance.success else "NO")
     print(f"Healed report written to {args.healed_report}")
     return 0 if (compliant and assurance.success) else 1
+
+
+def _run_readiness(args: argparse.Namespace) -> int:
+    """Assess a policy (and optionally one certificate) against the schedule."""
+    _announce_policy_source(args)
+    policy = load_policy(Path(args.policy))
+    baseline = load_baseline(Path(args.standards_baseline))
+
+    parser_data = None
+    if args.cert:
+        parser_result = X509ParserAgent().run({"cert_path": args.cert})
+        if not parser_result.success:
+            raise ValueError("; ".join(parser_result.errors))
+        parser_data = parser_result.data
+
+    assessment = assess_readiness(
+        policy, baseline, as_of=args.as_of, parser_data=parser_data
+    )
+
+    output_path = Path(args.readiness_output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(assessment, indent=2), encoding="utf-8")
+
+    if args.output == "json":
+        print(json.dumps(assessment, indent=2))
+    else:
+        print(render_readiness_text(assessment))
+        print(f"\nAssessment written to {output_path}")
+
+    if args.github_summary or args.github_summary_output:
+        target = args.github_summary_output or os.getenv("GITHUB_STEP_SUMMARY")
+        if target:
+            summary_path = Path(target)
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+            with summary_path.open("a", encoding="utf-8") as handle:
+                handle.write(render_readiness_markdown(assessment) + "\n")
+
+    return readiness_exit_code(assessment)
 
 
 def _run_summary(args: argparse.Namespace) -> int:

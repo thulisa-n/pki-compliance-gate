@@ -3,7 +3,7 @@
 [![Compliance Gate](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml)
 [![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Release](https://img.shields.io/badge/release-v0.2.1-blue)
 
 **PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
@@ -121,8 +121,9 @@ Digests detect accidental change and single-file tampering. They are **not
 signatures** -- a party able to rewrite the whole bundle can recompute them.
 Tamper-evident custody comes from the cosign keyless signature produced in this
 repository's CI on `push` to `main` (GitHub native attestations are published
-only on public repositories). The `.seal` file is a digest, not a seal; the
-name is retained for pipeline compatibility.
+only on public repositories). The integrity sidecar is `*.digest` (a SHA-256
+digest, not a signature). A `*.seal` copy is still written so existing
+pipelines do not break.
 
 ### Exit codes
 
@@ -146,7 +147,7 @@ much was actually assessed:
 Compliant: NO
 Risk Level: HIGH
 Findings: critical=2
-Coverage: 10 of 25 controls evaluated (8 pass, 2 fail, 0 waived, 15 not applicable)
+Coverage: 12 of 29 controls evaluated (10 pass, 2 fail, 0 waived, 17 not applicable)
 ```
 
 ## How it flows
@@ -177,6 +178,7 @@ flowchart LR
 | `summary` | `pki-gate --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
 | `trend` | `pki-gate --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
 | `signals` | `pki-gate --mode signals` | Reads curated external signals JSON and writes recommendations. |
+| `readiness` | `pki-gate --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
 
 ## Repository structure
 
@@ -194,8 +196,8 @@ action.yml              Composite GitHub Action
 
 ## Distribution status
 
-The GitHub Action, wheel, and sdist are published from the `v0.2.1` tag.
-Install the CLI with `pip install pki-compliance-gate==0.2.1`. Later GitHub
+The GitHub Action, wheel, and sdist are published from the `v0.2.2` tag.
+Install the CLI with `pip install pki-compliance-gate==0.2.2`. Later GitHub
 releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 (OIDC, no API token in the repository).
 
@@ -203,4 +205,4 @@ releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).

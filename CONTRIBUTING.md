@@ -36,6 +36,14 @@ API TLS posture:
 pki-gate --mode apisec --endpoint https://example.com
 ```
 
+## Developer Certificate of Origin
+
+This project requires a Developer Certificate of Origin on every commit.
+Add a `Signed-off-by: Your Name <you@example.com>` trailer that matches the
+commit author, typically with `git commit -s`.
+
+By contributing you certify [DCO 1.1](https://developercertificate.org/).
+
 ## Pull Request Expectations
 
 - Keep PRs scoped to one change theme.

@@ -71,7 +71,7 @@ class ExternalSignalWatchAgent(BaseAgent):
                 "signal_id": signal["id"],
                 "control": "profile_overlay_alignment",
                 "action": "Update root program profile overlays and watch baseline drift.",
-                "target_files": ["policies/profiles/root_program_baseline.yaml"],
+                "target_files": ["policies/cabf_policy.yaml"],
             }
         if category == "crypto_transition":
             return {

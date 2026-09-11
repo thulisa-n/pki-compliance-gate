@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 from pathlib import Path
 from typing import Any
@@ -20,9 +21,18 @@ class PolicyValidationError(ValueError):
     """Raised when a policy file is missing required keys or types."""
 
 
+_POLICY_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
+
+
 def load_policy(policy_path: Path) -> dict[str, Any]:
     if not policy_path.exists():
         raise FileNotFoundError(f"Policy file not found: {policy_path}")
+
+    resolved = policy_path.resolve()
+    cache_key = (str(resolved), resolved.stat().st_mtime_ns)
+    cached = _POLICY_CACHE.get(cache_key)
+    if cached is not None:
+        return copy.deepcopy(cached)
 
     raw = policy_path.read_text(encoding="utf-8")
     policy = yaml.safe_load(raw)
@@ -38,6 +48,7 @@ def load_policy(policy_path: Path) -> dict[str, Any]:
         raw.encode("utf-8")
     ).hexdigest()
     policy["_meta"]["source_path"] = str(policy_path)
+    _POLICY_CACHE[cache_key] = copy.deepcopy(policy)
     return policy
 
 
@@ -54,11 +65,17 @@ _REQUIRED_KEYS: tuple[tuple[str, str, type], ...] = (
     ("certificate", "reject_expired", bool),
     ("certificate", "reject_not_yet_valid", bool),
     ("certificate", "warn_if_expires_within_days", int),
+    ("certificate", "min_serial_bits", int),
+    ("certificate", "require_sct", bool),
+    ("certificate", "min_sct_count", int),
+    ("certificate", "require_eku", bool),
+    ("certificate", "required_ekus", list),
     ("key", "minimum_rsa_bits", int),
     ("key", "allowed_algorithms", list),
     ("key", "minimum_ec_bits", int),
     ("key", "allowed_ec_curves", list),
     ("signature", "prohibited_algorithms", list),
+    ("signature", "allowed_oids", list),
     ("domains", "forbid_internal_names", bool),
     ("domains", "blocked_suffixes", list),
     ("lint", "enable_zlint", bool),
@@ -81,6 +98,7 @@ _REQUIRED_KEYS: tuple[tuple[str, str, type], ...] = (
     ("opa", "policy_file", str),
     ("issuance", "require_hsm_attestation", bool),
     ("issuance", "min_fips_level", int),
+    ("governance", "require_signed_waivers", bool),
     ("crypto_transition", "enabled", bool),
     ("crypto_transition", "target_max_validity_days", int),
     ("crypto_transition", "target_min_rsa_bits", int),
@@ -95,6 +113,8 @@ _STRING_LISTS: tuple[tuple[str, str], ...] = (
     ("rfc5280", "required_key_usages"),
     ("rfc5280", "allowed_critical_extensions"),
     ("crypto_transition", "approved_signature_algorithms"),
+    ("certificate", "required_ekus"),
+    ("signature", "allowed_oids"),
 )
 
 _REQUIRED_SECTIONS: tuple[str, ...] = (
@@ -174,6 +194,13 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     # stays opt-in: a certificate valid for another 10 days is still compliant.
     # Set a positive number of days to surface it as a low-severity finding.
     policy["certificate"].setdefault("warn_if_expires_within_days", 0)
+    # BR 7.1 requires ≥64 bits of serial entropy. Keep this on by default.
+    policy["certificate"].setdefault("min_serial_bits", 64)
+    # Locally minted certificates do not embed SCTs or EKU; both stay opt-in.
+    policy["certificate"].setdefault("require_sct", False)
+    policy["certificate"].setdefault("min_sct_count", 2)
+    policy["certificate"].setdefault("require_eku", False)
+    policy["certificate"].setdefault("required_ekus", ["1.3.6.1.5.5.7.3.1"])
 
     policy.setdefault("key", {})
     # Defaults ON. Previously any non-RSA key skipped key-strength policy
@@ -181,6 +208,20 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy["key"].setdefault("allowed_algorithms", ["rsa", "ec"])
     policy["key"].setdefault("minimum_ec_bits", 256)
     policy["key"].setdefault("allowed_ec_curves", list(CABF_APPROVED_EC_CURVES))
+
+    policy.setdefault("signature", {})
+    policy["signature"].setdefault("prohibited_algorithms", ["md5", "sha1"])
+    policy["signature"].setdefault(
+        "allowed_oids",
+        [
+            "1.2.840.113549.1.1.11",  # sha256WithRSAEncryption
+            "1.2.840.113549.1.1.12",  # sha384WithRSAEncryption
+            "1.2.840.113549.1.1.13",  # sha512WithRSAEncryption
+            "1.2.840.10045.4.3.2",  # ecdsa-with-SHA256
+            "1.2.840.10045.4.3.3",  # ecdsa-with-SHA384
+            "1.2.840.10045.4.3.4",  # ecdsa-with-SHA512
+        ],
+    )
 
     policy.setdefault("lint", {})
     policy["lint"].setdefault("enable_asn1parse", False)
@@ -208,6 +249,9 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy.setdefault("issuance", {})
     policy["issuance"].setdefault("require_hsm_attestation", False)
     policy["issuance"].setdefault("min_fips_level", 2)
+
+    policy.setdefault("governance", {})
+    policy["governance"].setdefault("require_signed_waivers", False)
 
     policy.setdefault("crypto_transition", {})
     policy["crypto_transition"].setdefault("enabled", False)

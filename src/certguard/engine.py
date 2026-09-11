@@ -15,6 +15,7 @@ from certguard import __version__
 from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
+from certguard.artifact_signing import sign_bytes, verify_signature
 from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy, policy_digest
 
@@ -36,9 +37,42 @@ class ComplianceGateEngine:
         issuance_attestation: dict[str, Any] | None = None,
         issuer_cert_path: Path | None = None,
         waiver_path: Path | None = None,
+        require_signed_waivers: bool | None = None,
+        evidence_signing_key: str | None = None,
     ) -> tuple[bool, ComplianceReport]:
-        # One evaluation instant for the whole run, so the leaf and the issuer
-        # are judged against the same clock and the report can state it.
+        report, artifacts = self.assess(
+            cert_path=cert_path,
+            dcv_attestation=dcv_attestation,
+            issuance_attestation=issuance_attestation,
+            issuer_cert_path=issuer_cert_path,
+            waiver_path=waiver_path,
+            require_signed_waivers=require_signed_waivers,
+        )
+        self.persist(
+            report=report,
+            artifacts=artifacts,
+            report_path=report_path,
+            evidence_dir=evidence_dir,
+            cert_path=cert_path,
+            waiver_path=waiver_path,
+            evidence_signing_key=evidence_signing_key,
+        )
+        return report.compliant, report
+
+    def assess(
+        self,
+        cert_path: Path,
+        dcv_attestation: dict[str, Any] | None = None,
+        issuance_attestation: dict[str, Any] | None = None,
+        issuer_cert_path: Path | None = None,
+        waiver_path: Path | None = None,
+        require_signed_waivers: bool | None = None,
+    ) -> tuple[ComplianceReport, dict[str, Any]]:
+        """Evaluate without writing files.
+
+        Persistence is a separate step so a hosted API can return a verdict
+        without creating a throwaway directory per request.
+        """
         evaluated_at = datetime.now(timezone.utc)
 
         parser_result = self.parser_agent.run(
@@ -70,7 +104,14 @@ class ComplianceGateEngine:
         if opa_result["check"] is not None:
             policy_checks.append(opa_result["check"])
 
-        waiver_result = self._apply_waivers(policy_checks, waiver_path)
+        signed_required = (
+            require_signed_waivers
+            if require_signed_waivers is not None
+            else bool(self.policy.get("governance", {}).get("require_signed_waivers"))
+        )
+        waiver_result = self._apply_waivers(
+            policy_checks, waiver_path, require_signature=signed_required
+        )
         policy_checks = waiver_result["checks"]
         policy_failures = [check for check in policy_checks if check.status == "fail"]
 
@@ -86,53 +127,69 @@ class ComplianceGateEngine:
             lint=lint_result,
             policy_version=self.policy.get("metadata", {}).get("version", "unknown"),
         )
+        artifacts = {
+            "policy_checks": policy_checks,
+            "policy_failures": policy_failures,
+            "lint_result": lint_result,
+            "waiver_result": waiver_result,
+            "opa_result": opa_result,
+        }
+        return report, artifacts
 
+    def persist(
+        self,
+        report: ComplianceReport,
+        artifacts: dict[str, Any],
+        report_path: Path,
+        evidence_dir: Path,
+        cert_path: Path,
+        waiver_path: Path | None = None,
+        evidence_signing_key: str | None = None,
+    ) -> None:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         evidence_dir.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
 
         (evidence_dir / "policy_checks.json").write_text(
-            json.dumps([c.to_dict() for c in policy_checks], indent=2),
+            json.dumps([c.to_dict() for c in artifacts["policy_checks"]], indent=2),
             encoding="utf-8",
         )
         (evidence_dir / "lint_results.json").write_text(
-            json.dumps(lint_result, indent=2), encoding="utf-8"
+            json.dumps(artifacts["lint_result"], indent=2), encoding="utf-8"
         )
         (evidence_dir / "waiver_results.json").write_text(
-            json.dumps(waiver_result["summary"], indent=2), encoding="utf-8"
+            json.dumps(artifacts["waiver_result"]["summary"], indent=2), encoding="utf-8"
         )
         (evidence_dir / "opa_results.json").write_text(
-            json.dumps(opa_result["summary"], indent=2), encoding="utf-8"
+            json.dumps(artifacts["opa_result"]["summary"], indent=2), encoding="utf-8"
         )
-        seal_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
-        if not seal_result.success:
-            raise ValueError("; ".join(seal_result.errors))
+        digest_result = self.evidence_vault_agent.run({"report_path": str(report_path)})
+        if not digest_result.success:
+            raise ValueError("; ".join(digest_result.errors))
         self._append_compliance_decision_log(
             evidence_dir=evidence_dir,
             report=report,
-            failed_checks=policy_failures,
-            lint_status=lint_result.get("status", "unknown"),
+            failed_checks=artifacts["policy_failures"],
+            lint_status=artifacts["lint_result"].get("status", "unknown"),
             waiver_path=waiver_path,
         )
-        # Written last so the decision log it covers is already on disk and its
-        # digest is recorded.
         self._write_evidence_manifest(
             evidence_dir=evidence_dir,
             report_path=report_path,
-            seal_path=Path(seal_result.data["seal_path"]),
+            digest_path=Path(digest_result.data["digest_path"]),
             cert_path=cert_path,
             waiver_path=waiver_path,
+            evidence_signing_key=evidence_signing_key,
         )
-
-        return compliant, report
 
     def _write_evidence_manifest(
         self,
         evidence_dir: Path,
         report_path: Path,
-        seal_path: Path,
+        digest_path: Path,
         cert_path: Path,
         waiver_path: Path | None,
+        evidence_signing_key: str | None = None,
     ) -> None:
         """Record every evidence file with its SHA-256 digest.
 
@@ -144,7 +201,7 @@ class ComplianceGateEngine:
         manifest_path = evidence_dir / "evidence_manifest.json"
         listed = [
             report_path,
-            seal_path,
+            digest_path,
             evidence_dir / "policy_checks.json",
             evidence_dir / "lint_results.json",
             evidence_dir / "waiver_results.json",
@@ -167,7 +224,7 @@ class ComplianceGateEngine:
             "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
             "commit_sha": os.getenv("GITHUB_SHA", "local-commit"),
             "report_file": str(report_path),
-            "seal_file": str(seal_path),
+            "digest_file": str(digest_path),
             "evidence_files": [
                 {
                     "path": str(path),
@@ -183,6 +240,15 @@ class ComplianceGateEngine:
                 "manifest for tamper-evident custody."
             ),
         }
+        if evidence_signing_key:
+            payload["manifest_signature"] = sign_bytes(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+                evidence_signing_key,
+            )
+            payload["integrity_note"] = (
+                payload["integrity_note"]
+                + " manifest_signature is an Ed25519 signature over the unsigned manifest."
+            )
         manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     def _append_compliance_decision_log(
@@ -384,7 +450,10 @@ class ComplianceGateEngine:
         }
 
     def _apply_waivers(
-        self, checks: list[CheckResult], waiver_path: Path | None
+        self,
+        checks: list[CheckResult],
+        waiver_path: Path | None,
+        require_signature: bool = False,
     ) -> dict[str, Any]:
         mutable_checks = list(checks)
         if waiver_path is None:
@@ -441,6 +510,19 @@ class ComplianceGateEngine:
                 "summary": {
                     "status": "fail",
                     "details": f"Waiver file has invalid top-level structure: {waiver_path}",
+                    "source": str(waiver_path),
+                    "applied": [],
+                },
+            }
+
+        signature_error = self._waiver_signature_error(payload, require_signature)
+        if signature_error is not None:
+            mutable_checks.append(signature_error)
+            return {
+                "checks": mutable_checks,
+                "summary": {
+                    "status": "fail",
+                    "details": signature_error.details,
                     "source": str(waiver_path),
                     "applied": [],
                 },
@@ -525,6 +607,44 @@ class ComplianceGateEngine:
                 "applied": applied,
             },
         }
+
+    def _waiver_signature_error(
+        self, payload: dict[str, Any], require_signature: bool
+    ) -> CheckResult | None:
+        signature = payload.get("signature")
+        public_key = payload.get("public_key") or os.getenv(
+            "CERTGUARD_WAIVER_PUBLIC_KEY"
+        )
+        unsigned = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"signature", "public_key"}
+        }
+        canonical = json.dumps(
+            unsigned, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        has_signature = isinstance(signature, str) and isinstance(public_key, str)
+        if require_signature and not has_signature:
+            return CheckResult(
+                name="waiver_signature",
+                status="fail",
+                details="Waiver file is not Ed25519-signed and signed waivers are required.",
+                rule_id="WAIVER-SIGNATURE",
+                category="GOVERNANCE",
+                severity="critical",
+                standard_reference="Internal waiver governance policy",
+            )
+        if has_signature and not verify_signature(canonical, signature, public_key):
+            return CheckResult(
+                name="waiver_signature",
+                status="fail",
+                details="Waiver file signature is invalid.",
+                rule_id="WAIVER-SIGNATURE",
+                category="GOVERNANCE",
+                severity="critical",
+                standard_reference="Internal waiver governance policy",
+            )
+        return None
 
     def _run_lint_controls(self, cert_path: Path) -> dict[str, Any]:
         zlint_result = self._run_zlint_if_enabled(cert_path)

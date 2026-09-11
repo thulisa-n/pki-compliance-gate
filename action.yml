@@ -14,7 +14,7 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Execution mode (evaluate, apisec, summary, export-cps-doc, ...)'
+    description: 'Execution mode (evaluate, readiness, apisec, summary, export-cps-doc, ...)'
     required: false
     default: 'evaluate'
   report:
@@ -22,12 +22,36 @@ inputs:
     required: false
     default: 'reports/compliance_report.json'
   output:
-    description: 'Output format (text, json)'
+    description: 'Output format (text, json, sarif)'
     required: false
     default: 'text'
   endpoint:
     description: 'Target host or URL for apisec mode'
     required: false
+  sarif:
+    description: >-
+      Write SARIF 2.1.0 to this path so findings can be uploaded to GitHub code
+      scanning. Set to an empty string to disable.
+    required: false
+    default: 'reports/certguard.sarif'
+  job-summary:
+    description: 'Append a rendered findings table to the Actions run summary'
+    required: false
+    default: 'true'
+  annotations:
+    description: 'Emit workflow annotations for each finding'
+    required: false
+    default: 'true'
+  fail-on-waived:
+    description: 'Treat waived findings as failures (for audit runs)'
+    required: false
+    default: 'false'
+  as-of:
+    description: >-
+      ISO date to assess readiness against, for `mode: readiness`. Lets you ask
+      "would we pass in March 2027?" today.
+    required: false
+    default: ''
 
 outputs:
   exit_code:
@@ -36,6 +60,15 @@ outputs:
   report_path:
     description: 'Path to generated JSON compliance report'
     value: ${{ steps.gate.outputs.report_path }}
+  sarif_path:
+    description: 'Path to generated SARIF file, empty when SARIF output is disabled'
+    value: ${{ steps.gate.outputs.sarif_path }}
+  compliant:
+    description: 'true when no controls failed'
+    value: ${{ steps.gate.outputs.compliant }}
+  risk_level:
+    description: 'LOW, MEDIUM or HIGH'
+    value: ${{ steps.gate.outputs.risk_level }}
 
 runs:
   using: 'composite'
@@ -58,6 +91,11 @@ runs:
         INPUT_OUTPUT: ${{ inputs.output }}
         INPUT_POLICY: ${{ inputs.policy }}
         INPUT_REPORT: ${{ inputs.report }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_JOB_SUMMARY: ${{ inputs.job-summary }}
+        INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        INPUT_FAIL_ON_WAIVED: ${{ inputs.fail-on-waived }}
+        INPUT_AS_OF: ${{ inputs.as-of }}
       run: |
         policy="${INPUT_POLICY:-${{ github.action_path }}/policies/cabf_policy.yaml}"
         args=(
@@ -72,14 +110,40 @@ runs:
         if [ -n "$INPUT_ENDPOINT" ]; then
           args+=(--endpoint "$INPUT_ENDPOINT")
         fi
+        if [ -n "$INPUT_SARIF" ]; then
+          args+=(--sarif-output "$INPUT_SARIF")
+        fi
+        if [ "$INPUT_JOB_SUMMARY" = "true" ]; then
+          args+=(--github-summary)
+        fi
+        if [ "$INPUT_ANNOTATIONS" = "true" ]; then
+          args+=(--annotations)
+        fi
+        if [ "$INPUT_FAIL_ON_WAIVED" = "true" ]; then
+          args+=(--fail-on-waived)
+        fi
+        if [ -n "$INPUT_AS_OF" ]; then
+          args+=(--as-of "$INPUT_AS_OF")
+        fi
 
         set +e
         pki-gate "${args[@]}"
         code=$?
         set -e
+
+        compliant="false"
+        risk_level=""
+        if [ -s "$INPUT_REPORT" ]; then
+          compliant="$(python -c "import json,sys;print(str(json.load(open(sys.argv[1]))['compliant']).lower())" "$INPUT_REPORT" 2>/dev/null || echo false)"
+          risk_level="$(python -c "import json,sys;print(json.load(open(sys.argv[1])).get('risk_level',''))" "$INPUT_REPORT" 2>/dev/null || echo '')"
+        fi
+
         {
           echo "exit_code=$code"
           echo "report_path=$INPUT_REPORT"
+          echo "sarif_path=$INPUT_SARIF"
+          echo "compliant=$compliant"
+          echo "risk_level=$risk_level"
         } >> "$GITHUB_OUTPUT"
         exit "$code"
       shell: bash

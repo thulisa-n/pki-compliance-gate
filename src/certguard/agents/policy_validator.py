@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from certguard.agents.base import BaseAgent
+from certguard.controls import CONTROL_POLICY_PATHS, registry_from_metadata
 from certguard.models import AgentResult, CheckResult, Status
 
 
@@ -97,6 +98,38 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
         "standard_reference": "CA/B Forum BR 7.1.3",
         "rationale": "Deprecated hash algorithms can be vulnerable to collision attacks.",
         "recommendation": "Use SHA-256 or stronger signature algorithm.",
+    },
+    "signature_algorithm_oid": {
+        "rule_id": "CAB-BR-7.1.3.2",
+        "category": "CRYPTOGRAPHY",
+        "severity": "critical",
+        "standard_reference": "CA/B Forum BR 7.1.3.2",
+        "rationale": "The Baseline Requirements constrain the signature AlgorithmIdentifier, not just the digest name.",
+        "recommendation": "Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256.",
+    },
+    "serial_entropy": {
+        "rule_id": "CAB-BR-7.1",
+        "category": "IDENTITY",
+        "severity": "high",
+        "standard_reference": "CA/B Forum BR 7.1",
+        "rationale": "Predictable serial numbers enable collision and tracking attacks; at least 64 bits of entropy is required.",
+        "recommendation": "Issue certificates with a cryptographically random serial of at least 64 bits.",
+    },
+    "sct_presence": {
+        "rule_id": "CAB-BR-CT-SCT",
+        "category": "TRANSPARENCY",
+        "severity": "high",
+        "standard_reference": "Certificate Transparency / CA/B Forum BR",
+        "rationale": "Browser trust requires embedded Signed Certificate Timestamps.",
+        "recommendation": "Submit the precertificate to CT logs and embed the required SCTs.",
+    },
+    "extended_key_usage": {
+        "rule_id": "CAB-BR-7.1.2",
+        "category": "IDENTITY",
+        "severity": "high",
+        "standard_reference": "CA/B Forum BR 7.1.2 / RFC 5280 4.2.1.12",
+        "rationale": "EKU binds a certificate to an intended purpose such as TLS server authentication.",
+        "recommendation": "Include the required extendedKeyUsage values for the certificate profile.",
     },
     "internal_domain_check": {
         "rule_id": "CAB-BR-7.1.4.2.1",
@@ -220,9 +253,10 @@ CHECK_METADATA: dict[str, dict[str, str]] = {
     },
 }
 
+CONTROLS = registry_from_metadata(CHECK_METADATA, CONTROL_POLICY_PATHS)
 #: Every control this agent can emit. Used by the CP/CPS exporter and by
 #: tests that assert documentation covers the full enforced control set.
-ALL_CONTROL_NAMES: tuple[str, ...] = tuple(CHECK_METADATA)
+ALL_CONTROL_NAMES: tuple[str, ...] = tuple(control.name for control in CONTROLS)
 
 
 class PolicyValidatorAgent(BaseAgent):
@@ -246,6 +280,7 @@ class PolicyValidatorAgent(BaseAgent):
         checks.extend(self._rfc5280_checks(policy, parser_data, issuer_parser_data))
         checks.extend(self._issuance_checks(policy, issuance_attestation))
         checks.extend(self._crypto_transition_checks(policy, parser_data))
+        checks.extend(self._browser_trust_checks(policy, parser_data))
 
         # A run succeeds when nothing failed. Controls that policy did not
         # enable are not_applicable and must not count against the run, but
@@ -545,7 +580,7 @@ class PolicyValidatorAgent(BaseAgent):
             for value in forbidden_algorithms
             if value == signature_hash or value in signature_name
         )
-        return [
+        checks = [
             self._check(
                 "signature_algorithm",
                 not offending,
@@ -559,6 +594,125 @@ class PolicyValidatorAgent(BaseAgent):
                 actual_value=signature_hash,
             )
         ]
+
+        allowed_oids = {
+            str(value).strip()
+            for value in policy["signature"].get("allowed_oids") or []
+            if str(value).strip()
+        }
+        actual_oid = str(parser_data.get("signature_algorithm_oid") or "")
+        if not allowed_oids:
+            checks.append(
+                self._na(
+                    "signature_algorithm_oid",
+                    "Signature OID allowlist disabled by policy (signature.allowed_oids is empty).",
+                    policy_value=[],
+                    actual_value=actual_oid or None,
+                )
+            )
+        else:
+            checks.append(
+                self._check(
+                    "signature_algorithm_oid",
+                    actual_oid in allowed_oids,
+                    (
+                        f"Signature algorithm OID {actual_oid} is permitted."
+                        if actual_oid in allowed_oids
+                        else f"Signature algorithm OID {actual_oid or 'missing'} is not in the policy allowlist."
+                    ),
+                    policy_value=sorted(allowed_oids),
+                    actual_value=actual_oid or None,
+                )
+            )
+        return checks
+
+    def _browser_trust_checks(
+        self, policy: dict[str, Any], parser_data: dict[str, Any]
+    ) -> list[CheckResult]:
+        cert_cfg = policy["certificate"]
+        checks: list[CheckResult] = []
+
+        min_serial_bits = cert_cfg["min_serial_bits"]
+        serial_bits = parser_data.get("serial_number_bits")
+        if min_serial_bits <= 0:
+            checks.append(
+                self._na(
+                    "serial_entropy",
+                    "Serial-entropy check disabled by policy (certificate.min_serial_bits=0).",
+                    policy_value=0,
+                    actual_value=serial_bits,
+                )
+            )
+        else:
+            enough = isinstance(serial_bits, int) and serial_bits >= min_serial_bits
+            checks.append(
+                self._check(
+                    "serial_entropy",
+                    enough,
+                    (
+                        f"Serial number has {serial_bits} bits (min {min_serial_bits})."
+                        if isinstance(serial_bits, int)
+                        else "Serial number bit length is missing from parser evidence."
+                    ),
+                    policy_value=min_serial_bits,
+                    actual_value=serial_bits,
+                )
+            )
+
+        if not cert_cfg["require_sct"]:
+            checks.append(
+                self._na(
+                    "sct_presence",
+                    "SCT presence check disabled by policy (certificate.require_sct=false).",
+                    policy_value=False,
+                    actual_value=parser_data.get("sct_count"),
+                )
+            )
+        else:
+            required = cert_cfg["min_sct_count"]
+            actual = parser_data.get("sct_count")
+            enough = isinstance(actual, int) and actual >= required
+            checks.append(
+                self._check(
+                    "sct_presence",
+                    enough,
+                    (
+                        f"Certificate embeds {actual} SCT(s) (min {required})."
+                        if isinstance(actual, int)
+                        else "SCT count is missing from parser evidence."
+                    ),
+                    policy_value=required,
+                    actual_value=actual,
+                )
+            )
+
+        if not cert_cfg["require_eku"]:
+            checks.append(
+                self._na(
+                    "extended_key_usage",
+                    "EKU profile check disabled by policy (certificate.require_eku=false).",
+                    policy_value=cert_cfg["required_ekus"],
+                    actual_value=parser_data.get("extended_key_usage"),
+                )
+            )
+        else:
+            required = {str(value).strip() for value in cert_cfg["required_ekus"] if str(value).strip()}
+            actual = {str(value).strip() for value in parser_data.get("extended_key_usage") or []}
+            missing = sorted(required - actual)
+            checks.append(
+                self._check(
+                    "extended_key_usage",
+                    not missing,
+                    (
+                        "Certificate includes every required EKU."
+                        if not missing
+                        else f"Certificate is missing required EKU values: {', '.join(missing)}."
+                    ),
+                    policy_value=sorted(required),
+                    actual_value=sorted(actual),
+                )
+            )
+        return checks
 
     # --------------------------------------------------------------------- dcv
 

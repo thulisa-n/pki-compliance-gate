@@ -173,6 +173,7 @@ jobs:
           from certguard.release_provenance import generate_release_provenance
           artifacts = [
               Path("reports/compliance_report.json"),
+              Path("reports/compliance_report.json.digest"),
               Path("reports/compliance_report.json.seal"),
               Path("reports/compliance_summary.md"),
               Path("reports/compliance_trend_snapshot.json"),
@@ -234,6 +235,7 @@ jobs:
         run: |
           mkdir -p "artifacts/${GITHUB_RUN_ID}"
           cp reports/compliance_report.json "artifacts/${GITHUB_RUN_ID}/"
+          cp reports/compliance_report.json.digest "artifacts/${GITHUB_RUN_ID}/" || true
           cp reports/compliance_report.json.seal "artifacts/${GITHUB_RUN_ID}/"
           cp reports/compliance_summary.md "artifacts/${GITHUB_RUN_ID}/"
           cp reports/compliance_trend_snapshot.json "artifacts/${GITHUB_RUN_ID}/"
@@ -338,7 +340,7 @@ jobs:
           set +e
           python src/main.py \
             --cert tests/certificates/valid_cert.pem \
-            --policy policies/profiles/root_program_baseline.yaml \
+            --policy policies/profiles/crypto_agility_pqc_readiness.yaml \
             --output json > /tmp/strict_profile_result.json
           exit_code=$?
           echo "Strict profile exit: ${exit_code}"

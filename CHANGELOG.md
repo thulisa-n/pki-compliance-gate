@@ -3,6 +3,33 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - 2026-09-11
+
+Review-gap follow-up on 0.2.1. Verdicts for the default CABF profile stay the
+same for locally minted certificates: SCT and EKU stay opt-in, serial entropy
+and the signature OID allowlist are on.
+
+### Added
+
+- Signature OID allowlist (`signature_algorithm_oid`), serial entropy, SCT
+  presence, and EKU profile controls.
+- A `CONTROLS` registry so CP/CPS export, SARIF rules, and assurance share one
+  source of metadata.
+- `assess()` / `persist()` split so a hosted API can return a verdict without
+  a throwaway directory per request.
+- Optional Ed25519 signatures on waiver files (`--require-signed-waivers`).
+- SARIF 2.1.0 output, GitHub job summaries, workflow annotations, and a
+  `readiness` mode for the dated 100/47-day validity schedule.
+- Apache-2.0 relicensing and a DCO requirement for contributions.
+
+### Changed
+
+- Evidence integrity files are written as `.digest` (`.seal` remains a
+  compatibility alias).
+- Curated EV / S/MIME / root-program / CP-CPS profiles move to the enterprise
+  content pack. Public core keeps CI lint, short-lived, and crypto-agility
+  profiles plus the default CABF policy.
+
 ## [0.2.1] - 2026-09-11
 
 Post-release hardening for the 0.2.0 correctness changes.

@@ -91,6 +91,7 @@ def test_compliant_certificate_passes(tmp_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["compliant"] is True
     assert len(report["checks"]) >= 5
+    assert report_path.with_suffix(".json.digest").exists()
     assert report_path.with_suffix(".json.seal").exists()
     # Report schema 2.0 replaced the percentage score with severity buckets and
     # an explicit coverage breakdown.

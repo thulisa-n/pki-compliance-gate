@@ -97,6 +97,7 @@ class X509ParserAgent(BaseAgent):
             "subject_key_identifier": self._subject_key_identifier(cert),
             "authority_key_identifier": self._authority_key_identifier(cert),
             "critical_extension_oids": self._critical_extension_oids(cert),
+            "sct_count": self._sct_count(cert),
         }
 
         return AgentResult(agent=self.name, success=True, data=parser_data)
@@ -184,6 +185,19 @@ class X509ParserAgent(BaseAgent):
                 ]
             )
         return [name for name, is_enabled in flags if is_enabled]
+
+    def _sct_count(self, cert: x509.Certificate) -> int:
+        try:
+            extension = cert.extensions.get_extension_for_oid(
+                ExtensionOID.PRECERT_SIGNED_CERTIFICATE_TIMESTAMPS
+            )
+        except x509.ExtensionNotFound:
+            return 0
+        value = extension.value
+        try:
+            return len(list(value))
+        except TypeError:
+            return 0
 
     def _extended_key_usage(self, cert: x509.Certificate) -> list[str]:
         try:

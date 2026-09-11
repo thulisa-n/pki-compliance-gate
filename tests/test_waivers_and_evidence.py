@@ -228,13 +228,17 @@ def test_waiver_file_is_listed_in_the_manifest(
     assert str(waiver) in listed
 
 
-def test_seal_no_longer_claims_immutability(
+def test_digest_no_longer_claims_immutability(
     make_cert: Callable[..., Path], tmp_path: Path
 ) -> None:
     _evaluate(make_cert(), tmp_path)
+    digest = json.loads(
+        (tmp_path / "report.json.digest").read_text(encoding="utf-8")
+    )
     seal = json.loads(
         (tmp_path / "report.json.seal").read_text(encoding="utf-8")
     )
 
-    assert seal["sha256_fingerprint"]
-    assert seal["integrity_note"] == "SHA-256 digest, not a signature."
+    assert digest == seal
+    assert digest["sha256_fingerprint"]
+    assert digest["integrity_note"] == "SHA-256 digest, not a signature."

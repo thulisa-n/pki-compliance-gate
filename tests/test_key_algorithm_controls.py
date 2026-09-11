@@ -121,9 +121,15 @@ def test_ed25519_allowed_when_policy_permits_it(
     make_cert: Callable[..., Path], tmp_path: Path
 ) -> None:
     """An internal CA can opt in; the point is that policy decides, not chance."""
-    policy = _policy_with(tmp_path, allowed_algorithms=["rsa", "ec", "ed25519"])
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    policy["key"]["allowed_algorithms"] = ["rsa", "ec", "ed25519"]
+    policy.setdefault("signature", {}).setdefault("allowed_oids", [])
+    if "1.3.101.112" not in policy["signature"]["allowed_oids"]:
+        policy["signature"]["allowed_oids"].append("1.3.101.112")
+    path = tmp_path / "ed25519_policy.yaml"
+    path.write_text(yaml.safe_dump(policy), encoding="utf-8")
     cert = make_cert(key="ed25519")
-    compliant, report = _evaluate(cert, tmp_path, policy=policy)
+    compliant, report = _evaluate(cert, tmp_path, policy=path)
 
     assert compliant is True
     assert _check(report, "key_algorithm_allowed").status == "pass"

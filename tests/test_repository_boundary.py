@@ -15,6 +15,22 @@ ENTERPRISE_PATHS = (
     "tests/test_doc_publisher.py",
 )
 
+PUBLIC_PROFILES = frozenset(
+    {
+        "ci_lint_gate.yaml",
+        "crypto_agility_pqc_readiness.yaml",
+        "short_lived_90d.yaml",
+    }
+)
+CURATED_PROFILES = frozenset(
+    {
+        "ev_guidelines.yaml",
+        "smime_br.yaml",
+        "root_program_baseline.yaml",
+        "cpcps_controls.yaml",
+    }
+)
+
 
 def _repository_kind() -> str:
     repository = os.getenv("GITHUB_REPOSITORY")
@@ -54,3 +70,32 @@ def test_public_dependencies_exclude_enterprise_frameworks() -> None:
         if any(dependency in content.lower() for content in dependency_files)
     }
     assert not leaked, f"Enterprise-only dependencies leaked into public core: {leaked}"
+
+
+def test_public_policy_directory_holds_only_public_profiles() -> None:
+    present = {
+        path.name for path in (REPO_ROOT / "policies" / "profiles").glob("*.yaml")
+    }
+    assert present == set(PUBLIC_PROFILES)
+    assert not (present & CURATED_PROFILES)
+
+
+def test_public_core_does_not_import_the_enterprise_package() -> None:
+    offenders = []
+    for path in sorted((REPO_ROOT / "src" / "certguard").rglob("*.py")):
+        if "certguard_enterprise" in path.read_text(encoding="utf-8"):
+            offenders.append(str(path.relative_to(REPO_ROOT)))
+    assert not offenders
+
+
+def test_enterprise_console_script_is_private() -> None:
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    if _repository_kind() == "public":
+        assert "certguard-ent" not in pyproject
+        assert "certguard_enterprise" not in pyproject
+
+
+def test_public_value_surfaces_stay_in_the_core() -> None:
+    core = REPO_ROOT / "src" / "certguard"
+    for module in ("sarif.py", "github_output.py", "readiness.py", "controls.py"):
+        assert (core / module).is_file(), f"{module} must remain in the public core"

@@ -47,7 +47,7 @@ jobs:
 
       # Advisory until the initial backlog is cleared, then promote to blocking
       # by deleting continue-on-error. The full rule set is in pyproject.toml.
-      # TODO(0.2.1): clear findings and make these three blocking.
+      # TODO(0.2.3): clear remaining advisory findings and make format/mypy blocking.
       - name: Ruff (full rule set, advisory)
         run: ruff check src tests scripts
         continue-on-error: true

@@ -55,6 +55,8 @@ class CertSpec:
     starts_in_days: int = 0
     basic_constraints_ca: bool | None = None
     include_ski: bool = False
+    include_eku: tuple[str, ...] | None = None
+    serial_number: int | None = None
 
 
 def _private_key(kind: KeyKind):
@@ -110,7 +112,11 @@ def write_certificate(path: Path, spec: CertSpec = CertSpec()) -> Path:
         .subject_name(name)
         .issuer_name(name)
         .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
+        .serial_number(
+            spec.serial_number
+            if spec.serial_number is not None
+            else x509.random_serial_number()
+        )
         .not_valid_before(not_before)
         .not_valid_after(not_after)
     )
@@ -127,6 +133,13 @@ def write_certificate(path: Path, spec: CertSpec = CertSpec()) -> Path:
     if spec.include_ski:
         builder = builder.add_extension(
             x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
+            critical=False,
+        )
+    if spec.include_eku is not None:
+        builder = builder.add_extension(
+            x509.ExtendedKeyUsage(
+                [x509.ObjectIdentifier(oid) for oid in spec.include_eku]
+            ),
             critical=False,
         )
 
