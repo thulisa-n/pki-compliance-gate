@@ -35,7 +35,7 @@ steps:
 ### Option 2: Install from PyPI
 
 ```bash
-python3 -m pip install "pki-compliance-gate>=0.2.0"
+python3 -m pip install "pki-compliance-gate==0.2.0"
 pki-gate --cert path/to/server.crt
 pki-gate --version
 ```
