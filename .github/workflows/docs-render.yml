@@ -29,14 +29,22 @@ jobs:
 
       - name: Resolve base reference
         id: base
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "ref=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+            candidate="$PR_BASE_SHA"
           else
-            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+            candidate="$PUSH_BEFORE_SHA"
           fi
+          # A force-push leaves the previous SHA unreachable, and a new branch
+          # reports all zeros, so fall back to the parent commit in both cases.
+          if ! git cat-file -e "${candidate}^{commit}" 2>/dev/null; then
+            candidate="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+            echo "Base reference unavailable; diffing against ${candidate} instead."
+          fi
+          echo "ref=${candidate}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@v7
