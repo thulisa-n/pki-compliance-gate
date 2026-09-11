@@ -251,14 +251,20 @@ class PolicyValidatorAgent(BaseAgent):
         checks: list[CheckResult] = []
 
         max_validity = cert_cfg["max_validity_days"]
-        validity_days = parser_data["validity_days"]
+        exact_validity_days = self._exact_validity_days(parser_data)
         checks.append(
             self._check(
                 "validity_days",
-                validity_days <= max_validity,
-                f"Certificate validity is {validity_days} days (max {max_validity})",
+                exact_validity_days is not None
+                and exact_validity_days <= max_validity,
+                (
+                    f"Certificate validity is {exact_validity_days:g} days "
+                    f"(max {max_validity})"
+                    if exact_validity_days is not None
+                    else "Certificate validity value is missing."
+                ),
                 policy_value=max_validity,
-                actual_value=validity_days,
+                actual_value=exact_validity_days,
             )
         )
 
@@ -849,7 +855,7 @@ class PolicyValidatorAgent(BaseAgent):
             ]
 
         target_validity = cfg["target_max_validity_days"]
-        validity_days = parser_data.get("validity_days")
+        validity_days = self._exact_validity_days(parser_data)
         is_rsa = self._key_algorithm(parser_data) == "rsa"
         rsa_bits = parser_data.get("rsa_key_size")
         if not isinstance(rsa_bits, int) and is_rsa:
@@ -865,11 +871,11 @@ class PolicyValidatorAgent(BaseAgent):
         checks = [
             self._check(
                 "crypto_transition_validity_target",
-                isinstance(validity_days, int) and validity_days <= target_validity,
+                validity_days is not None and validity_days <= target_validity,
                 (
-                    f"Certificate validity is {validity_days} days "
+                    f"Certificate validity is {validity_days:g} days "
                     f"(target <= {target_validity})."
-                    if isinstance(validity_days, int)
+                    if validity_days is not None
                     else "Certificate validity value missing for crypto transition check."
                 ),
                 policy_value=target_validity,
@@ -1010,6 +1016,17 @@ class PolicyValidatorAgent(BaseAgent):
         ]
 
     # ----------------------------------------------------------------- helpers
+
+    @staticmethod
+    def _exact_validity_days(parser_data: dict[str, Any]) -> float | None:
+        """Return exact duration in days, with compatibility for older parser data."""
+        seconds = parser_data.get("validity_seconds")
+        if isinstance(seconds, (int, float)) and not isinstance(seconds, bool):
+            return float(seconds) / 86_400
+        days = parser_data.get("validity_days")
+        if isinstance(days, (int, float)) and not isinstance(days, bool):
+            return float(days)
+        return None
 
     def _key_algorithm(self, parser_data: dict[str, Any]) -> str:
         """Resolve the key algorithm, tolerating pre-2.0 parser payloads.

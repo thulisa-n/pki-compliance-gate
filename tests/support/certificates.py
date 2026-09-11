@@ -47,6 +47,7 @@ class CertSpec:
     common_name: str = "example.com"
     san_dns: tuple[str, ...] = ("example.com", "www.example.com")
     validity_days: int = 90
+    validity_hours: int = 0
     key: KeyKind = "rsa2048"
     hash_algorithm: str = "sha256"
     #: Shift the whole validity window. Negative puts it in the past (expired),
@@ -99,7 +100,9 @@ def write_certificate(path: Path, spec: CertSpec = CertSpec()) -> Path:
     key = _private_key(spec.key)
     now = datetime.now(timezone.utc)
     not_before = now + timedelta(days=spec.starts_in_days) - timedelta(minutes=5)
-    not_after = not_before + timedelta(days=spec.validity_days)
+    not_after = not_before + timedelta(
+        days=spec.validity_days, hours=spec.validity_hours
+    )
 
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, spec.common_name)])
     builder = (

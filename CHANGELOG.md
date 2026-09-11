@@ -16,6 +16,9 @@ for certificates that previously passed.
   A certificate that expired in April 2024 reported compliant, 100%, exit 0.
   Added `certificate_not_expired` (critical) and `certificate_not_yet_valid`
   (high), both enabled by default.
+- **Partial days above the validity limit were rounded down.** A certificate
+  valid for 200 days and 23 hours appeared as 200 days and passed. Enforcement
+  now compares the exact duration while retaining whole days for compatibility.
 - **Any non-RSA key bypassed key-strength policy.** `rsa_ok = (not is_rsa) or ...`
   meant a 192-bit ECDSA certificate reported compliant with exit 0. Added
   `key_algorithm_allowed`, `ec_key_size` and `ec_curve_allowed`; the default
@@ -103,7 +106,7 @@ for certificates that previously passed.
 - Policy loading rejects a `bool` where an `int` is required, a non-positive
   threshold, an empty `key.allowed_algorithms`, and unknown key algorithms.
 
-## [0.1.3] - 2026-09-08
+## [0.1.3] - 2026-09-11
 
 - Installable CLI and working composite GitHub Action.
 - Keyless cosign release provenance, SBOM, hash-chained decision log.

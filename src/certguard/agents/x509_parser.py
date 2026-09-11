@@ -54,6 +54,7 @@ class X509ParserAgent(BaseAgent):
         key_info = self._public_key_info(cert)
         not_before = cert.not_valid_before_utc
         not_after = cert.not_valid_after_utc
+        validity = not_after - not_before
 
         parser_data: dict[str, Any] = {
             "subject": cert.subject.rfc4514_string(),
@@ -63,12 +64,11 @@ class X509ParserAgent(BaseAgent):
             "not_after": not_after.isoformat(),
             "evaluated_at": evaluated_at.isoformat(),
             # CA/Browser Forum BR 1.6.1 defines the Validity Period as the
-            # period from notBefore through notAfter. CertGuard measures it as
-            # the whole-day difference (notAfter - notBefore), so a certificate
-            # issued for exactly N days reports N. The boundary is asserted in
-            # tests/test_validity_boundary.py at max-1, max and max+1 so this
-            # interpretation cannot drift silently.
-            "validity_days": (not_after - not_before).days,
+            # period from notBefore through notAfter. The whole-day field is
+            # retained for compatibility; validity_seconds is used for exact
+            # enforcement so a partial extra day cannot be rounded away.
+            "validity_days": validity.days,
+            "validity_seconds": int(validity.total_seconds()),
             "is_expired": not_after < evaluated_at,
             "is_not_yet_valid": not_before > evaluated_at,
             "days_until_expiry": (not_after - evaluated_at).days,

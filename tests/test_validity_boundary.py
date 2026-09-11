@@ -1,13 +1,13 @@
 """Pin the validity-period interpretation.
 
 CA/Browser Forum BR 1.6.1 defines the Validity Period as the period from
-notBefore through notAfter. Some implementations read that inclusively and
-arrive at a figure one day larger than ``notAfter - notBefore``. CertGuard
-measures the whole-day difference, so a certificate issued for exactly N days
-reports N and passes a limit of N.
+notBefore through notAfter. CertGuard retains the whole-day value for report
+compatibility but enforces the exact duration, so a certificate issued for
+exactly N days passes a limit of N while N days plus any additional time fails.
 
-The interpretation is asserted here at max-1, max and max+1 so it cannot drift
-silently. On the headline control, an off-by-one is not a rounding detail.
+The interpretation is asserted here at max-1, max, max plus one hour, and
+max+1 so it cannot drift silently. On the headline control, an off-by-one is
+not a rounding detail.
 """
 
 from __future__ import annotations
@@ -59,6 +59,24 @@ def test_validity_boundary_is_inclusive_of_the_limit(
     assert check.status == expected_status
     assert check.actual_value == validity_days
     assert check.policy_value == MAX_VALIDITY_DAYS
+
+
+def test_fractional_day_over_limit_fails(
+    make_cert: Callable[..., Path], tmp_path: Path
+) -> None:
+    """A partial extra day must not be hidden by ``timedelta.days`` flooring."""
+    cert = make_cert(validity_days=MAX_VALIDITY_DAYS, validity_hours=1)
+    engine = ComplianceGateEngine(policy_path=POLICY_PATH)
+
+    _, report = engine.evaluate(
+        cert_path=cert,
+        report_path=tmp_path / "fractional_over.json",
+        evidence_dir=tmp_path / "evidence_fractional_over",
+    )
+
+    check = next(c for c in report.checks if c.name == "validity_days")
+    assert check.status == "fail"
+    assert check.actual_value == pytest.approx(MAX_VALIDITY_DAYS + (1 / 24))
 
 
 @pytest.mark.parametrize("validity_days", [1, 47, 90, 100, 200, 398])
