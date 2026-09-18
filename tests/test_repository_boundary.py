@@ -3,15 +3,18 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_REPOSITORY = "thulisa-n/pki-compliance-gate"
 ENTERPRISE_REPOSITORY = "thulisa-n/pki-compliance-gate-enterprise"
 ENTERPRISE_PATHS = (
+    "docs/private/CONTROL_PLANE_STRATEGY.md",
     "requirements-enterprise.txt",
     "src/certguard_enterprise/api/server.py",
+    "src/certguard_enterprise/control_plane.py",
     "src/certguard_enterprise/doc_publisher.py",
+    "src/certguard_enterprise/tracked_changes.py",
     "tests/test_api_server.py",
+    "tests/test_control_plane.py",
     "tests/test_doc_publisher.py",
 )
 
