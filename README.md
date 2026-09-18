@@ -214,6 +214,9 @@ Install the CLI with `pip install pki-compliance-gate==0.2.4`. Later GitHub
 releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 (OIDC, no API token in the repository).
 
+A commercially licensed add-on is maintained privately and is not part of
+this repository.
+
 ---
 
 ## Security

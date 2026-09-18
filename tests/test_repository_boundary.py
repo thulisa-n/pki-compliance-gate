@@ -9,6 +9,7 @@ ENTERPRISE_REPOSITORY = "thulisa-n/pki-compliance-gate-enterprise"
 ENTERPRISE_ROOTS = (
     ".enterprise-repository",
     "docs/private",
+    "deployments/docker",
     "requirements-enterprise.txt",
     "src/certguard_enterprise",
 )
@@ -107,3 +108,24 @@ def test_public_value_surfaces_stay_in_the_core() -> None:
     core = REPO_ROOT / "src" / "certguard"
     for module in ("sarif.py", "github_output.py", "readiness.py", "controls.py", "rego.py"):
         assert (core / module).is_file(), f"{module} must remain in the public core"
+
+
+PUBLIC_README_FORBIDDEN_PATHS = (
+    "docs/ENTERPRISE_MVP.md",
+    "docs/ENTERPRISE_OPERATING.md",
+    "deployments/docker",
+    "src/certguard_enterprise",
+)
+
+
+def test_public_readme_does_not_name_private_paths() -> None:
+    """The public tree must not point readers at files it does not ship."""
+    if _repository_kind() != "public":
+        return
+
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    leaked = [path for path in PUBLIC_README_FORBIDDEN_PATHS if path in readme]
+    assert not leaked, (
+        "public README names private-only paths this repository does not contain: "
+        f"{leaked}"
+    )
