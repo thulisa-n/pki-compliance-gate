@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pki-compliance-gate"
-version = "0.2.2"
+version = "0.2.3"
 description = "Automated PKI Compliance Engine for X.509 certificates and Policy-as-Code governance"
 readme = "README.md"
 authors = [{ name = "Thulisa Nikani", email = "thulisa.nikani@rethinkit.co.za" }]

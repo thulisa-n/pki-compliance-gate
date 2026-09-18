@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-18
+
 ### Removed
 
 - Kubernetes Kyverno admission examples and the phase-oriented project status
