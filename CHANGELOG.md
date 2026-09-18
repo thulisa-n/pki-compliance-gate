@@ -5,6 +5,12 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Kubernetes Kyverno admission examples and the phase-oriented project status
+  document. Certificate policy lives in YAML and CI, not a hardcoded cluster
+  demo.
+
 ### Changed
 
 - Generate the optional OPA/Rego validity gate from

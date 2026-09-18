@@ -8,7 +8,7 @@ This document maps CertGuard capabilities to practical DevSecOps outcomes and de
 | --- | --- |
 | Shift security left | Security checks run on `pull_request` via GitHub Actions workflows |
 | Security as code | Policy is YAML (`policies/*.yaml`). Optional OPA/Rego is generated from that YAML, not hand-written. |
-| Continuous validation | Automated checks in `compliance.yml`, `security-scans.yml`, `codeql.yml`, `secrets-scan.yml`, `iac-scan.yml` |
+| Continuous validation | Automated checks in `compliance.yml`, `security-scans.yml`, `codeql.yml`, `secrets-scan.yml` |
 | Risk-based decisions | Severity-based evaluate exit codes (`0/1/2/3`) in `src/main.py` |
 | Controlled exceptions | Waiver workflow with required ticket and expiry in `src/certguard/engine.py` |
 | API security checks | API TLS posture mode (`--mode apisec`) in `src/certguard/agents/api_tls_posture.py` |

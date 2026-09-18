@@ -15,7 +15,7 @@ This document maps governance requirements to CertGuard controls.
 
 ### Requirement: Evidence integrity and tamper detection
 - Implementation:
-  - SHA-256 seal (`.seal`) generated for every compliance report
+  - SHA-256 digest (`.digest`, with a `.seal` compatibility alias) of every compliance report
   - Ed25519-signed release provenance with in-CI verification
   - Append-only decision log with hash chaining (`previous_entry_hash` → `entry_hash`)
 - Status: Implemented
@@ -40,6 +40,5 @@ This document maps governance requirements to CertGuard controls.
 - Implementation:
   - CycloneDX SBOM generation in CI
   - Ed25519 artifact signing and verification
-  - Kyverno `verifyImages` policy for container image signature verification
   - Signed provenance metadata (commit, workflow, artifact hashes)
 - Status: Implemented

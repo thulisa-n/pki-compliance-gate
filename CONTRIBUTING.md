@@ -75,10 +75,8 @@ in the private namespace.
 - `security-scans.yml`
 - `codeql.yml`
 - `secrets-scan.yml`
-- `iac-scan.yml`
 - `standards-sync.yml`
 - `standards-pr-guard.yml`
-- `kyverno-policy.yml`
 - `docs-render.yml`
 
 ## Automation Secrets
