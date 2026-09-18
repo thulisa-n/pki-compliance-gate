@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-18
+
 ### Added
 
 - Published verdict corpus (`corpus/verdicts.yaml`) with expected exit codes

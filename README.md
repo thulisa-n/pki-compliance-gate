@@ -4,7 +4,7 @@
 [![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Release](https://img.shields.io/badge/release-v0.2.3-blue)
+![Release](https://img.shields.io/badge/release-v0.2.4-blue)
 
 **PKI Compliance Gate** evaluates an X.509 certificate (or CSR) against a YAML
 policy and returns a CI exit code plus evidence. It is not a linter and not a
@@ -19,7 +19,7 @@ generated CP/CPS Section 7 documentation.
 
 ## Evaluate a certificate
 
-Pin an immutable release tag (there is no moving `v1` tag). `v0.2.3` is the
+Pin an immutable release tag (there is no moving `v1` tag). `v0.2.4` is the
 current source version.
 
 > **Upgrading from 0.1.x is a breaking change.** Expiry and EC key policy are
@@ -32,7 +32,7 @@ current source version.
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.2.3
+    uses: thulisa-n/pki-compliance-gate@v0.2.4
     with:
       cert: path/to/server.crt
       as-of: '2026-09-18'
@@ -41,11 +41,12 @@ steps:
 **PyPI**
 
 ```bash
-python3 -m pip install "pki-compliance-gate==0.2.3"
+python3 -m pip install "pki-compliance-gate==0.2.4"
 pki-gate --cert path/to/server.crt --as-of 2026-09-18
 ```
 
-A failing fixture (the expired certificate that used to pass) exits 3:
+**Expected reject (not a bug):** this expired fixture used to exit 0, which was
+a false negative. It now correctly exits **3** (critical: `certificate_not_expired`).
 
 ```bash
 pki-gate --cert tests/certificates/expired_cert.pem --as-of 2026-09-18
@@ -58,10 +59,12 @@ Expected outcomes for every committed PEM live in
 
 ### Pre-issuance (CSR)
 
-Validity, serial, SCT, and path profile cannot be known until a certificate
-exists. `--csr` still fails closed on key, SAN, internal names, and the CSR's
-proof-of-possession signature. Copy-paste examples:
-[`examples/pre-issuance/`](examples/pre-issuance/).
+`--csr` checks only what exists before the CA signs (key, SAN, internal names,
+PoP signature). Validity, serial, SCT, and path profile are `not_applicable`,
+not guessed. Copy-paste examples: [`examples/pre-issuance/`](examples/pre-issuance/).
+
+**Expected reject (not a bug):** this CSR is RSA 1024. The gate must exit **3**
+(`rsa_key_size`). Use `tests/certificates/csrs/valid.csr` for an exit 0 demo.
 
 ```bash
 pki-gate --csr tests/certificates/csrs/weak_key.csr
@@ -206,8 +209,8 @@ action.yml              Composite GitHub Action
 
 ## Distribution status
 
-The GitHub Action, wheel, and sdist are published from the `v0.2.3` tag.
-Install the CLI with `pip install pki-compliance-gate==0.2.3`. Later GitHub
+The GitHub Action, wheel, and sdist are published from the `v0.2.4` tag.
+Install the CLI with `pip install pki-compliance-gate==0.2.4`. Later GitHub
 releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 (OIDC, no API token in the repository).
 

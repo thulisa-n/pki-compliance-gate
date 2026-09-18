@@ -12,7 +12,7 @@ body:
     id: version
     attributes:
       label: Engine version
-      placeholder: "0.2.3 (pki-gate --version)"
+      placeholder: "0.2.4 (pki-gate --version)"
     validations:
       required: true
   - type: input
