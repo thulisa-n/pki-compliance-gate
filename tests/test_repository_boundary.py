@@ -6,16 +6,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_REPOSITORY = "thulisa-n/pki-compliance-gate"
 ENTERPRISE_REPOSITORY = "thulisa-n/pki-compliance-gate-enterprise"
-ENTERPRISE_PATHS = (
-    "docs/private/CONTROL_PLANE_STRATEGY.md",
+ENTERPRISE_ROOTS = (
+    ".enterprise-repository",
+    "docs/private",
     "requirements-enterprise.txt",
-    "src/certguard_enterprise/api/server.py",
-    "src/certguard_enterprise/control_plane.py",
-    "src/certguard_enterprise/doc_publisher.py",
-    "src/certguard_enterprise/tracked_changes.py",
-    "tests/test_api_server.py",
-    "tests/test_control_plane.py",
-    "tests/test_doc_publisher.py",
+    "src/certguard_enterprise",
 )
 
 PUBLIC_PROFILES = frozenset(
@@ -46,15 +41,15 @@ def _repository_kind() -> str:
 
 def test_commercial_layer_matches_repository_boundary() -> None:
     present = {
-        path for path in ENTERPRISE_PATHS if (REPO_ROOT / path).exists()
+        path for path in ENTERPRISE_ROOTS if (REPO_ROOT / path).exists()
     }
 
     if _repository_kind() == "public":
         assert not present, f"Enterprise-only paths leaked into public core: {present}"
     else:
-        assert present == set(ENTERPRISE_PATHS), (
+        assert present == set(ENTERPRISE_ROOTS), (
             f"Private repository is missing enterprise paths: "
-            f"{set(ENTERPRISE_PATHS) - present}"
+            f"{set(ENTERPRISE_ROOTS) - present}"
         )
 
 
@@ -85,8 +80,18 @@ def test_public_policy_directory_holds_only_public_profiles() -> None:
 
 def test_public_core_does_not_import_the_enterprise_package() -> None:
     offenders = []
-    for path in sorted((REPO_ROOT / "src" / "certguard").rglob("*.py")):
-        if "certguard_enterprise" in path.read_text(encoding="utf-8"):
+    public_python = [
+        *(REPO_ROOT / "src" / "certguard").rglob("*.py"),
+        *(REPO_ROOT / "tests").rglob("*.py"),
+    ]
+    for path in sorted(public_python):
+        if path == Path(__file__):
+            continue
+        source = path.read_text(encoding="utf-8")
+        if (
+            "from certguard_enterprise" in source
+            or "import certguard_enterprise" in source
+        ):
             offenders.append(str(path.relative_to(REPO_ROOT)))
     assert not offenders
 
