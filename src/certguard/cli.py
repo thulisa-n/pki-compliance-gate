@@ -102,6 +102,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--cert", help="Path to PEM certificate")
     parser.add_argument(
+        "--csr",
+        help="Path to PEM certificate signing request (pre-issuance; validity/SCT/serial are not assessed)",
+    )
+    parser.add_argument(
         "--policy",
         default=default_policy_path(),
         help="Path to policy YAML file",
@@ -133,7 +137,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--as-of",
-        help="ISO date used by watch and readiness modes instead of today's UTC date (YYYY-MM-DD)",
+        help=(
+            "UTC instant for evaluation (YYYY-MM-DD or ISO-8601). Pins expiry "
+            "checks in evaluate mode and the dated schedule in watch/readiness. "
+            "Same PEM + policy + --as-of yields the same verdict_digest."
+        ),
     )
     parser.add_argument(
         "--sarif-output",
@@ -279,15 +287,18 @@ def main() -> int:
 
 
 def _run_evaluate(args: argparse.Namespace) -> int:
-    if not args.cert:
-        raise ValueError("--cert is required in evaluate mode.")
+    if args.cert and args.csr:
+        raise ValueError("evaluate accepts exactly one of --cert or --csr, not both.")
+    target = args.cert or args.csr
+    if not target:
+        raise ValueError("evaluate requires --cert or --csr.")
     if args.protected_run:
         enforce_protected_context(os.environ)
     _announce_policy_source(args)
     engine = ComplianceGateEngine(policy_path=Path(args.policy))
 
     compliant, report = engine.evaluate(
-        cert_path=Path(args.cert),
+        cert_path=Path(target),
         report_path=Path(args.report),
         evidence_dir=Path(args.evidence_dir),
         dcv_attestation=_read_json(Path(args.dcv_attestation))
@@ -299,6 +310,8 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
         require_signed_waivers=args.require_signed_waivers or None,
+        evaluated_at=args.as_of,
+        input_kind="csr" if args.csr else None,
     )
     if args.output == "json":
         print(json.dumps(report.to_dict(), indent=2))
@@ -347,11 +360,16 @@ def _print_report(
     failure could still present as ~95%. Findings by severity plus an explicit
     coverage line say what actually happened.
     """
-    print("Certificate:", report.certificate)
+    print("Certificate:" if report.input_kind != "csr" else "CSR:", report.certificate)
+    print("Input:", report.input_kind)
     print("Compliant:", "YES" if compliant else "NO")
     print(f"Risk Level: {report.risk_level}")
     print(f"Engine Version: {report.engine_version}")
     print(f"Policy Version: {report.policy_version}")
+    if report.evaluated_at:
+        print(f"Evaluated at: {report.evaluated_at}")
+    if report.verdict_digest:
+        print(f"Verdict digest: {report.verdict_digest}")
 
     findings = ", ".join(
         f"{severity}={report.findings.get(severity, 0)}"

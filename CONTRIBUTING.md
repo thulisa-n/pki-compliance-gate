@@ -12,7 +12,14 @@ pip install -e ".[dev]"
 
 ```bash
 pytest -q
+pytest tests/test_verdict_corpus.py -q
 ```
+
+The corpus in `corpus/verdicts.yaml` is the published expected-verdict contract.
+
+## Security reports
+
+Vulnerabilities go through [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Run Core Flows Locally
 

@@ -6,65 +6,78 @@
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Release](https://img.shields.io/badge/release-v0.2.3-blue)
 
-**PKI Compliance Gate** (CertGuard Engine) is a Policy-as-Code engine for X.509 certificates, CA/Browser Forum Baseline Requirements, and API TLS posture checks.
+**PKI Compliance Gate** evaluates an X.509 certificate (or CSR) against a YAML
+policy and returns a CI exit code plus evidence. It is not a linter and not a
+path validator. Use [zlint](https://github.com/zmap/zlint) for RFC/BR encoding
+lint, `openssl verify` for chain and revocation, and this gate for *this
+profile in this pipeline*. See [docs/COMPARE.md](docs/COMPARE.md).
 
-One YAML policy profile is the source of truth for evaluation, CI gating, and generated CP/CPS Section 7 documentation.
+One YAML profile is the source of truth for evaluation, CI gating, and
+generated CP/CPS Section 7 documentation.
 
 ---
 
-## Quick Start
-
-### Option 1: GitHub Action in CI/CD
+## Evaluate a certificate
 
 Pin an immutable release tag (there is no moving `v1` tag). `v0.2.3` is the
-current source version; use the most recent published tag.
+current source version.
 
 > **Upgrading from 0.1.x is a breaking change.** Expiry and EC key policy are
 > now enforced by default, and the report no longer carries a `score` field.
 > See [`CHANGELOG.md`](CHANGELOG.md).
 
+**GitHub Action**
+
 ```yaml
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.2.3"
+    uses: thulisa-n/pki-compliance-gate@v0.2.3
     with:
-      cert: 'tests/certificates/valid_cert.pem'
+      cert: path/to/server.crt
+      as-of: '2026-09-18'
 ```
 
-### Option 2: Install from PyPI
+**PyPI**
 
 ```bash
 python3 -m pip install "pki-compliance-gate==0.2.3"
-pki-gate --cert path/to/server.crt
-pki-gate --version
+pki-gate --cert path/to/server.crt --as-of 2026-09-18
 ```
 
-### Option 3: Run from a clone
+A failing fixture (the expired certificate that used to pass) exits 3:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+pki-gate --cert tests/certificates/expired_cert.pem --as-of 2026-09-18
+```
 
-# Evaluate a certificate
-pki-gate --cert tests/certificates/valid_cert.pem
+Expected outcomes for every committed PEM live in
+[`corpus/verdicts.yaml`](corpus/verdicts.yaml). Same PEM + same policy + same
+`--as-of` yields the same `verdict_digest` (see
+[`src/certguard/data/compliance-report-2.0.schema.json`](src/certguard/data/compliance-report-2.0.schema.json)).
 
-# Export CP/CPS Section 7 documentation from the policy YAML
-pki-gate --mode export-cps-doc --policy policies/cabf_policy.yaml --summary-output CPS_SECTION_7.md
+### Pre-issuance (CSR)
+
+Validity, serial, SCT, and path profile cannot be known until a certificate
+exists. `--csr` still fails closed on key, SAN, internal names, and the CSR's
+proof-of-possession signature. Copy-paste examples:
+[`examples/pre-issuance/`](examples/pre-issuance/).
+
+```bash
+pki-gate --csr tests/certificates/csrs/weak_key.csr
 ```
 
 ---
 
-## What this repo enforces
+## What the default profile enforces
 
-The default profile (`policies/cabf_policy.yaml`) enforces:
+`policies/cabf_policy.yaml`:
 
 - **Validity**: maximum 200 days; certificate must be inside its notBefore/notAfter window.
 - **Key material**: RSA >= 2048; ECDSA >= 256 bits on P-256/P-384/P-521 only; RSA and EC are the only permitted algorithms.
-- **Signature**: no SHA-1 or MD5.
-- **Identity**: SAN required; internal suffixes blocked (`.local`, `.internal`, `.intranet`).
-- **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, OPA/Rego gate, zlint and `openssl asn1parse`.
+- **Signature**: no SHA-1 or MD5; AlgorithmIdentifier allowlist on.
+- **Identity**: SAN required; internal DNS suffixes blocked (`.local`, `.internal`, `.intranet`); serial entropy on.
+- **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, SCT presence, EKU profile, OPA/Rego gate, zlint and `openssl asn1parse`.
 - **API TLS posture** (`--mode apisec --endpoint example.com`): live TLS version, weak-cipher, expiry and certificate checks.
 
 ### Coverage matrix
@@ -104,26 +117,22 @@ counted as a pass.
 ### Not covered yet
 
 Stated plainly so the matrix above is not mistaken for full BR conformance.
-None of the following are implemented: revocation checking (CRL/OCSP),
-OCSP must-staple, Certificate Transparency / SCT embedding, chain building and
-full path validation, `extendedKeyUsage` profiles, CN-in-SAN consistency,
-wildcard placement rules, reserved or internal **IP addresses** in SANs (only
-DNS suffixes are checked), and serial-number entropy.
+None of the following are implemented: revocation checking (CRL/OCSP), OCSP
+must-staple, chain building and full path validation, CN-in-SAN consistency,
+wildcard placement rules, and reserved or internal **IP addresses** in SANs
+(only DNS suffixes are checked). SCT presence, EKU profiles, and serial-number
+entropy exist as policy controls; SCT and EKU stay **off** on the default
+profile.
 
 ### Evidence and integrity
 
 Each run writes a compliance report, per-control evidence, and an
 `evidence_manifest.json` that records a **SHA-256 digest of every evidence
 file**, the engine version, and the digest of the policy bytes that produced
-the verdict.
-
-Digests detect accidental change and single-file tampering. They are **not
-signatures** -- a party able to rewrite the whole bundle can recompute them.
-Tamper-evident custody comes from the cosign keyless signature produced in this
-repository's CI on `push` to `main` (GitHub native attestations are published
-only on public repositories). The integrity sidecar is `*.digest` (a SHA-256
-digest, not a signature). A `*.seal` copy is still written so existing
-pipelines do not break.
+the verdict. The report also carries `verdict_digest`: SHA-256 of the canonical
+decision (not the file path). Digests are **not signatures**. Tamper-evident
+custody comes from the cosign keyless signature produced in this repository's
+CI on `push` to `main`.
 
 ### Exit codes
 
@@ -154,21 +163,22 @@ Coverage: 12 of 29 controls evaluated (10 pass, 2 fail, 0 waived, 17 not applica
 
 ```mermaid
 flowchart LR
-    A[PEM Certificate / Domain] --> B[X509 and TLS Parser]
-    B --> C[Policy Validator Engine]
-    C --> D[Compliance Report]
-    C --> E[CP/CPS Docs Exporter]
-    C --> F[Audit Evidence]
-    D --> G[CI Exit Code 0..3]
+    A[PEM certificate or CSR] --> B[X509 parser]
+    B --> C[YAML policy engine]
+    C --> D[Compliance report]
+    C --> E[Audit evidence]
+    D --> F[CI exit code 0..3]
 ```
 
 ---
 
-## Execution modes
+## Advanced modes
+
+The product is `pki-gate --cert`. Everything else is optional.
 
 | Mode | Example | What the code does |
 | :--- | :--- | :--- |
-| `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate file. |
+| `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate or CSR. |
 | `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
 | `export-rego` | `pki-gate --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
 | `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
@@ -184,13 +194,12 @@ flowchart LR
 ## Repository structure
 
 ```text
-src/certguard/          Core agents, CLI, bundled policy, and engine
-src/certguard/policy_exporter.py  CP/CPS exporter
-src/main.py             Backward-compatible repository entrypoint
+src/certguard/          Core engine, CLI, bundled policy, report schema
 policies/               Policy YAML profiles; optional generated Rego
+corpus/                 Published expected verdicts for committed fixtures
+examples/pre-issuance/  CSR / cert-manager / step-ca wiring
 tests/                  Automated test suite
 action.yml              Composite GitHub Action
-.github/workflows/      CI workflows
 ```
 
 ---
@@ -203,6 +212,11 @@ releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
 (OIDC, no API token in the repository).
 
 ---
+
+## Security
+
+Report vulnerabilities privately: see [SECURITY.md](SECURITY.md). False-positive
+findings belong in a GitHub issue using the false-positive template.
 
 ## License
 

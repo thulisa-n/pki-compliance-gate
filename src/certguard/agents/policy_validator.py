@@ -7,6 +7,25 @@ from certguard.agents.base import BaseAgent
 from certguard.controls import CONTROL_POLICY_PATHS, registry_from_metadata
 from certguard.models import AgentResult, CheckResult, Status
 
+#: Controls that can be assessed from a CSR. Issued-certificate facts
+#: (validity window, serial, SCT, path profile) are recorded as
+#: ``not_applicable`` instead of guessed.
+CSR_APPLICABLE_CONTROLS: frozenset[str] = frozenset(
+    {
+        "san_extension",
+        "internal_domain_check",
+        "key_algorithm_allowed",
+        "rsa_key_size",
+        "ec_key_size",
+        "ec_curve_allowed",
+        "signature_algorithm",
+        "signature_algorithm_oid",
+    }
+)
+CSR_NA_DETAILS = (
+    "Not assessed on a CSR: this control requires an issued certificate."
+)
+
 
 def _parse_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
@@ -281,6 +300,14 @@ class PolicyValidatorAgent(BaseAgent):
         checks.extend(self._issuance_checks(policy, issuance_attestation))
         checks.extend(self._crypto_transition_checks(policy, parser_data))
         checks.extend(self._browser_trust_checks(policy, parser_data))
+
+        if parser_data.get("input_kind") == "csr":
+            checks = [
+                check
+                if check.name in CSR_APPLICABLE_CONTROLS
+                else self._na(check.name, CSR_NA_DETAILS)
+                for check in checks
+            ]
 
         # A run succeeds when nothing failed. Controls that policy did not
         # enable are not_applicable and must not count against the run, but

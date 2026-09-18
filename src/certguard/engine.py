@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 # Controlled use for zlint CLI integration.
@@ -7,7 +8,6 @@ import subprocess  # nosec B404
 import tempfile
 from collections import Counter
 from datetime import datetime, timezone
-import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,7 @@ from certguard.agents.evidence_vault import EvidenceVaultAgent
 from certguard.agents.policy_validator import PolicyValidatorAgent
 from certguard.agents.x509_parser import X509ParserAgent
 from certguard.artifact_signing import sign_bytes, verify_signature
+from certguard.evaluation_time import resolve_evaluated_at
 from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy, policy_digest
 from certguard.rego import render_validity_rego
@@ -40,6 +41,8 @@ class ComplianceGateEngine:
         waiver_path: Path | None = None,
         require_signed_waivers: bool | None = None,
         evidence_signing_key: str | None = None,
+        evaluated_at: datetime | str | None = None,
+        input_kind: str | None = None,
     ) -> tuple[bool, ComplianceReport]:
         report, artifacts = self.assess(
             cert_path=cert_path,
@@ -48,6 +51,8 @@ class ComplianceGateEngine:
             issuer_cert_path=issuer_cert_path,
             waiver_path=waiver_path,
             require_signed_waivers=require_signed_waivers,
+            evaluated_at=evaluated_at,
+            input_kind=input_kind,
         )
         self.persist(
             report=report,
@@ -68,16 +73,22 @@ class ComplianceGateEngine:
         issuer_cert_path: Path | None = None,
         waiver_path: Path | None = None,
         require_signed_waivers: bool | None = None,
+        evaluated_at: datetime | str | None = None,
+        input_kind: str | None = None,
     ) -> tuple[ComplianceReport, dict[str, Any]]:
         """Evaluate without writing files.
 
         Persistence is a separate step so a hosted API can return a verdict
         without creating a throwaway directory per request.
         """
-        evaluated_at = datetime.now(timezone.utc)
+        evaluated_at_dt = resolve_evaluated_at(evaluated_at)
 
         parser_result = self.parser_agent.run(
-            {"cert_path": str(cert_path), "evaluated_at": evaluated_at}
+            {
+                "cert_path": str(cert_path),
+                "evaluated_at": evaluated_at_dt,
+                "input_kind": input_kind,
+            }
         )
         if not parser_result.success:
             raise ValueError("; ".join(parser_result.errors))
@@ -85,7 +96,11 @@ class ComplianceGateEngine:
         issuer_parser_data: dict[str, Any] | None = None
         if issuer_cert_path is not None:
             issuer_result = self.parser_agent.run(
-                {"cert_path": str(issuer_cert_path), "evaluated_at": evaluated_at}
+                {
+                    "cert_path": str(issuer_cert_path),
+                    "evaluated_at": evaluated_at_dt,
+                    "input_kind": "certificate",
+                }
             )
             if not issuer_result.success:
                 raise ValueError("; ".join(issuer_result.errors))
@@ -100,7 +115,18 @@ class ComplianceGateEngine:
                 "issuance_attestation": issuance_attestation,
             }
         )
-        opa_result = self._run_opa_if_enabled(parser_result.data)
+        opa_result = (
+            {
+                "check": None,
+                "rego": None,
+                "summary": {
+                    "status": "skipped",
+                    "details": "OPA validity gate expects an issued certificate, not a CSR.",
+                },
+            }
+            if parser_result.data.get("input_kind") == "csr"
+            else self._run_opa_if_enabled(parser_result.data)
+        )
         policy_checks = list(policy_result.checks)
         if opa_result["check"] is not None:
             policy_checks.append(opa_result["check"])
@@ -116,7 +142,15 @@ class ComplianceGateEngine:
         policy_checks = waiver_result["checks"]
         policy_failures = [check for check in policy_checks if check.status == "fail"]
 
-        lint_result = self._run_lint_controls(cert_path)
+        lint_result = (
+            {
+                "status": "skipped",
+                "details": "Lint tools expect an issued certificate, not a CSR.",
+                "controls": {},
+            }
+            if parser_result.data.get("input_kind") == "csr"
+            else self._run_lint_controls(cert_path)
+        )
         lint_fail = lint_result.get("status") == "fail"
 
         compliant = (not policy_failures) and (not lint_fail)

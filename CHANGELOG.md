@@ -5,6 +5,24 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Published verdict corpus (`corpus/verdicts.yaml`) with expected exit codes
+  and failing controls for committed PEMs and CSRs, including the 0.2.0
+  expired-certificate false negative.
+- Pre-issuance CSR evaluation (`pki-gate --csr` / Action `csr` input). Issued-
+  certificate controls are `not_applicable`, not guessed.
+- Report `verdict_digest` and JSON Schema
+  `src/certguard/data/compliance-report-2.0.schema.json`. Same PEM, policy, and
+  `--as-of` instant produce the same digest.
+- `SECURITY.md`, a false-positive issue template, and `docs/COMPARE.md`
+  (CertGuard vs zlint vs `openssl verify`).
+
+### Changed
+
+- README leads with `pki-gate --cert`. Other CLI modes are listed as advanced.
+- `--as-of` pins evaluate-mode expiry checks, not only watch/readiness.
+
 ## [0.2.3] - 2026-09-18
 
 ### Removed

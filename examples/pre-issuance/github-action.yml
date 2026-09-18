@@ -1,0 +1,24 @@
+# Copy into a caller workflow. Pin the public tag, not a branch.
+name: pki-gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  evaluate-issued:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate issued certificate
+        uses: thulisa-n/pki-compliance-gate@v0.2.3
+        with:
+          cert: path/to/server.crt
+          as-of: "2026-09-18"
+  evaluate-csr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate CSR before issuance
+        uses: thulisa-n/pki-compliance-gate@v0.2.3
+        with:
+          csr: path/to/request.csr

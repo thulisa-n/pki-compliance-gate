@@ -155,6 +155,26 @@ def write_certificate(path: Path, spec: CertSpec = CertSpec()) -> Path:
     return path
 
 
+def write_csr(path: Path, spec: CertSpec | None = None) -> Path:
+    """Write a PEM CSR matching ``spec`` (SAN and key only; no validity window)."""
+    spec = spec or CertSpec()
+    key = _private_key(spec.key)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, spec.common_name)])
+    builder = x509.CertificateSigningRequestBuilder().subject_name(name)
+    if spec.san_dns:
+        builder = builder.add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(d) for d in spec.san_dns]),
+            critical=False,
+        )
+    if isinstance(key, ed25519.Ed25519PrivateKey):
+        csr = builder.sign(key, algorithm=None)
+    else:
+        csr = builder.sign(key, _hash(spec.hash_algorithm))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(csr.public_bytes(Encoding.PEM))
+    return path
+
+
 def fixture_expiry_report(
     fixture_dir: Path, names: Iterable[str] | None = None
 ) -> list[dict[str, object]]:

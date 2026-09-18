@@ -1,0 +1,90 @@
+# Verdict corpus
+#
+# Expected outcomes for committed fixtures on policies/cabf_policy.yaml.
+# evaluate:
+#   inside_window  — midpoint of notBefore/notAfter (CSR: unused, now is fine)
+#   after_not_after — one second after notAfter (issued certs only)
+#
+# Exit codes: 0 none, 1 low-only, 2 medium/high, 3 critical.
+# The expired fixture is the 0.2.0 false-negative: it used to exit 0.
+
+policy: policies/cabf_policy.yaml
+
+cases:
+  - id: valid
+    pem: tests/certificates/valid_cert.pem
+    evaluate: inside_window
+    exit_code: 0
+    compliant: true
+    must_fail: []
+  - id: expired
+    pem: tests/certificates/expired_cert.pem
+    evaluate: after_not_after
+    exit_code: 3
+    compliant: false
+    must_fail: [certificate_not_expired]
+    notes: False negative fixed in 0.2.0; previously evaluated as compliant.
+  - id: sha1
+    pem: tests/certificates/sha1_cert.pem
+    evaluate: after_not_after
+    exit_code: 3
+    compliant: false
+    must_fail: [signature_algorithm]
+  - id: weak_key
+    pem: tests/certificates/weak_key_cert.pem
+    evaluate: inside_window
+    exit_code: 3
+    compliant: false
+    must_fail: [rsa_key_size]
+  - id: ec_p192
+    pem: tests/certificates/ec_p192_cert.pem
+    evaluate: inside_window
+    exit_code: 3
+    compliant: false
+    must_fail: [ec_key_size, ec_curve_allowed]
+  - id: long_validity
+    pem: tests/certificates/long_validity_cert.pem
+    evaluate: inside_window
+    exit_code: 2
+    compliant: false
+    must_fail: [validity_days]
+  - id: no_san
+    pem: tests/certificates/no_san_cert.pem
+    evaluate: inside_window
+    exit_code: 2
+    compliant: false
+    must_fail: [san_extension]
+  - id: internal_domain
+    pem: tests/certificates/internal_domain_cert.pem
+    evaluate: inside_window
+    exit_code: 2
+    compliant: false
+    must_fail: [internal_domain_check]
+  - id: csr_valid
+    pem: tests/certificates/csrs/valid.csr
+    kind: csr
+    evaluate: inside_window
+    exit_code: 0
+    compliant: true
+    must_fail: []
+  - id: csr_weak_key
+    pem: tests/certificates/csrs/weak_key.csr
+    kind: csr
+    evaluate: inside_window
+    exit_code: 3
+    compliant: false
+    must_fail: [rsa_key_size]
+  - id: csr_internal
+    pem: tests/certificates/csrs/internal.csr
+    kind: csr
+    evaluate: inside_window
+    exit_code: 2
+    compliant: false
+    must_fail: [internal_domain_check]
+  - id: csr_no_san
+    pem: tests/certificates/csrs/no_san.csr
+    kind: csr
+    evaluate: inside_window
+    exit_code: 2
+    compliant: false
+    must_fail: [san_extension]

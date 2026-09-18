@@ -63,7 +63,25 @@ def test_cli_returns_usage_error_code_when_cert_missing() -> None:
         check=False,
     )
     assert process.returncode == 2
-    assert "ERROR: --cert is required in evaluate mode." in process.stderr
+    assert "ERROR: evaluate requires --cert or --csr." in process.stderr
+
+
+def test_cli_returns_usage_error_when_cert_and_csr_both_set() -> None:
+    process = subprocess.run(
+        [
+            sys.executable,
+            "src/main.py",
+            "--cert",
+            "tests/certificates/valid_cert.pem",
+            "--csr",
+            "tests/certificates/csrs/valid.csr",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert process.returncode == 2
+    assert "exactly one of --cert or --csr" in process.stderr
 
 
 def test_cli_returns_error_code_for_invalid_json_input(tmp_path: Path) -> None:

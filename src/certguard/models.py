@@ -99,6 +99,9 @@ class ComplianceReport:
     policy_version: str
     engine_version: str = __version__
     report_schema_version: str = REPORT_SCHEMA_VERSION
+    input_kind: str = "certificate"
+    evaluated_at: str | None = None
+    verdict_digest: str | None = None
 
     @classmethod
     def new(
@@ -133,9 +136,17 @@ class ComplianceReport:
             "not_applicable": len([c for c in checks if c.status == "not_applicable"]),
         }
 
-        return cls(
+        evaluated_at = parser_data.get("evaluated_at")
+        if isinstance(evaluated_at, str) and evaluated_at:
+            generated_at = evaluated_at
+        else:
+            generated_at = datetime.now(timezone.utc).isoformat()
+        input_kind = str(parser_data.get("input_kind") or "certificate")
+        report = cls(
             certificate=certificate,
-            generated_at=datetime.now(timezone.utc).isoformat(),
+            generated_at=generated_at,
+            evaluated_at=evaluated_at if isinstance(evaluated_at, str) else None,
+            input_kind=input_kind,
             compliant=compliant,
             checks=checks,
             parser_data=parser_data,
@@ -151,13 +162,20 @@ class ComplianceReport:
             waived_controls=waived_controls,
             policy_version=policy_version,
         )
+        from certguard.verdict import verdict_digest
+
+        report.verdict_digest = verdict_digest(report)
+        return report
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "report_schema_version": self.report_schema_version,
             "engine_version": self.engine_version,
             "certificate": self.certificate,
+            "input_kind": self.input_kind,
             "generated_at": self.generated_at,
+            "evaluated_at": self.evaluated_at,
+            "verdict_digest": self.verdict_digest,
             "compliant": self.compliant,
             "risk_level": self.risk_level,
             "findings": self.findings,

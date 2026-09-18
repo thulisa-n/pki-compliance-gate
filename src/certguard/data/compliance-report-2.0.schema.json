@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thulisa-n/pki-compliance-gate/blob/main/src/certguard/data/compliance-report-2.0.schema.json",
+  "title": "CertGuard compliance report",
+  "description": "Report schema 2.0. Additive fields (verdict_digest, input_kind) are optional for older producers and required of this engine.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "report_schema_version",
+    "engine_version",
+    "certificate",
+    "generated_at",
+    "compliant",
+    "risk_level",
+    "findings",
+    "coverage",
+    "checks",
+    "parser_data",
+    "lint",
+    "failed_controls",
+    "waived_controls",
+    "policy_version"
+  ],
+  "properties": {
+    "report_schema_version": { "type": "string", "const": "2.0" },
+    "engine_version": { "type": "string", "minLength": 1 },
+    "policy_version": { "type": "string" },
+    "certificate": { "type": "string" },
+    "input_kind": { "type": "string", "enum": ["certificate", "csr"] },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "evaluated_at": { "type": "string" },
+    "compliant": { "type": "boolean" },
+    "risk_level": { "type": "string" },
+    "verdict_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the canonical verdict (checks, coverage, evaluated_at). Not a signature."
+    },
+    "findings": {
+      "type": "object",
+      "required": ["critical", "high", "medium", "low", "unknown"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "controls_defined",
+        "controls_evaluated",
+        "passed",
+        "failed",
+        "waived",
+        "not_applicable"
+      ],
+      "properties": {
+        "controls_defined": { "type": "integer", "minimum": 0 },
+        "controls_evaluated": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "waived": { "type": "integer", "minimum": 0 },
+        "not_applicable": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "details"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "waived", "not_applicable"]
+          },
+          "details": { "type": "string" },
+          "rule_id": { "type": ["string", "null"] },
+          "category": { "type": ["string", "null"] },
+          "severity": { "type": ["string", "null"] },
+          "standard_reference": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "parser_data": { "type": "object" },
+    "lint": { "type": "object" },
+    "failed_controls": { "type": "array" },
+    "waived_controls": { "type": "array" }
+  }
+}

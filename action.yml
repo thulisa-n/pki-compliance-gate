@@ -9,6 +9,10 @@ inputs:
   cert:
     description: 'Path to PEM certificate file'
     required: false
+  csr:
+    description: 'Path to PEM certificate signing request (pre-issuance). Use instead of cert.'
+    required: false
+    default: ''
   policy:
     description: 'Optional path to a policy YAML file in the caller workspace'
     required: false
@@ -48,8 +52,8 @@ inputs:
     default: 'false'
   as-of:
     description: >-
-      ISO date to assess readiness against, for `mode: readiness`. Lets you ask
-      "would we pass in March 2027?" today.
+      UTC instant (YYYY-MM-DD or ISO-8601) for evaluate expiry checks and for
+      readiness/watch schedule dates. Pin this for a reproducible verdict_digest.
     required: false
     default: ''
 
@@ -86,6 +90,7 @@ runs:
       id: gate
       env:
         INPUT_CERT: ${{ inputs.cert }}
+        INPUT_CSR: ${{ inputs.csr }}
         INPUT_ENDPOINT: ${{ inputs.endpoint }}
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_OUTPUT: ${{ inputs.output }}
@@ -104,8 +109,15 @@ runs:
           --report "$INPUT_REPORT"
           --output "$INPUT_OUTPUT"
         )
+        if [ -n "$INPUT_CERT" ] && [ -n "$INPUT_CSR" ]; then
+          echo "Provide either cert or csr, not both." >&2
+          exit 2
+        fi
         if [ -n "$INPUT_CERT" ]; then
           args+=(--cert "$INPUT_CERT")
+        fi
+        if [ -n "$INPUT_CSR" ]; then
+          args+=(--csr "$INPUT_CSR")
         fi
         if [ -n "$INPUT_ENDPOINT" ]; then
           args+=(--endpoint "$INPUT_ENDPOINT")

@@ -94,6 +94,16 @@ def test_report_records_engine_and_schema_version(
     assert payload["engine_version"] == __version__
     assert payload["report_schema_version"] == REPORT_SCHEMA_VERSION
     assert payload["policy_version"]
+    assert payload["verdict_digest"]
+    assert payload["input_kind"] == "certificate"
+
+    schema = json.loads(
+        Path("src/certguard/data/compliance-report-2.0.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    for key in schema["required"]:
+        assert key in payload, key
 
 
 def test_compliant_report_has_no_findings(

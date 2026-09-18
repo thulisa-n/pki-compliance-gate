@@ -44,7 +44,7 @@ where = ["src"]
 include = ["certguard", "certguard.*"]
 
 [tool.setuptools.package-data]
-"certguard.data" = ["*.yaml"]
+"certguard.data" = ["*.yaml", "*.json"]
 
 [tool.pytest.ini_options]
 # "." keeps tests.support importable from conftest and from

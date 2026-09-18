@@ -1,0 +1,50 @@
+name: False positive
+description: A control failed on a certificate or CSR you believe should pass.
+title: "false positive: "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when CertGuard failed a control that you think the active YAML
+        policy should allow. Vulnerabilities go to Security Advisories, not here.
+  - type: input
+    id: version
+    attributes:
+      label: Engine version
+      placeholder: "0.2.3 (pki-gate --version)"
+    validations:
+      required: true
+  - type: input
+    id: policy
+    attributes:
+      label: Policy file
+      placeholder: policies/cabf_policy.yaml
+    validations:
+      required: true
+  - type: input
+    id: as_of
+    attributes:
+      label: --as-of instant (if used)
+      placeholder: 2026-09-18T00:00:00+00:00
+  - type: textarea
+    id: control
+    attributes:
+      label: Control name(s) that failed
+      placeholder: rsa_key_size, validity_days
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this should pass
+      description: Quote the policy field or BR clause you are following.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report excerpt
+      description: Paste the failed check objects from compliance_report.json. Redact hostnames if needed.
+    validations:
+      required: true
