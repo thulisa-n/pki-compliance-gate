@@ -1,18 +1,90 @@
 sync:
-  fetched_at: '2026-09-08T10:10:34.871151+00:00'
-  source_url: https://raw.githubusercontent.com/cabforum/servercert/663657c4539065c8ceab74298631529ae4bc2520/docs/BR.md
-  source_sha256: e4a399749c29291bbff379173ab9af716786d56d4b03b9b84ebdb1ee58eecc79
-extracted:
-  validity_day_values:
-  - 10
-  - 30
-  - 46
-  - 47
-  - 99
-  - 100
-  - 199
-  - 200
-  - 397
-  - 398
-  recommended_subscriber_max_validity_days: 200
-  short_lived_profile_days: null
+  fetched_at: '2026-10-06T12:18:46+00:00'
+  source_url: https://raw.githubusercontent.com/cabforum/servercert/3574ae809e5f909b58ee4c26b7bac4a3b9e78421/docs/BR.md
+  source_sha256: ee4e4e95ba0f3fa1e11cb0dc01b2337aa26e88b8c7724c78f25e5743fc1e151e
+  previous_source_sha256: e4a399749c29291bbff379173ab9af716786d56d4b03b9b84ebdb1ee58eecc79
+  source_changed: true
+  first_run: false
+review:
+  note: Values in policies/standards_baseline.yaml are hand-maintained. This snapshot
+    records only that the upstream document changed.
+  action_required: Re-read the CABF ballot schedule and confirm the dated entries
+    in policies/standards_baseline.yaml.
+  tracked_schedule:
+  - effective: '2020-09-01'
+    max_validity_days: 398
+    dcv_reuse_days: 398
+  - effective: '2026-03-15'
+    max_validity_days: 200
+    dcv_reuse_days: 200
+  - effective: '2027-03-15'
+    max_validity_days: 100
+    dcv_reuse_days: 100
+  - effective: '2029-03-15'
+    max_validity_days: 47
+    dcv_reuse_days: 10
+observed:
+  tracked_validity_values_present:
+    '398': true
+    '200': true
+    '100': true
+    '47': true
+    '10': true
+  schedule_table_lines:
+  - '| 2026-03-15 | [4.2.1](#421-performing-identification-and-authentication-functions)
+    | Subject Identity Information validation maximum data reuse period is 398 days.
+    |'
+  - '| 2026-03-15 | [4.2.1](#421-performing-identification-and-authentication-functions)
+    | Domain Name and IP Address validation maximum data reuse period is 200 days.
+    |'
+  - '| 2026-03-15 | [6.3.2](#632-certificate-operational-periods-and-key-pair-usage-periods)
+    | Maximum validity period of Subscriber Certificates is 200 days. |'
+  - '| 2027-03-15 | [4.2.1](#421-performing-identification-and-authentication-functions)
+    | Domain Name and IP Address validation maximum data reuse period is 100 days.
+    |'
+  - '| 2027-03-15 | [6.3.2](#632-certificate-operational-periods-and-key-pair-usage-periods)
+    | Maximum validity period of Subscriber Certificates is 100 days. |'
+  - '| 2029-03-15 | [4.2.1](#421-performing-identification-and-authentication-functions)
+    | Domain Name and IP Address validation maximum data reuse period is 10 days.
+    |'
+  - '| 2029-03-15 | [6.3.2](#632-certificate-operational-periods-and-key-pair-usage-periods)
+    | Maximum validity period of Subscriber Certificates is 47 days. |'
+  - '**Short-lived Subscriber Certificate**: For Certificates issued on or after 2024-03-15
+    and prior to 2026-03-15, a Subscriber Certificate with a Validity Period less
+    than or equal to 10 days (864,000 s'
+  - The Random Value SHALL remain valid for use in a confirming response for no more
+    than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values.
+  - The Random Value SHALL be unique in each email. The email MAY be re-sent in its
+    entirety, including the re-use of the Random Value, provided that its entire contents
+    and recipient(s) SHALL remain unch
+  - The Random Value SHALL be unique in each email. The email MAY be re-sent in its
+    entirety, including the re-use of the Random Value, provided that its entire contents
+    and recipient(s) SHALL remain unch
+  - The Random Value SHALL remain valid for use in a confirming response for no more
+    than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values.
+  - The Random Value SHALL remain valid for use in a confirming response for no more
+    than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values.
+  - 2. The Random Value MUST remain valid for use in a confirming response for no
+    more than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values, in which case the CA
+  - The token (as defined in [RFC 8555, Section 8.3](https://datatracker.ietf.org/doc/html/rfc8555#section-8.3))
+    MUST NOT be used for more than 30 days from its creation. The CPS MAY specify
+    a shorter val
+  - The token (as defined in [RFC 8737, Section 3](https://datatracker.ietf.org/doc/html/rfc8737#section-3))
+    MUST NOT be used for more than 30 days from its creation. The CPS MAY specify
+    a shorter validit
+  - The token (as defined in draft 00 of "Automated Certificate Management Environment
+    (ACME) DNS Labeled With ACME Account ID Challenge," Section 3.1) MUST NOT be used
+    for more than 30 days from its crea
+  - 'For the purposes of [Section 4.2.1](#421-performing-identification-and-authentication-functions),
+    CAs MUST consider 10 days as the maximum validation data reuse period for validations
+    completed using '
+  - The Random Value SHALL remain valid for use in a confirming response for no more
+    than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values, in which case the CA M
+  - The Random Value SHALL remain valid for use in a confirming response for no more
+    than 30 days from its creation. The CPS MAY specify a shorter validity period
+    for Random Values.
