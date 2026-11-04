@@ -27,6 +27,7 @@ import argparse
 import hashlib
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -111,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
 
     snapshot = {
         "sync": {
+            # Required by Standards PR Guard (.github/workflows/standards-pr-guard.yml).
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "source_url": source_origin,
             "source_sha256": source_sha256,
             "previous_source_sha256": previous_sha,

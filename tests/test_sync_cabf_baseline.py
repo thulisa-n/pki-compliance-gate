@@ -37,7 +37,8 @@ def test_first_run_records_digest_and_requests_review(tmp_path: Path) -> None:
     payload = yaml.safe_load(snapshot.read_text(encoding="utf-8"))
     assert payload["sync"]["first_run"] is True
     assert payload["sync"]["source_sha256"]
-    assert "fetched_at" not in payload["sync"]
+    assert isinstance(payload["sync"]["fetched_at"], str)
+    assert "T" in payload["sync"]["fetched_at"]
 
 
 def test_unchanged_source_does_not_raise(tmp_path: Path) -> None:
