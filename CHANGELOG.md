@@ -3,7 +3,21 @@
 All notable changes to this project are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.5] - Unreleased
+
+### Fixed
+
+- `failed_controls` entries include the check's `recommendation`. SARIF result
+  properties include it as well; the finding message already did.
+- `pki-gate --mode` help lists first-class modes separately from derived
+  helpers (`summary`, `trend`, `export-cps-doc`, `export-rego`).
+- Standards sync no longer falls back to `github.token` when opening a review
+  pull request. If a Baseline Requirements change has no review pull request,
+  the job summary explains how to set `STANDARDS_SYNC_PR_TOKEN` and the job
+  fails. Snapshots still record `sync.fetched_at`, which Standards PR Guard
+  requires.
+- Secret detection grants `pull-requests: read` so gitleaks can read pull
+  request metadata.
 
 ## [0.2.4] - 2026-09-18
 

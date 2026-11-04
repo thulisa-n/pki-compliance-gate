@@ -85,6 +85,58 @@ def test_findings_are_bucketed_by_severity(
     assert report.findings["critical"] == 1
 
 
+def test_failed_controls_include_the_check_recommendation(
+    make_cert: Callable[..., Path], tmp_path: Path
+) -> None:
+    """The summary used to drop remediation text that every check already has."""
+    _, report, payload = _evaluate(make_cert(key="rsa1024"), tmp_path)
+
+    failed = {item["name"]: item for item in payload["failed_controls"]}
+    assert "rsa_key_size" in failed
+    check = next(item for item in report.checks if item.name == "rsa_key_size")
+    assert check.recommendation
+    assert failed["rsa_key_size"]["recommendation"] == check.recommendation
+
+
+def test_waived_control_summary_omits_recommendation() -> None:
+    checks = [
+        CheckResult(
+            name="rsa_key_size",
+            status="fail",
+            details="weak",
+            severity="critical",
+            recommendation="Generate an RSA key of at least 2048 bits.",
+        ),
+        CheckResult(
+            name="san_extension",
+            status="waived",
+            details="waived",
+            severity="high",
+            recommendation="Add a SAN.",
+        ),
+    ]
+    report = ComplianceReport.new(
+        certificate="x.pem",
+        compliant=False,
+        checks=checks,
+        parser_data={},
+        lint={"status": "skipped"},
+        policy_version="test",
+    )
+
+    assert report.failed_controls == [
+        {
+            "name": "rsa_key_size",
+            "rule_id": None,
+            "severity": "critical",
+            "standard_reference": None,
+            "recommendation": "Generate an RSA key of at least 2048 bits.",
+        }
+    ]
+    assert "recommendation" not in report.waived_controls[0]
+    assert report.waived_controls[0]["name"] == "san_extension"
+
+
 def test_report_records_engine_and_schema_version(
     make_cert: Callable[..., Path], tmp_path: Path
 ) -> None:

@@ -88,6 +88,8 @@ in the private namespace.
 
 ## Automation Secrets
 
-- `STANDARDS_SYNC_PR_TOKEN`: token used by `standards-sync.yml` when creating bot PRs.
-  Configure this secret so downstream PR workflows (`Compliance Gate`, `Security Scans`)
-  auto-trigger on standards-sync pull requests.
+- `STANDARDS_SYNC_PR_TOKEN`: required by `standards-sync.yml` to open the review
+  pull request when the Baseline Requirements digest changes. The workflow does
+  not fall back to `github.token`. If the secret is missing, or the change has
+  no review pull request, the job writes a summary and fails. Snapshots still
+  include `sync.fetched_at`, which `standards-pr-guard.yml` requires.

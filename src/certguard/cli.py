@@ -33,6 +33,44 @@ from certguard.readiness import (
 )
 from certguard.sarif import to_sarif
 
+# Modes that make a decision from a certificate, policy, endpoint, or signal
+# input. Help lists these separately from the helpers below so a flat choices
+# set does not hide which flags only reformat something already decided.
+FIRST_CLASS_MODES: tuple[str, ...] = (
+    "evaluate",
+    "triage",
+    "assure",
+    "watch",
+    "heal",
+    "apisec",
+    "signals",
+    "readiness",
+)
+
+# Render an existing report or the policy YAML. They do not issue a verdict.
+DERIVED_HELPER_MODES: tuple[str, ...] = (
+    "summary",
+    "trend",
+    "export-cps-doc",
+    "export-rego",
+)
+
+
+def _mode_help() -> str:
+    return (
+        "Execution mode. "
+        f"First-class modes: {', '.join(FIRST_CLASS_MODES)}. "
+        f"Derived helpers: {', '.join(DERIVED_HELPER_MODES)}. "
+        "Derived helpers only render an existing report or the policy YAML; "
+        "they do not issue a compliance verdict."
+    )
+
+
+def _mode_metavar() -> str:
+    first = ",".join(FIRST_CLASS_MODES)
+    derived = ",".join(DERIVED_HELPER_MODES)
+    return f"{{{first}}}|{{{derived}}}"
+
 
 def packaged_policy_path() -> str:
     return str(files("certguard.data").joinpath("cabf_policy.yaml"))
@@ -83,22 +121,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=[
-            "evaluate",
-            "triage",
-            "assure",
-            "watch",
-            "heal",
-            "summary",
-            "trend",
-            "apisec",
-            "signals",
-            "readiness",
-            "export-cps-doc",
-            "export-rego",
-        ],
+        choices=[*FIRST_CLASS_MODES, *DERIVED_HELPER_MODES],
         default="evaluate",
-        help="Execution mode",
+        metavar=_mode_metavar(),
+        help=_mode_help(),
     )
     parser.add_argument("--cert", help="Path to PEM certificate")
     parser.add_argument(

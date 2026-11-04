@@ -18,7 +18,7 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Execution mode (evaluate, readiness, apisec, summary, export-cps-doc, export-rego, ...)'
+    description: 'First-class modes: evaluate, triage, assure, watch, heal, apisec, signals, readiness. Derived helpers: summary, trend, export-cps-doc, export-rego.'
     required: false
     default: 'evaluate'
   report:

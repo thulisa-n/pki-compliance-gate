@@ -177,22 +177,32 @@ flowchart LR
 
 ## Advanced modes
 
-The product is `pki-gate --cert`. Everything else is optional.
+The product is `pki-gate --cert`. `pki-gate --help` lists the same split as
+below: first-class modes make a decision, derived helpers only render one.
+
+### First-class modes
 
 | Mode | Example | What the code does |
 | :--- | :--- | :--- |
 | `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate or CSR. |
-| `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
-| `export-rego` | `pki-gate --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
-| `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
 | `triage` | `pki-gate --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
 | `assure` | `pki-gate --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
 | `watch` | `pki-gate --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
 | `heal` | `pki-gate --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
-| `summary` | `pki-gate --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
-| `trend` | `pki-gate --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
+| `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
 | `signals` | `pki-gate --mode signals` | Reads curated external signals JSON and writes recommendations. |
 | `readiness` | `pki-gate --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
+
+### Derived helpers
+
+These render an existing report or the policy YAML. They do not issue a verdict.
+
+| Mode | Example | What the code does |
+| :--- | :--- | :--- |
+| `summary` | `pki-gate --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
+| `trend` | `pki-gate --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
+| `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
+| `export-rego` | `pki-gate --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
 
 ## Repository structure
 

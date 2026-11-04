@@ -109,6 +109,9 @@ def to_sarif(
                 "standardReference": check.standard_reference,
                 "policyValue": check.policy_value,
                 "actualValue": check.actual_value,
+                # Structured copy of the advice already appended to message text,
+                # so code-scanning consumers do not have to parse the sentence.
+                "recommendation": check.recommendation,
             },
         }
         if check.name in rule_index:
