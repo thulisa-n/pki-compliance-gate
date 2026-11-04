@@ -1,4 +1,5 @@
 sync:
+  fetched_at: '2026-10-06T12:18:46+00:00'
   source_url: https://raw.githubusercontent.com/cabforum/servercert/3574ae809e5f909b58ee4c26b7bac4a3b9e78421/docs/BR.md
   source_sha256: ee4e4e95ba0f3fa1e11cb0dc01b2337aa26e88b8c7724c78f25e5743fc1e151e
   previous_source_sha256: e4a399749c29291bbff379173ab9af716786d56d4b03b9b84ebdb1ee58eecc79
