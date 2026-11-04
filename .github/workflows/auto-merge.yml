@@ -1,0 +1,38 @@
+name: Auto Merge
+
+# Enables GitHub auto-merge for trusted bot PRs once required checks are green.
+# Repo settings: allow_auto_merge=true, delete_branch_on_merge=true.
+# protect-main requires: run-compliance, sast-and-deps, CodeQL (squash only).
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  enable-auto-merge:
+    if: >
+      github.event.pull_request.draft == false && (
+        github.actor == 'dependabot[bot]' ||
+        (
+          github.event.pull_request.head.ref == 'chore/standards-sync' &&
+          startsWith(github.event.pull_request.title, 'chore(standards):')
+        )
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable squash auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          gh pr merge --auto --squash "$PR_URL"
+          echo "Auto-merge enabled for $PR_URL"
