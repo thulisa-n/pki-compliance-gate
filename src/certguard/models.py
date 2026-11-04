@@ -193,12 +193,18 @@ class ComplianceReport:
 
 
 def _control_summary(check: CheckResult) -> dict[str, Any]:
-    return {
+    summary: dict[str, Any] = {
         "name": check.name,
         "rule_id": check.rule_id,
         "severity": check.normalized_severity(),
         "standard_reference": check.standard_reference,
     }
+    # Consumers of the summary (triage dashboards, job outputs) should not have
+    # to re-join the full checks list to learn how to fix a failure. The check
+    # already carries this field; SARIF message text already includes it.
+    if check.status == "fail":
+        summary["recommendation"] = check.recommendation
+    return summary
 
 
 def risk_level_for(

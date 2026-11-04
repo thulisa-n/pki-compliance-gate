@@ -81,13 +81,29 @@
           "rule_id": { "type": ["string", "null"] },
           "category": { "type": ["string", "null"] },
           "severity": { "type": ["string", "null"] },
-          "standard_reference": { "type": ["string", "null"] }
+          "standard_reference": { "type": ["string", "null"] },
+          "recommendation": { "type": ["string", "null"] }
         }
       }
     },
     "parser_data": { "type": "object" },
     "lint": { "type": "object" },
-    "failed_controls": { "type": "array" },
+    "failed_controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "rule_id": { "type": ["string", "null"] },
+          "severity": { "type": "string" },
+          "standard_reference": { "type": ["string", "null"] },
+          "recommendation": {
+            "type": ["string", "null"],
+            "description": "Same remediation text as the matching check. Present on failures."
+          }
+        }
+      }
+    },
     "waived_controls": { "type": "array" }
   }
 }

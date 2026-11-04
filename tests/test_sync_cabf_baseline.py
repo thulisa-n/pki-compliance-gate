@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -110,3 +111,26 @@ def test_snapshot_echoes_the_tracked_schedule_for_the_reviewer(
         entry["effective"] for entry in payload["review"]["tracked_schedule"]
     }
     assert {"2026-03-15", "2027-03-15", "2029-03-15"} <= effective_dates
+
+
+def test_snapshot_keeps_every_field_the_pr_guard_requires(tmp_path: Path) -> None:
+    """Standards PR Guard rejects a snapshot that drops sync.fetched_at."""
+    guard = Path(".github/workflows/standards-pr-guard.yml").read_text(encoding="utf-8")
+    match = re.search(r"required_sync = \(([^)]*)\)", guard)
+    assert match is not None
+    required = re.findall(r'"([^"]+)"', match.group(1))
+    assert "fetched_at" in required
+    assert "source_sha256" in required
+
+    source = _write_source(tmp_path, BR_TEXT)
+    snapshot = tmp_path / "snapshot.yaml"
+    main(
+        [
+            "--source-file", str(source),
+            "--snapshot-file", str(snapshot),
+            "--baseline-file", "policies/standards_baseline.yaml",
+        ]
+    )
+    payload = yaml.safe_load(snapshot.read_text(encoding="utf-8"))
+    for key in required:
+        assert payload["sync"].get(key), key

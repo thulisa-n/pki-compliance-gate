@@ -87,6 +87,11 @@ def test_critical_failures_map_to_error_level(
     results = {r["ruleId"]: r for r in run["results"]}
     assert set(results) == {"ec_key_size", "ec_curve_allowed"}
     assert all(r["level"] == "error" for r in results.values())
+    by_name = {check.name: check for check in report.checks}
+    for name, result in results.items():
+        assert result["properties"]["recommendation"] == by_name[name].recommendation
+        assert result["properties"]["recommendation"]
+        assert result["properties"]["recommendation"] in result["message"]["text"]
 
     rules = {rule["id"]: rule for rule in run["tool"]["driver"]["rules"]}
     assert rules["ec_key_size"]["properties"]["security-severity"] == "9.3"

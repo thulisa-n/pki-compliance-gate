@@ -113,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
     snapshot = {
         "sync": {
             # Required by Standards PR Guard (.github/workflows/standards-pr-guard.yml).
+            # Keep this key. The guard rejects a snapshot that omits it.
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "source_url": source_origin,
             "source_sha256": source_sha256,

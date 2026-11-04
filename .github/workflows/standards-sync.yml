@@ -64,14 +64,29 @@ jobs:
             echo "Upstream digest unchanged; no review required."
           fi
 
+      # Presence only. The token value is never passed to the review-PR guard
+      # script, and this workflow never substitutes github.token: pull requests
+      # opened with the default token do not trigger Compliance Gate or
+      # Security Scans.
+      - name: Note whether the PR token secret is configured
+        id: pr_token
+        env:
+          STANDARDS_SYNC_PR_TOKEN: ${{ secrets.STANDARDS_SYNC_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${STANDARDS_SYNC_PR_TOKEN}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "STANDARDS_SYNC_PR_TOKEN is unset. No pull request will be opened."
+          fi
+
       - name: Create pull request if sync changed
-        if: ${{ steps.detect.outcome == 'failure' }}
+        id: review_pr
+        if: steps.detect.outcome == 'failure' && steps.pr_token.outputs.present == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          # Use a repo secret token (classic PAT or fine-grained PAT) so follow-up
-          # PR workflows (Compliance Gate, Security Scans) trigger automatically.
-          # If not configured, fallback to github.token (checks may not auto-trigger).
-          token: ${{ secrets.STANDARDS_SYNC_PR_TOKEN != '' && secrets.STANDARDS_SYNC_PR_TOKEN || github.token }}
+          token: ${{ secrets.STANDARDS_SYNC_PR_TOKEN }}
           commit-message: "chore(standards): sync CAB Forum baseline snapshot"
           title: "chore(standards): sync CAB Forum baseline snapshot"
           body: |
@@ -79,10 +94,19 @@ jobs:
             - record a changed CA/B Forum BR source digest
             - request human review of the hand-maintained dated schedule
             - do not automatically rewrite `policies/standards_baseline.yaml`
-            - note: auto-run PR checks require `STANDARDS_SYNC_PR_TOKEN` secret
+            - keep `sync.fetched_at` so Standards PR Guard accepts the snapshot
+            - opened with `STANDARDS_SYNC_PR_TOKEN` so Compliance Gate and Security Scans run
           branch: chore/standards-sync
           base: main
           delete-branch: true
+
+      - name: Fail when a Baseline Requirements change has no review pull request
+        if: always() && steps.detect.outcome == 'failure'
+        env:
+          PR_NUMBER: ${{ steps.review_pr.outputs.pull-request-number }}
+          PR_URL: ${{ steps.review_pr.outputs.pull-request-url }}
+          TOKEN_PRESENT: ${{ steps.pr_token.outputs.present }}
+        run: bash scripts/require_standards_review_pr.sh
 
       - name: Capture sync artifacts
         if: always()
