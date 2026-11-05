@@ -1,5 +1,5 @@
-name: 'PKI Compliance Gate'
-description: 'Policy-as-Code gate for X.509 certificates, CA/B Forum Baseline Requirements, and API TLS posture in CI/CD'
+name: 'Neakam'
+description: 'Neakam policy-as-code gate for X.509 certificates. No telemetry. Live TLS checks only when apisec mode is given an endpoint.'
 author: 'Thulisa Nikani'
 branding:
   icon: 'shield'
@@ -30,7 +30,7 @@ inputs:
     required: false
     default: 'text'
   endpoint:
-    description: 'Target host or URL for apisec mode'
+    description: 'Opt-in live TLS target for apisec mode. Neakam connects only to this host and does not follow redirects.'
     required: false
   sarif:
     description: >-
@@ -82,11 +82,11 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Install PKI Compliance Gate
+    - name: Install Neakam
       run: python -m pip install "${{ github.action_path }}"
       shell: bash
 
-    - name: Run PKI Compliance Gate
+    - name: Run Neakam
       id: gate
       env:
         INPUT_CERT: ${{ inputs.cert }}
@@ -121,6 +121,9 @@ runs:
         fi
         if [ -n "$INPUT_ENDPOINT" ]; then
           args+=(--endpoint "$INPUT_ENDPOINT")
+          if [ "$INPUT_MODE" = "apisec" ]; then
+            args+=(--allow-network)
+          fi
         fi
         if [ -n "$INPUT_SARIF" ]; then
           args+=(--sarif-output "$INPUT_SARIF")
@@ -139,7 +142,7 @@ runs:
         fi
 
         set +e
-        pki-gate "${args[@]}"
+        neakam "${args[@]}"
         code=$?
         set -e
 

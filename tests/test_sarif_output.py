@@ -40,7 +40,7 @@ def test_sarif_is_well_formed(make_cert: Callable[..., Path], tmp_path: Path) ->
     assert log["$schema"].endswith("sarif-schema-2.1.0.json")
     assert len(log["runs"]) == 1
     driver = log["runs"][0]["tool"]["driver"]
-    assert driver["name"] == "CertGuard"
+    assert driver["name"] == "Neakam"
     assert driver["version"] == __version__
 
 

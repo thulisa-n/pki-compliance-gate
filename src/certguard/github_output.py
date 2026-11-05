@@ -52,7 +52,7 @@ def render_job_summary(
     coverage = report.coverage
 
     lines = [
-        "## CertGuard compliance gate",
+        "## Neakam compliance gate",
         "",
         f"**Result:** {verdict} &nbsp;&nbsp; **Risk:** {report.risk_level}",
         "",
@@ -151,9 +151,9 @@ def annotation_lines(report: ComplianceReport) -> list[str]:
         command = _ANNOTATION_COMMAND.get(severity, "warning")
         if check.status == "waived":
             command = "notice"
-        title = f"CertGuard {severity}: {check.name}"
+        title = f"Neakam {severity}: {check.name}"
         if check.rule_id:
-            title = f"CertGuard {severity}: {check.name} ({check.rule_id})"
+            title = f"Neakam {severity}: {check.name} ({check.rule_id})"
         message = check.details
         if check.status == "waived":
             message = f"[WAIVED] {message}"
@@ -164,7 +164,7 @@ def annotation_lines(report: ComplianceReport) -> list[str]:
     if not ordered:
         coverage = report.coverage
         lines.append(
-            "::notice title=CertGuard::"
+            "::notice title=Neakam::"
             + _escape_data(
                 f"No failing controls. {coverage['controls_evaluated']} of "
                 f"{coverage['controls_defined']} controls evaluated, "

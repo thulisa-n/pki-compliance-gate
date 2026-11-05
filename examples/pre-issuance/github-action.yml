@@ -1,5 +1,5 @@
 # Copy into a caller workflow. Pin the public tag, not a branch.
-name: pki-gate
+name: neakam
 on:
   pull_request:
   push:

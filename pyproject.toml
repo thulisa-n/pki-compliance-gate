@@ -34,17 +34,19 @@ dev = [
 ]
 
 [project.scripts]
+neakam = "certguard.cli:main"
 pki-gate = "certguard.cli:main"
+certguard = "certguard.cli:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["certguard", "certguard.*"]
+include = ["certguard", "certguard.*", "neakam", "neakam.*"]
 
 [tool.setuptools.package-data]
-"certguard.data" = ["*.yaml", "*.json"]
+"certguard.data" = ["*.yaml", "*.json", "*.pem"]
 
 [tool.pytest.ini_options]
 # "." keeps tests.support importable from conftest and from

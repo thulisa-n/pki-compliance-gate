@@ -6,13 +6,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this when CertGuard failed a control that you think the active YAML
+        Use this when Neakam failed a control that you think the active YAML
         policy should allow. Vulnerabilities go to Security Advisories, not here.
   - type: input
     id: version
     attributes:
       label: Engine version
-      placeholder: "0.2.5 (pki-gate --version)"
+      placeholder: "0.2.5 (neakam --version)"
     validations:
       required: true
   - type: input

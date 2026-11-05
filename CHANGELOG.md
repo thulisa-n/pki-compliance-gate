@@ -5,6 +5,19 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `neakam` console script. `pki-gate` and `certguard` remain as deprecated
+  aliases and print a one-line notice to stderr.
+- `neakam doctor` offline self-test (`--json`, exit codes 0, 1, and 2).
+- `NO_TELEMETRY.md`. Live TLS checks require `--allow-network` and stay on the
+  hosts listed with `--endpoint`.
+
+### Changed
+
+- User-facing name in the CLI, output headers, and docs is Neakam. The import
+  package remains `certguard`. The PyPI distribution name is unchanged.
+
 ## [0.2.5] - 2026-11-04
 
 ### Fixed

@@ -26,21 +26,24 @@ Vulnerabilities go through [SECURITY.md](SECURITY.md), not a public issue.
 Evaluate:
 
 ```bash
-pki-gate --cert tests/certificates/valid_cert.pem
+neakam --cert tests/certificates/valid_cert.pem
+neakam doctor
 ```
+
+`pki-gate` and `certguard` still run and print a deprecation notice.
 
 Watch:
 
 ```bash
-pki-gate --mode watch \
+neakam --mode watch \
   --policy policies/cabf_policy.yaml \
   --standards-baseline policies/standards_baseline.yaml
 ```
 
-API TLS posture:
+API TLS posture (opt-in; no other mode uses the network):
 
 ```bash
-pki-gate --mode apisec --endpoint https://example.com
+neakam --mode apisec --allow-network --endpoint https://example.com
 ```
 
 ## Developer Certificate of Origin

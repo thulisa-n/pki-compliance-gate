@@ -1,1 +1,1 @@
-"""Bundled runtime data for installed CertGuard distributions."""
+"""Bundled runtime data for installed Neakam distributions."""

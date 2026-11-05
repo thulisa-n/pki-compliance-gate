@@ -6,7 +6,7 @@ YAML profile (`certificate.max_validity_days`).
 Emit a gate that matches the loaded policy:
 
 ```bash
-pki-gate --mode export-rego \
+neakam --mode export-rego \
   --policy policies/cabf_policy.yaml \
   --summary-output policies/rego/validity.rego
 ```
