@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -21,10 +21,12 @@ def _write_self_signed_cert(
     san_dns: list[str],
     days: int,
     rsa_bits: int = 2048,
-    hash_algo: hashes.HashAlgorithm = hashes.SHA256(),
+    hash_algo: hashes.HashAlgorithm | None = None,
 ) -> None:
+    if hash_algo is None:
+        hash_algo = hashes.SHA256()
     key = rsa.generate_private_key(public_exponent=65537, key_size=rsa_bits)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
     cert_builder = (

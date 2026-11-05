@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from certguard.agents.base import BaseAgent
@@ -32,7 +32,7 @@ class ExternalSignalWatchAgent(BaseAgent):
             "recommendation_count": len(recommendations),
             "signals": normalized,
             "recommendations": recommendations,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
         return AgentResult(agent=self.name, success=True, data=summary)
 

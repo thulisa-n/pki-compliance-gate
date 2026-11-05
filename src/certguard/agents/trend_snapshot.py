@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +42,7 @@ class TrendSnapshotAgent(BaseAgent):
         total = len(checks)
 
         snapshot = {
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": datetime.now(UTC).isoformat(),
             "run_id": run_id,
             "trigger": trigger,
             "certificate": report.get("certificate"),

@@ -17,8 +17,9 @@ added to the validator appears in the documentation without a second edit.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 

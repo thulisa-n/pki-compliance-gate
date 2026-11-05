@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 from certguard.cli import _exit_code_from_report
 

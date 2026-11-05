@@ -1,8 +1,10 @@
 name: Code Quality
 
-# Lint, type check and coverage. The repository previously had no linter,
-# formatter, type checker or coverage measurement anywhere in CI, which is an
-# odd gap for a project whose value proposition is rigour.
+# Fastest Python gates first. Ruff blocks the unit job, and the unit job blocks
+# the neakam fixture jobs, so a lint or unit failure does not start integration.
+# Secret Detection and Security Scans are separate workflows and start
+# immediately. Any red job blocks the merge once branch protection requires it.
+# See docs/BRANCH_PROTECTION.md.
 
 on:
   push:
@@ -18,50 +20,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check src tests scripts
+
+      - name: Ruff format (advisory)
+        run: ruff format --check src tests scripts
+        continue-on-error: true
+
+      - name: mypy (advisory)
+        run: mypy
+        continue-on-error: true
+
   quality:
+    needs: ruff
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: src
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
 
       - name: Install enterprise test dependencies
         if: ${{ github.repository == 'thulisa-n/pki-compliance-gate-enterprise' }}
         run: pip install -r requirements-enterprise.txt
-
-      # Blocking: real errors only (syntax, undefined names, unused imports).
-      # These were verified clean when the job was introduced.
-      - name: Ruff (errors)
-        run: ruff check --select E9,F src tests scripts
-
-      # Advisory until the initial backlog is cleared, then promote to blocking
-      # by deleting continue-on-error. The full rule set is in pyproject.toml.
-      # TODO(0.2.3): clear remaining advisory findings and make format/mypy blocking.
-      - name: Ruff (full rule set, advisory)
-        run: ruff check src tests scripts
-        continue-on-error: true
-
-      - name: Ruff (format check, advisory)
-        run: ruff format --check src tests scripts
-        continue-on-error: true
-
-      # mypy --strict on a codebase that has never been type checked will
-      # report a backlog. Advisory so it reports without blocking; the floor is
-      # that it must not get worse.
-      - name: mypy (strict, src only, advisory)
-        run: mypy
-        continue-on-error: true
 
       - name: Regenerate time-sensitive certificate fixtures
         run: python scripts/generate_test_certificates.py
@@ -69,18 +82,73 @@ jobs:
       - name: Certificate fixture freshness
         run: python scripts/generate_test_certificates.py --check
 
-      - name: Tests with coverage floor
+      - name: Unit tests with coverage floor
         run: |
           mkdir -p reports/test-results
-          pytest -q \
+          pytest -q -m "not integration" \
             --cov \
             --cov-report=term-missing \
-            --cov-report=xml:reports/test-results/coverage.xml
+            --cov-report=xml:reports/test-results/coverage.xml \
+            --junitxml=reports/test-results/pytest-junit.xml
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-${{ github.run_id }}
           path: reports/test-results/coverage.xml
           if-no-files-found: warn
+
+  fixture-matrix:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+
+      - name: Regenerate time-sensitive certificate fixtures
+        run: python scripts/generate_test_certificates.py
+
+      - name: Neakam CLI fixture integration
+        run: pytest -q tests/test_cli_integration.py -k "not strict_profile"
+
+  strict-profile-smoke:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install locked dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+
+      - name: Regenerate time-sensitive certificate fixtures
+        run: python scripts/generate_test_certificates.py
+
+      - name: Strict profile through the neakam CLI
+        run: pytest -q tests/test_cli_integration.py -k strict_profile

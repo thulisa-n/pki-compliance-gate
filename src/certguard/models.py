@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from certguard import REPORT_SCHEMA_VERSION, __version__
@@ -42,7 +42,7 @@ class CheckResult:
         value = (self.severity or "unknown").strip().lower()
         return value if value in SEVERITY_ORDER else "unknown"
 
-    def replace_status(self, status: Status, details: str) -> "CheckResult":
+    def replace_status(self, status: Status, details: str) -> CheckResult:
         """Return a copy with a new status, leaving the original untouched.
 
         Waiver application uses this rather than mutating in place, so the
@@ -112,7 +112,7 @@ class ComplianceReport:
         parser_data: dict[str, Any],
         lint: dict[str, Any],
         policy_version: str,
-    ) -> "ComplianceReport":
+    ) -> ComplianceReport:
         failed_controls = [
             _control_summary(check) for check in checks if check.status == "fail"
         ]
@@ -120,7 +120,7 @@ class ComplianceReport:
             _control_summary(check) for check in checks if check.status == "waived"
         ]
 
-        findings = {severity: 0 for severity in SEVERITY_ORDER}
+        findings = dict.fromkeys(SEVERITY_ORDER, 0)
         for check in checks:
             if check.status == "fail":
                 findings[check.normalized_severity()] += 1
@@ -140,7 +140,7 @@ class ComplianceReport:
         if isinstance(evaluated_at, str) and evaluated_at:
             generated_at = evaluated_at
         else:
-            generated_at = datetime.now(timezone.utc).isoformat()
+            generated_at = datetime.now(UTC).isoformat()
         input_kind = str(parser_data.get("input_kind") or "certificate")
         report = cls(
             certificate=certificate,

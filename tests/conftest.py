@@ -7,8 +7,8 @@ test that needs a currently valid certificate.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pytest
 

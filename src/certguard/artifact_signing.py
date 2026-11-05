@@ -3,17 +3,21 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
-from typing import Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    PublicFormat,
+)
 
 
-def generate_ed25519_keypair_b64() -> Tuple[str, str]:
+def generate_ed25519_keypair_b64() -> tuple[str, str]:
     private_key = Ed25519PrivateKey.generate()
     public_key = private_key.public_key()
     private_bytes = private_key.private_bytes(

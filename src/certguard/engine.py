@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+
 # Controlled use for zlint CLI integration.
 import subprocess  # nosec B404
 import tempfile
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -256,7 +257,7 @@ class ComplianceGateEngine:
 
         payload = {
             "manifest_version": "2.0",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "engine_version": __version__,
             "policy_version": self.policy.get("metadata", {}).get("version", "unknown"),
             "policy_sha256": policy_digest(self.policy),
@@ -308,7 +309,7 @@ class ComplianceGateEngine:
             check.name for check in report.checks if check.status == "waived"
         ]
         entry: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "engine_version": __version__,
             "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
             "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
@@ -600,7 +601,7 @@ class ComplianceGateEngine:
                 },
             }
 
-        now = datetime.now(timezone.utc).date()
+        now = datetime.now(UTC).date()
         applied: list[dict[str, Any]] = []
         resulting_checks: list[CheckResult] = []
 

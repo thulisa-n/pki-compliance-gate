@@ -1,0 +1,1033 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Neakam",
+          "fullName": "Neakam (PKI Compliance Gate)",
+          "version": "0.2.5",
+          "semanticVersion": "0.2.5",
+          "informationUri": "https://github.com/thulisa-n/pki-compliance-gate",
+          "rules": [
+            {
+              "id": "certificate_expiry_window",
+              "name": "CertificateExpiryWindow",
+              "shortDescription": {
+                "text": "certificate expiry window (OPS-RENEWAL-WINDOW)"
+              },
+              "fullDescription": {
+                "text": "Certificates renewed inside a short window risk an outage if automation fails."
+              },
+              "help": {
+                "text": "Renew the certificate before it enters the configured warning window.",
+                "markdown": "### `certificate_expiry_window`\n\n**Rule:** OPS-RENEWAL-WINDOW\n**Standard:** Operational renewal policy\n**Severity:** low\n\n**Why this matters**\n\nCertificates renewed inside a short window risk an outage if automation fails.\n\n**How to fix**\n\nRenew the certificate before it enters the configured warning window.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "validity",
+                  "external/standard"
+                ],
+                "problem.severity": "note",
+                "security-severity": "3.1",
+                "certguardSeverity": "low",
+                "ruleId": "OPS-RENEWAL-WINDOW",
+                "standardReference": "Operational renewal policy"
+              }
+            },
+            {
+              "id": "certificate_not_expired",
+              "name": "CertificateNotExpired",
+              "shortDescription": {
+                "text": "certificate not expired (RFC-5280-4.1.2.5)"
+              },
+              "fullDescription": {
+                "text": "An expired certificate is rejected by relying parties and provides no assurance."
+              },
+              "help": {
+                "text": "Renew or replace the certificate before deploying it.",
+                "markdown": "### `certificate_not_expired`\n\n**Rule:** RFC-5280-4.1.2.5\n**Standard:** RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2\n**Severity:** critical\n\n**Why this matters**\n\nAn expired certificate is rejected by relying parties and provides no assurance.\n\n**How to fix**\n\nRenew or replace the certificate before deploying it.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "validity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "RFC-5280-4.1.2.5",
+                "standardReference": "RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2"
+              }
+            },
+            {
+              "id": "certificate_not_yet_valid",
+              "name": "CertificateNotYetValid",
+              "shortDescription": {
+                "text": "certificate not yet valid (RFC-5280-4.1.2.5)"
+              },
+              "fullDescription": {
+                "text": "A certificate used before its notBefore time fails path validation."
+              },
+              "help": {
+                "text": "Wait until the notBefore time or reissue with a current validity window.",
+                "markdown": "### `certificate_not_yet_valid`\n\n**Rule:** RFC-5280-4.1.2.5\n**Standard:** RFC 5280 4.1.2.5\n**Severity:** high\n\n**Why this matters**\n\nA certificate used before its notBefore time fails path validation.\n\n**How to fix**\n\nWait until the notBefore time or reissue with a current validity window.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "validity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-4.1.2.5",
+                "standardReference": "RFC 5280 4.1.2.5"
+              }
+            },
+            {
+              "id": "crypto_transition_rsa_target",
+              "name": "CryptoTransitionRsaTarget",
+              "shortDescription": {
+                "text": "crypto transition rsa target (CRYPTO-AGILITY-RSA)"
+              },
+              "fullDescription": {
+                "text": "Stronger key sizes improve resilience during algorithm transition periods."
+              },
+              "help": {
+                "text": "Issue RSA certificates at or above the transition RSA key target.",
+                "markdown": "### `crypto_transition_rsa_target`\n\n**Rule:** CRYPTO-AGILITY-RSA\n**Standard:** Crypto transition readiness profile\n**Severity:** medium\n\n**Why this matters**\n\nStronger key sizes improve resilience during algorithm transition periods.\n\n**How to fix**\n\nIssue RSA certificates at or above the transition RSA key target.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "crypto-transition",
+                  "external/standard"
+                ],
+                "problem.severity": "warning",
+                "security-severity": "5.0",
+                "certguardSeverity": "medium",
+                "ruleId": "CRYPTO-AGILITY-RSA",
+                "standardReference": "Crypto transition readiness profile"
+              }
+            },
+            {
+              "id": "crypto_transition_signature_hash",
+              "name": "CryptoTransitionSignatureHash",
+              "shortDescription": {
+                "text": "crypto transition signature hash (CRYPTO-AGILITY-HASH)"
+              },
+              "fullDescription": {
+                "text": "Approved signature hashes reduce risk from weak or deprecated digests."
+              },
+              "help": {
+                "text": "Use signature hash algorithms from the approved transition allowlist.",
+                "markdown": "### `crypto_transition_signature_hash`\n\n**Rule:** CRYPTO-AGILITY-HASH\n**Standard:** Crypto transition readiness profile\n**Severity:** high\n\n**Why this matters**\n\nApproved signature hashes reduce risk from weak or deprecated digests.\n\n**How to fix**\n\nUse signature hash algorithms from the approved transition allowlist.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "crypto-transition",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CRYPTO-AGILITY-HASH",
+                "standardReference": "Crypto transition readiness profile"
+              }
+            },
+            {
+              "id": "crypto_transition_validity_target",
+              "name": "CryptoTransitionValidityTarget",
+              "shortDescription": {
+                "text": "crypto transition validity target (CRYPTO-AGILITY-VALIDITY)"
+              },
+              "fullDescription": {
+                "text": "Short-lived certificate profiles reduce exposure and improve rotation agility."
+              },
+              "help": {
+                "text": "Reduce certificate validity to transition target or lower.",
+                "markdown": "### `crypto_transition_validity_target`\n\n**Rule:** CRYPTO-AGILITY-VALIDITY\n**Standard:** Crypto transition readiness profile\n**Severity:** high\n\n**Why this matters**\n\nShort-lived certificate profiles reduce exposure and improve rotation agility.\n\n**How to fix**\n\nReduce certificate validity to transition target or lower.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "crypto-transition",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CRYPTO-AGILITY-VALIDITY",
+                "standardReference": "Crypto transition readiness profile"
+              }
+            },
+            {
+              "id": "dcv_method",
+              "name": "DcvMethod",
+              "shortDescription": {
+                "text": "dcv method (CAB-BR-3.2.2.4)"
+              },
+              "fullDescription": {
+                "text": "Domain Control Validation must use approved methods before issuance."
+              },
+              "help": {
+                "text": "Use an approved DCV method and record validation evidence.",
+                "markdown": "### `dcv_method`\n\n**Rule:** CAB-BR-3.2.2.4\n**Standard:** CA/B Forum BR 3.2.2.4\n**Severity:** high\n\n**Why this matters**\n\nDomain Control Validation must use approved methods before issuance.\n\n**How to fix**\n\nUse an approved DCV method and record validation evidence.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "dcv",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-3.2.2.4",
+                "standardReference": "CA/B Forum BR 3.2.2.4"
+              }
+            },
+            {
+              "id": "dcv_recency",
+              "name": "DcvRecency",
+              "shortDescription": {
+                "text": "dcv recency (CAB-BR-4.2.1)"
+              },
+              "fullDescription": {
+                "text": "Stale domain validation evidence can invalidate issuance decisions."
+              },
+              "help": {
+                "text": "Re-run DCV within the allowed validation window.",
+                "markdown": "### `dcv_recency`\n\n**Rule:** CAB-BR-4.2.1\n**Standard:** CA/B Forum BR 4.2.1\n**Severity:** high\n\n**Why this matters**\n\nStale domain validation evidence can invalidate issuance decisions.\n\n**How to fix**\n\nRe-run DCV within the allowed validation window.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "dcv",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-4.2.1",
+                "standardReference": "CA/B Forum BR 4.2.1"
+              }
+            },
+            {
+              "id": "ec_curve_allowed",
+              "name": "EcCurveAllowed",
+              "shortDescription": {
+                "text": "ec curve allowed (CAB-BR-6.1.5)"
+              },
+              "fullDescription": {
+                "text": "Only NIST P-256, P-384 and P-521 are permitted for publicly trusted ECDSA keys."
+              },
+              "help": {
+                "text": "Reissue using an approved named curve (secp256r1, secp384r1, secp521r1).",
+                "markdown": "### `ec_curve_allowed`\n\n**Rule:** CAB-BR-6.1.5\n**Standard:** CA/B Forum BR 6.1.5\n**Severity:** critical\n\n**Why this matters**\n\nOnly NIST P-256, P-384 and P-521 are permitted for publicly trusted ECDSA keys.\n\n**How to fix**\n\nReissue using an approved named curve (secp256r1, secp384r1, secp521r1).\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-6.1.5",
+                "standardReference": "CA/B Forum BR 6.1.5"
+              }
+            },
+            {
+              "id": "ec_key_size",
+              "name": "EcKeySize",
+              "shortDescription": {
+                "text": "ec key size (CAB-BR-6.1.5)"
+              },
+              "fullDescription": {
+                "text": "Undersized elliptic curve keys fall below the required security level."
+              },
+              "help": {
+                "text": "Generate an EC key of at least the policy minimum size (P-256 or stronger).",
+                "markdown": "### `ec_key_size`\n\n**Rule:** CAB-BR-6.1.5\n**Standard:** CA/B Forum BR 6.1.5\n**Severity:** critical\n\n**Why this matters**\n\nUndersized elliptic curve keys fall below the required security level.\n\n**How to fix**\n\nGenerate an EC key of at least the policy minimum size (P-256 or stronger).\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-6.1.5",
+                "standardReference": "CA/B Forum BR 6.1.5"
+              }
+            },
+            {
+              "id": "extended_key_usage",
+              "name": "ExtendedKeyUsage",
+              "shortDescription": {
+                "text": "extended key usage (CAB-BR-7.1.2)"
+              },
+              "fullDescription": {
+                "text": "EKU binds a certificate to an intended purpose such as TLS server authentication."
+              },
+              "help": {
+                "text": "Include the required extendedKeyUsage values for the certificate profile.",
+                "markdown": "### `extended_key_usage`\n\n**Rule:** CAB-BR-7.1.2\n**Standard:** CA/B Forum BR 7.1.2 / RFC 5280 4.2.1.12\n**Severity:** high\n\n**Why this matters**\n\nEKU binds a certificate to an intended purpose such as TLS server authentication.\n\n**How to fix**\n\nInclude the required extendedKeyUsage values for the certificate profile.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "identity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-7.1.2",
+                "standardReference": "CA/B Forum BR 7.1.2 / RFC 5280 4.2.1.12"
+              }
+            },
+            {
+              "id": "internal_domain_check",
+              "name": "InternalDomainCheck",
+              "shortDescription": {
+                "text": "internal domain check (CAB-BR-7.1.4.2.1)"
+              },
+              "fullDescription": {
+                "text": "Internal names are not valid for publicly trusted certificates."
+              },
+              "help": {
+                "text": "Replace internal SAN values with public DNS names.",
+                "markdown": "### `internal_domain_check`\n\n**Rule:** CAB-BR-7.1.4.2.1\n**Standard:** CA/B Forum BR 7.1.4.2.1\n**Severity:** high\n\n**Why this matters**\n\nInternal names are not valid for publicly trusted certificates.\n\n**How to fix**\n\nReplace internal SAN values with public DNS names.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "policy",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-7.1.4.2.1",
+                "standardReference": "CA/B Forum BR 7.1.4.2.1"
+              }
+            },
+            {
+              "id": "issuance_fips_level",
+              "name": "IssuanceFipsLevel",
+              "shortDescription": {
+                "text": "issuance fips level (FIPS-140-CONTROL)"
+              },
+              "fullDescription": {
+                "text": "Cryptographic module assurance levels are key audit controls."
+              },
+              "help": {
+                "text": "Provide attested FIPS level meeting minimum policy requirement.",
+                "markdown": "### `issuance_fips_level`\n\n**Rule:** FIPS-140-CONTROL\n**Standard:** FIPS 140-2/140-3\n**Severity:** medium\n\n**Why this matters**\n\nCryptographic module assurance levels are key audit controls.\n\n**How to fix**\n\nProvide attested FIPS level meeting minimum policy requirement.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "issuance",
+                  "external/standard"
+                ],
+                "problem.severity": "warning",
+                "security-severity": "5.0",
+                "certguardSeverity": "medium",
+                "ruleId": "FIPS-140-CONTROL",
+                "standardReference": "FIPS 140-2/140-3"
+              }
+            },
+            {
+              "id": "issuance_hsm_attestation",
+              "name": "IssuanceHsmAttestation",
+              "shortDescription": {
+                "text": "issuance hsm attestation (PKCS11-HSM-ATTESTATION)"
+              },
+              "fullDescription": {
+                "text": "Key custody controls require evidence of hardware-backed issuance operations."
+              },
+              "help": {
+                "text": "Provide issuance attestation indicating HSM-backed key operations.",
+                "markdown": "### `issuance_hsm_attestation`\n\n**Rule:** PKCS11-HSM-ATTESTATION\n**Standard:** PKCS#11 / FIPS operations\n**Severity:** high\n\n**Why this matters**\n\nKey custody controls require evidence of hardware-backed issuance operations.\n\n**How to fix**\n\nProvide issuance attestation indicating HSM-backed key operations.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "issuance",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "PKCS11-HSM-ATTESTATION",
+                "standardReference": "PKCS#11 / FIPS operations"
+              }
+            },
+            {
+              "id": "key_algorithm_allowed",
+              "name": "KeyAlgorithmAllowed",
+              "shortDescription": {
+                "text": "key algorithm allowed (CAB-BR-6.1.5)"
+              },
+              "fullDescription": {
+                "text": "Only approved public key algorithms carry assurance under the policy profile."
+              },
+              "help": {
+                "text": "Reissue using a public key algorithm permitted by policy.",
+                "markdown": "### `key_algorithm_allowed`\n\n**Rule:** CAB-BR-6.1.5\n**Standard:** CA/B Forum BR 6.1.5\n**Severity:** critical\n\n**Why this matters**\n\nOnly approved public key algorithms carry assurance under the policy profile.\n\n**How to fix**\n\nReissue using a public key algorithm permitted by policy.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-6.1.5",
+                "standardReference": "CA/B Forum BR 6.1.5"
+              }
+            },
+            {
+              "id": "rfc5280_authority_key_identifier",
+              "name": "Rfc5280AuthorityKeyIdentifier",
+              "shortDescription": {
+                "text": "rfc5280 authority key identifier (RFC-5280-4.2.1.1)"
+              },
+              "fullDescription": {
+                "text": "AKI supports robust issuer key linkage during path validation."
+              },
+              "help": {
+                "text": "Include Authority Key Identifier extension for issuer linkage.",
+                "markdown": "### `rfc5280_authority_key_identifier`\n\n**Rule:** RFC-5280-4.2.1.1\n**Standard:** RFC 5280 4.2.1.1\n**Severity:** medium\n\n**Why this matters**\n\nAKI supports robust issuer key linkage during path validation.\n\n**How to fix**\n\nInclude Authority Key Identifier extension for issuer linkage.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "warning",
+                "security-severity": "5.0",
+                "certguardSeverity": "medium",
+                "ruleId": "RFC-5280-4.2.1.1",
+                "standardReference": "RFC 5280 4.2.1.1"
+              }
+            },
+            {
+              "id": "rfc5280_critical_extension_profile",
+              "name": "Rfc5280CriticalExtensionProfile",
+              "shortDescription": {
+                "text": "rfc5280 critical extension profile (RFC-5280-4.2)"
+              },
+              "fullDescription": {
+                "text": "Unexpected critical extensions can break relying-party validation behavior."
+              },
+              "help": {
+                "text": "Restrict critical extensions to an approved extension profile.",
+                "markdown": "### `rfc5280_critical_extension_profile`\n\n**Rule:** RFC-5280-4.2\n**Standard:** RFC 5280 4.2\n**Severity:** high\n\n**Why this matters**\n\nUnexpected critical extensions can break relying-party validation behavior.\n\n**How to fix**\n\nRestrict critical extensions to an approved extension profile.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-4.2",
+                "standardReference": "RFC 5280 4.2"
+              }
+            },
+            {
+              "id": "rfc5280_end_entity_ca",
+              "name": "Rfc5280EndEntityCa",
+              "shortDescription": {
+                "text": "rfc5280 end entity ca (RFC-5280-4.2.1.9)"
+              },
+              "fullDescription": {
+                "text": "Subscriber certificates should not present CA basic constraints."
+              },
+              "help": {
+                "text": "Issue end-entity certificate with BasicConstraints CA set to FALSE.",
+                "markdown": "### `rfc5280_end_entity_ca`\n\n**Rule:** RFC-5280-4.2.1.9\n**Standard:** RFC 5280 4.2.1.9\n**Severity:** high\n\n**Why this matters**\n\nSubscriber certificates should not present CA basic constraints.\n\n**How to fix**\n\nIssue end-entity certificate with BasicConstraints CA set to FALSE.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-4.2.1.9",
+                "standardReference": "RFC 5280 4.2.1.9"
+              }
+            },
+            {
+              "id": "rfc5280_key_usage_profile",
+              "name": "Rfc5280KeyUsageProfile",
+              "shortDescription": {
+                "text": "rfc5280 key usage profile (RFC-5280-4.2.1.3)"
+              },
+              "fullDescription": {
+                "text": "Key usage extensions must align with intended certificate purpose."
+              },
+              "help": {
+                "text": "Set key usage extension to include required subscriber usages.",
+                "markdown": "### `rfc5280_key_usage_profile`\n\n**Rule:** RFC-5280-4.2.1.3\n**Standard:** RFC 5280 4.2.1.3\n**Severity:** high\n\n**Why this matters**\n\nKey usage extensions must align with intended certificate purpose.\n\n**How to fix**\n\nSet key usage extension to include required subscriber usages.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-4.2.1.3",
+                "standardReference": "RFC 5280 4.2.1.3"
+              }
+            },
+            {
+              "id": "rfc5280_path_aki_ski_match",
+              "name": "Rfc5280PathAkiSkiMatch",
+              "shortDescription": {
+                "text": "rfc5280 path aki ski match (RFC-5280-4.2.1.1)"
+              },
+              "fullDescription": {
+                "text": "AKI/SKI linkage improves deterministic path validation."
+              },
+              "help": {
+                "text": "Ensure leaf AKI matches issuer SKI.",
+                "markdown": "### `rfc5280_path_aki_ski_match`\n\n**Rule:** RFC-5280-4.2.1.1\n**Standard:** RFC 5280 4.2.1.1\n**Severity:** medium\n\n**Why this matters**\n\nAKI/SKI linkage improves deterministic path validation.\n\n**How to fix**\n\nEnsure leaf AKI matches issuer SKI.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "warning",
+                "security-severity": "5.0",
+                "certguardSeverity": "medium",
+                "ruleId": "RFC-5280-4.2.1.1",
+                "standardReference": "RFC 5280 4.2.1.1"
+              }
+            },
+            {
+              "id": "rfc5280_path_issuer_subject_match",
+              "name": "Rfc5280PathIssuerSubjectMatch",
+              "shortDescription": {
+                "text": "rfc5280 path issuer subject match (RFC-5280-6)"
+              },
+              "fullDescription": {
+                "text": "Issuer and subject linkage is required for path construction."
+              },
+              "help": {
+                "text": "Provide the issuing certificate and validate issuer-subject linkage.",
+                "markdown": "### `rfc5280_path_issuer_subject_match`\n\n**Rule:** RFC-5280-6\n**Standard:** RFC 5280 6.1\n**Severity:** high\n\n**Why this matters**\n\nIssuer and subject linkage is required for path construction.\n\n**How to fix**\n\nProvide the issuing certificate and validate issuer-subject linkage.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-6",
+                "standardReference": "RFC 5280 6.1"
+              }
+            },
+            {
+              "id": "rfc5280_subject_key_identifier",
+              "name": "Rfc5280SubjectKeyIdentifier",
+              "shortDescription": {
+                "text": "rfc5280 subject key identifier (RFC-5280-4.2.1.2)"
+              },
+              "fullDescription": {
+                "text": "SKI helps bind subject keys to certificate lifecycle and chain processing."
+              },
+              "help": {
+                "text": "Include Subject Key Identifier extension for leaf profile consistency.",
+                "markdown": "### `rfc5280_subject_key_identifier`\n\n**Rule:** RFC-5280-4.2.1.2\n**Standard:** RFC 5280 4.2.1.2\n**Severity:** medium\n\n**Why this matters**\n\nSKI helps bind subject keys to certificate lifecycle and chain processing.\n\n**How to fix**\n\nInclude Subject Key Identifier extension for leaf profile consistency.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "rfc5280",
+                  "external/standard"
+                ],
+                "problem.severity": "warning",
+                "security-severity": "5.0",
+                "certguardSeverity": "medium",
+                "ruleId": "RFC-5280-4.2.1.2",
+                "standardReference": "RFC 5280 4.2.1.2"
+              }
+            },
+            {
+              "id": "rsa_key_size",
+              "name": "RsaKeySize",
+              "shortDescription": {
+                "text": "rsa key size (CAB-BR-6.1.5)"
+              },
+              "fullDescription": {
+                "text": "Weak RSA keys reduce cryptographic strength and trust assurance."
+              },
+              "help": {
+                "text": "Generate key pair with RSA 2048+ before issuance.",
+                "markdown": "### `rsa_key_size`\n\n**Rule:** CAB-BR-6.1.5\n**Standard:** CA/B Forum BR 6.1.5\n**Severity:** critical\n\n**Why this matters**\n\nWeak RSA keys reduce cryptographic strength and trust assurance.\n\n**How to fix**\n\nGenerate key pair with RSA 2048+ before issuance.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-6.1.5",
+                "standardReference": "CA/B Forum BR 6.1.5"
+              }
+            },
+            {
+              "id": "san_extension",
+              "name": "SanExtension",
+              "shortDescription": {
+                "text": "san extension (RFC-5280-4.2.1.6)"
+              },
+              "fullDescription": {
+                "text": "Modern TLS clients rely on SAN for hostname validation."
+              },
+              "help": {
+                "text": "Issue certificate with SAN entries matching intended hostnames.",
+                "markdown": "### `san_extension`\n\n**Rule:** RFC-5280-4.2.1.6\n**Standard:** CA/B Forum BR 7.1.4.2.1\n**Severity:** high\n\n**Why this matters**\n\nModern TLS clients rely on SAN for hostname validation.\n\n**How to fix**\n\nIssue certificate with SAN entries matching intended hostnames.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "identity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "RFC-5280-4.2.1.6",
+                "standardReference": "CA/B Forum BR 7.1.4.2.1"
+              }
+            },
+            {
+              "id": "sct_presence",
+              "name": "SctPresence",
+              "shortDescription": {
+                "text": "sct presence (CAB-BR-CT-SCT)"
+              },
+              "fullDescription": {
+                "text": "Browser trust requires embedded Signed Certificate Timestamps."
+              },
+              "help": {
+                "text": "Submit the precertificate to CT logs and embed the required SCTs.",
+                "markdown": "### `sct_presence`\n\n**Rule:** CAB-BR-CT-SCT\n**Standard:** Certificate Transparency / CA/B Forum BR\n**Severity:** high\n\n**Why this matters**\n\nBrowser trust requires embedded Signed Certificate Timestamps.\n\n**How to fix**\n\nSubmit the precertificate to CT logs and embed the required SCTs.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "transparency",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-CT-SCT",
+                "standardReference": "Certificate Transparency / CA/B Forum BR"
+              }
+            },
+            {
+              "id": "serial_entropy",
+              "name": "SerialEntropy",
+              "shortDescription": {
+                "text": "serial entropy (CAB-BR-7.1)"
+              },
+              "fullDescription": {
+                "text": "Predictable serial numbers enable collision and tracking attacks; at least 64 bits of entropy is required."
+              },
+              "help": {
+                "text": "Issue certificates with a cryptographically random serial of at least 64 bits.",
+                "markdown": "### `serial_entropy`\n\n**Rule:** CAB-BR-7.1\n**Standard:** CA/B Forum BR 7.1\n**Severity:** high\n\n**Why this matters**\n\nPredictable serial numbers enable collision and tracking attacks; at least 64 bits of entropy is required.\n\n**How to fix**\n\nIssue certificates with a cryptographically random serial of at least 64 bits.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "identity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-7.1",
+                "standardReference": "CA/B Forum BR 7.1"
+              }
+            },
+            {
+              "id": "signature_algorithm",
+              "name": "SignatureAlgorithm",
+              "shortDescription": {
+                "text": "signature algorithm (CAB-BR-7.1.3)"
+              },
+              "fullDescription": {
+                "text": "Deprecated hash algorithms can be vulnerable to collision attacks."
+              },
+              "help": {
+                "text": "Use SHA-256 or stronger signature algorithm.",
+                "markdown": "### `signature_algorithm`\n\n**Rule:** CAB-BR-7.1.3\n**Standard:** CA/B Forum BR 7.1.3\n**Severity:** critical\n\n**Why this matters**\n\nDeprecated hash algorithms can be vulnerable to collision attacks.\n\n**How to fix**\n\nUse SHA-256 or stronger signature algorithm.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-7.1.3",
+                "standardReference": "CA/B Forum BR 7.1.3"
+              }
+            },
+            {
+              "id": "signature_algorithm_oid",
+              "name": "SignatureAlgorithmOid",
+              "shortDescription": {
+                "text": "signature algorithm oid (CAB-BR-7.1.3.2)"
+              },
+              "fullDescription": {
+                "text": "The Baseline Requirements constrain the signature AlgorithmIdentifier, not just the digest name."
+              },
+              "help": {
+                "text": "Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256.",
+                "markdown": "### `signature_algorithm_oid`\n\n**Rule:** CAB-BR-7.1.3.2\n**Standard:** CA/B Forum BR 7.1.3.2\n**Severity:** critical\n\n**Why this matters**\n\nThe Baseline Requirements constrain the signature AlgorithmIdentifier, not just the digest name.\n\n**How to fix**\n\nSign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "cryptography",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "9.3",
+                "certguardSeverity": "critical",
+                "ruleId": "CAB-BR-7.1.3.2",
+                "standardReference": "CA/B Forum BR 7.1.3.2"
+              }
+            },
+            {
+              "id": "validity_days",
+              "name": "ValidityDays",
+              "shortDescription": {
+                "text": "validity days (CAB-BR-6.3.2)"
+              },
+              "fullDescription": {
+                "text": "Long validity windows increase exposure when private keys are compromised."
+              },
+              "help": {
+                "text": "Reissue certificate with validity at or below policy threshold.",
+                "markdown": "### `validity_days`\n\n**Rule:** CAB-BR-6.3.2\n**Standard:** CA/B Forum BR 6.3.2\n**Severity:** high\n\n**Why this matters**\n\nLong validity windows increase exposure when private keys are compromised.\n\n**How to fix**\n\nReissue certificate with validity at or below policy threshold.\n\nA control reported as `not_applicable` was defined but not enabled by the active policy profile. It was not assessed and is never counted as a pass."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "pki",
+                  "validity",
+                  "external/standard"
+                ],
+                "problem.severity": "error",
+                "security-severity": "7.5",
+                "certguardSeverity": "high",
+                "ruleId": "CAB-BR-6.3.2",
+                "standardReference": "CA/B Forum BR 6.3.2"
+              }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": false,
+          "exitCodeDescription": "0 compliant; 1 low-severity only; 2 medium/high or lint failure; 3 critical failure",
+          "properties": {
+            "policy": "policies/cabf_policy.yaml"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "certificate_not_expired",
+          "level": "error",
+          "message": {
+            "text": "Certificate expired on 2026-04-15T21:14:10+00:00 (47 days ago as at 2026-06-01T00:00:00+00:00). Recommendation: Renew or replace the certificate before deploying it."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/certificates/sha1_cert.pem",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "certguardControl/v1": "4b5c7e65a68c0d70f4713fa3fee7c073"
+          },
+          "properties": {
+            "status": "fail",
+            "severity": "critical",
+            "category": "VALIDITY",
+            "standardReference": "RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2",
+            "policyValue": "notAfter must be in the future",
+            "actualValue": "2026-04-15T21:14:10+00:00",
+            "recommendation": "Renew or replace the certificate before deploying it."
+          },
+          "ruleIndex": 1
+        },
+        {
+          "ruleId": "signature_algorithm",
+          "level": "error",
+          "message": {
+            "text": "Signature algorithm is sha1 (sha1withrsaencryption); prohibited: sha1 Recommendation: Use SHA-256 or stronger signature algorithm."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/certificates/sha1_cert.pem",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "certguardControl/v1": "0d263abe8e3eef686e8762ba8357246e"
+          },
+          "properties": {
+            "status": "fail",
+            "severity": "critical",
+            "category": "CRYPTOGRAPHY",
+            "standardReference": "CA/B Forum BR 7.1.3",
+            "policyValue": [
+              "md5",
+              "sha1"
+            ],
+            "actualValue": "sha1",
+            "recommendation": "Use SHA-256 or stronger signature algorithm."
+          },
+          "ruleIndex": 26
+        },
+        {
+          "ruleId": "signature_algorithm_oid",
+          "level": "error",
+          "message": {
+            "text": "Signature algorithm OID 1.2.840.113549.1.1.5 is not in the policy allowlist. Recommendation: Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tests/certificates/sha1_cert.pem",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "certguardControl/v1": "42e4fcdcb766f92bca10a6b10463d934"
+          },
+          "properties": {
+            "status": "fail",
+            "severity": "critical",
+            "category": "CRYPTOGRAPHY",
+            "standardReference": "CA/B Forum BR 7.1.3.2",
+            "policyValue": [
+              "1.2.840.10045.4.3.2",
+              "1.2.840.10045.4.3.3",
+              "1.2.840.10045.4.3.4",
+              "1.2.840.113549.1.1.11",
+              "1.2.840.113549.1.1.12",
+              "1.2.840.113549.1.1.13"
+            ],
+            "actualValue": "1.2.840.113549.1.1.5",
+            "recommendation": "Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256."
+          },
+          "ruleIndex": 27
+        }
+      ],
+      "properties": {
+        "engineVersion": "0.2.5",
+        "reportSchemaVersion": "2.0",
+        "policyVersion": "2.0.0",
+        "riskLevel": "HIGH",
+        "findings": {
+          "critical": 3,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "unknown": 0
+        },
+        "coverage": {
+          "controls_defined": 29,
+          "controls_evaluated": 11,
+          "passed": 8,
+          "failed": 3,
+          "waived": 0,
+          "not_applicable": 18
+        }
+      }
+    }
+  ]
+}

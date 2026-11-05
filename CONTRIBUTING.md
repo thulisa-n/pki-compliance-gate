@@ -8,6 +8,23 @@ source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+## Locked dependencies
+
+Runtime and development dependencies are hash-pinned in `requirements.txt` and
+`requirements-dev.txt`. CI installs those files with
+`pip install --require-hashes` and does not `pip install` a package by name.
+
+After editing `pyproject.toml`, regenerate both files with Python 3.11 and
+commit them:
+
+```bash
+pip install pip-tools
+bash scripts/update_lockfile.sh
+```
+
+Dependabot (`.github/dependabot.yml`) opens weekly pull requests for those pip
+files and for GitHub Actions pinned to a commit SHA.
+
 ## Run Tests
 
 ```bash
@@ -81,10 +98,17 @@ in the private namespace.
 
 ## CI Workflow Inventory
 
-- `compliance.yml`
-- `security-scans.yml`
-- `codeql.yml`
+Gates run fastest first inside Code Quality: ruff, then unit tests, then the
+neakam fixture jobs. Secret detection and Bandit/pip-audit start immediately in
+their own workflows. Branch protection settings are in
+[docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md).
+
+- `code-quality.yml`
 - `secrets-scan.yml`
+- `security-scans.yml`
+- `compliance.yml`
+- `codeql.yml`
+- `distribution.yml`
 - `standards-sync.yml`
 - `standards-pr-guard.yml`
 - `docs-render.yml`

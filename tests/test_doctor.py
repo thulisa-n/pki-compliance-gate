@@ -146,6 +146,22 @@ def test_help_uses_the_neakam_name(
     assert captured.err == ""
 
 
+def test_neakam_module_entry_point_is_current() -> None:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT / "src")
+    process = subprocess.run(
+        [sys.executable, "-m", "neakam", "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=ROOT,
+        env=env,
+    )
+    assert process.returncode == 0
+    assert process.stderr == ""
+    assert process.stdout.strip() == f"neakam {__version__}"
+
+
 def test_module_entry_point_is_a_deprecated_alias() -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src")

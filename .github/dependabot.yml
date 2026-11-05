@@ -1,4 +1,6 @@
 version: 2
+# pip covers the hash-pinned requirements.txt and requirements-dev.txt files.
+# github-actions covers Actions pinned to a commit SHA with a version comment.
 updates:
   - package-ecosystem: "pip"
     directory: "/"

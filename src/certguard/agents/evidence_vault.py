@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +53,7 @@ class EvidenceVaultAgent(BaseAgent):
             "evidence_file": report_path.name,
             "sha256_fingerprint": fingerprint,
             "integrity_note": "SHA-256 digest, not a signature.",
-            "digest_recorded_at": datetime.now(timezone.utc).isoformat(),
+            "digest_recorded_at": datetime.now(UTC).isoformat(),
             "environment": os.getenv("GITHUB_WORKFLOW", "local-dev"),
             "actor": os.getenv("GITHUB_ACTOR", "manual-run"),
             "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
