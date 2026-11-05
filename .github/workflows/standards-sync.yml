@@ -52,6 +52,7 @@ jobs:
         continue-on-error: true
         run: |
           python scripts/sync_cabf_baseline.py \
+            --fetch \
             --source-url "https://raw.githubusercontent.com/cabforum/servercert/${{ steps.source.outputs.sha }}/docs/BR.md" \
             --fail-on-change
 

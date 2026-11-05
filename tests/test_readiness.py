@@ -178,7 +178,7 @@ def test_text_render_is_readable(policy: dict, baseline: dict) -> None:
         assess_readiness(policy, baseline, as_of="2026-09-11")
     )
 
-    assert "CertGuard validity readiness" in text
+    assert "Neakam validity readiness" in text
     assert "Ballot SC-081v3" in text
     assert "ACTION NEEDED" in text
     assert "2027-03-15" in text
@@ -189,7 +189,7 @@ def test_markdown_render_is_a_table(policy: dict, baseline: dict) -> None:
         assess_readiness(policy, baseline, as_of="2026-09-11")
     )
 
-    assert markdown.startswith("## CertGuard validity readiness")
+    assert markdown.startswith("## Neakam validity readiness")
     assert "| Phase | Effective |" in markdown
     assert "### Required changes" in markdown
 

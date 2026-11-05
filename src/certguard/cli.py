@@ -103,12 +103,37 @@ def _announce_policy_source(args: argparse.Namespace) -> None:
         )
 
 
+_DEPRECATED_ALIASES = frozenset({"pki-gate", "certguard"})
+
+
+def _command_name(argv0: str) -> str:
+    name = Path(argv0).name
+    if name.lower().endswith(".exe"):
+        name = name[:-4]
+    return name
+
+
+def _warn_deprecated_alias(argv0: str) -> None:
+    """One line on stderr when the user invoked a legacy console script."""
+    name = _command_name(argv0)
+    if name in _DEPRECATED_ALIASES:
+        print(f"{name} is deprecated; use neakam.", file=sys.stderr)
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="CertGuard compliance gate runner")
+    parser = argparse.ArgumentParser(
+        prog="neakam",
+        description=(
+            "Neakam compliance gate. Evaluates a certificate or CSR offline. "
+            "Live TLS checks require --allow-network. "
+            "Run `neakam doctor` to self-test this install. "
+            "Neakam collects no telemetry."
+        ),
+    )
     parser.add_argument(
         "--version",
         action="version",
-        version=f"certguard {__version__}",
+        version=f"neakam {__version__}",
         help="Print the engine version and exit",
     )
     parser.add_argument(
@@ -230,7 +255,33 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show rationale, standards, and recommendations for each check",
     )
-    parser.add_argument("--endpoint", help="API endpoint URL for APISEC mode")
+    parser.add_argument(
+        "--endpoint",
+        action="append",
+        default=None,
+        help=(
+            "Host or https:// URL for an opted-in TLS check. "
+            "Repeat to list more than one host. Each connection stays on that host."
+        ),
+    )
+    parser.add_argument(
+        "--allow-network",
+        action="store_true",
+        help=(
+            "Opt in to a live TLS connection for --mode apisec. "
+            "Connects only to hosts named by --endpoint, with --network-timeout, "
+            "and does not follow redirects. Other modes ignore this flag."
+        ),
+    )
+    parser.add_argument(
+        "--network-timeout",
+        type=float,
+        default=10.0,
+        metavar="SECONDS",
+        help=(
+            "Timeout in seconds for an opted-in TLS check (default 10, maximum 30)."
+        ),
+    )
     parser.add_argument(
         "--trend-output",
         default="reports/compliance_trend_snapshot.json",
@@ -279,8 +330,24 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    """Run the Neakam CLI. ``argv`` is the argument list without the program name."""
+    command_argv = list(sys.argv) if argv is None else [sys.argv[0], *argv]
+    _warn_deprecated_alias(command_argv[0])
+    if command_argv[1:] and command_argv[1] == "doctor":
+        from certguard.doctor import run_doctor
+
+        return run_doctor(command_argv[2:])
+
+    previous = sys.argv
+    sys.argv = command_argv
+    try:
+        return _run_parsed(parse_args())
+    finally:
+        sys.argv = previous
+
+
+def _run_parsed(args: argparse.Namespace) -> int:
     try:
         if args.mode == "evaluate":
             return _run_evaluate(args)
@@ -386,6 +453,7 @@ def _print_report(
     failure could still present as ~95%. Findings by severity plus an explicit
     coverage line say what actually happened.
     """
+    print("Neakam compliance gate")
     print("Certificate:" if report.input_kind != "csr" else "CSR:", report.certificate)
     print("Input:", report.input_kind)
     print("Compliant:", "YES" if compliant else "NO")
@@ -597,18 +665,44 @@ def _run_trend(args: argparse.Namespace) -> int:
 
 
 def _run_apisec(args: argparse.Namespace) -> int:
-    if not args.endpoint:
+    endpoints = args.endpoint or []
+    if isinstance(endpoints, str):
+        endpoints = [endpoints]
+    if not endpoints:
         raise ValueError("--endpoint is required in apisec mode.")
-    result = ApiTlsPostureAgent().run({"endpoint": args.endpoint})
-    print("Agent:", result.agent)
-    print("Success:", "YES" if result.success else "NO")
-    print(f"Endpoint: {result.data.get('endpoint')}")
-    print(f"TLS Version: {result.data.get('tls_version')}")
-    print(f"Cipher Suite: {result.data.get('cipher_suite')}")
-    print(f"Risk Level: {result.data.get('risk_level')}")
-    for check in result.checks:
-        print(f"- {check.name}: {check.status.upper()} ({check.details})")
-    return 0 if result.success else 2
+    if not args.allow_network:
+        raise ValueError(
+            "Refusing to contact the network. Pass --allow-network to opt in "
+            "to a live TLS check of the --endpoint host."
+        )
+    allowed_hosts = []
+    for endpoint in endpoints:
+        host, _port = ApiTlsPostureAgent()._parse_endpoint(endpoint)
+        allowed_hosts.append(host)
+    exit_code = 0
+    print("Neakam TLS posture")
+    for endpoint in endpoints:
+        result = ApiTlsPostureAgent().run(
+            {
+                "endpoint": endpoint,
+                "allow_network": True,
+                "timeout": args.network_timeout,
+                "allowed_hosts": allowed_hosts,
+            }
+        )
+        for error in result.errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        print("Agent:", result.agent)
+        print("Success:", "YES" if result.success else "NO")
+        print(f"Endpoint: {result.data.get('endpoint', endpoint)}")
+        print(f"TLS Version: {result.data.get('tls_version')}")
+        print(f"Cipher Suite: {result.data.get('cipher_suite')}")
+        print(f"Risk Level: {result.data.get('risk_level')}")
+        for check in result.checks:
+            print(f"- {check.name}: {check.status.upper()} ({check.details})")
+        if not result.success:
+            exit_code = 2
+    return exit_code
 
 
 def _run_signals(args: argparse.Namespace) -> int:
@@ -653,7 +747,7 @@ def _run_export_cps_doc(args: argparse.Namespace) -> int:
 
     out_path = args.summary_output or "reports/compliance_summary.md"
     export_policy_to_markdown(args.policy, out_path)
-    print("Single Source of Truth Policy-as-Code Exporter")
+    print("Neakam CP/CPS export")
     print(f"Policy: {args.policy}")
     print(f"CP/CPS Section 7 Documentation exported to: {out_path}")
     return 0
@@ -664,7 +758,7 @@ def _run_export_rego(args: argparse.Namespace) -> int:
 
     out_path = args.summary_output or "policies/rego/validity.rego"
     export_policy_to_rego(args.policy, out_path)
-    print("Generated OPA/Rego from the YAML policy")
+    print("Neakam Rego export")
     print(f"Policy: {args.policy}")
     print(f"Rego written to: {out_path}")
     return 0

@@ -144,7 +144,7 @@ def assess_readiness(
 def render_readiness_text(assessment: dict[str, Any]) -> str:
     """Human-readable table for the terminal and the job summary."""
     lines = [
-        "CertGuard validity readiness",
+        "Neakam validity readiness",
         f"  Evaluated at : {assessment['as_of']}",
         f"  Authority    : {assessment.get('baseline_authority') or 'unknown'}"
         f" (baseline {assessment.get('baseline_version') or 'unknown'})",
@@ -191,7 +191,7 @@ def render_readiness_text(assessment: dict[str, Any]) -> str:
 
 def render_readiness_markdown(assessment: dict[str, Any]) -> str:
     lines = [
-        "## CertGuard validity readiness",
+        "## Neakam validity readiness",
         "",
         f"**Overall:** {assessment['overall_status'].replace('_', ' ').upper()}"
         f" &nbsp;&nbsp; **As at:** {assessment['as_of']}",

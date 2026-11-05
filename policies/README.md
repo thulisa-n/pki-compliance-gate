@@ -44,7 +44,7 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `rfc5280.require_path_issuer_subject_match` (`bool`)
 - `rfc5280.require_path_aki_ski_match` (`bool`)
 - `opa.enabled` (`bool`) — when true, the engine generates Rego from `certificate.max_validity_days`
-- `opa.policy_file` (`str`) — default destination for `pki-gate --mode export-rego`, not a second source of truth
+- `opa.policy_file` (`str`) — default destination for `neakam --mode export-rego`, not a second source of truth
 - `issuance.require_hsm_attestation` (`bool`)
 - `issuance.min_fips_level` (`int`)
 - `crypto_transition.enabled` (`bool`)

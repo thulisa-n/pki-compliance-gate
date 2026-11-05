@@ -85,7 +85,7 @@ def test_write_job_summary_appends_to_the_env_path(
 
     assert first == summary
     # $GITHUB_STEP_SUMMARY is append-only by contract.
-    assert summary.read_text(encoding="utf-8").count("## CertGuard compliance gate") == 2
+    assert summary.read_text(encoding="utf-8").count("## Neakam compliance gate") == 2
 
 
 def test_write_job_summary_is_a_noop_outside_actions(
@@ -103,7 +103,7 @@ def test_annotations_use_error_for_critical_and_high(
 
     assert len(lines) == 2
     assert all(line.startswith("::error ") for line in lines)
-    assert all("CertGuard critical" in line for line in lines)
+    assert all("Neakam critical" in line for line in lines)
 
 
 def test_annotations_include_the_recommendation(

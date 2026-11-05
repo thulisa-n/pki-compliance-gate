@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.request import Request
 
+import pytest
 import yaml
-from scripts.sync_cabf_baseline import main
+from scripts.sync_cabf_baseline import (
+    _fetch_text,
+    _NoCrossHostRedirect,
+    _same_host,
+    main,
+)
 
 BR_TEXT = """# Baseline Requirements
 Subscriber Certificates issued on or after 2026-03-15 MUST have a Validity
@@ -134,3 +141,80 @@ def test_snapshot_keeps_every_field_the_pr_guard_requires(tmp_path: Path) -> Non
     payload = yaml.safe_load(snapshot.read_text(encoding="utf-8"))
     for key in required:
         assert payload["sync"].get(key), key
+
+
+def test_network_fetch_requires_an_explicit_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(url: str) -> str:
+        raise AssertionError(url)
+
+    monkeypatch.setattr("scripts.sync_cabf_baseline._fetch_text", boom)
+    code = main(
+        [
+            "--snapshot-file",
+            str(tmp_path / "snapshot.yaml"),
+            "--baseline-file",
+            "policies/standards_baseline.yaml",
+        ]
+    )
+    assert code == 2
+
+
+def test_fetch_flag_reads_only_the_listed_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, str] = {}
+
+    def fake(url: str) -> str:
+        seen["url"] = url
+        return BR_TEXT
+
+    monkeypatch.setattr("scripts.sync_cabf_baseline._fetch_text", fake)
+    code = main(
+        [
+            "--fetch",
+            "--source-url",
+            "https://raw.githubusercontent.com/cabforum/servercert/main/docs/BR.md",
+            "--snapshot-file",
+            str(tmp_path / "snapshot.yaml"),
+            "--baseline-file",
+            "policies/standards_baseline.yaml",
+        ]
+    )
+    assert code == 0
+    assert (
+        seen["url"]
+        == "https://raw.githubusercontent.com/cabforum/servercert/main/docs/BR.md"
+    )
+
+
+def test_sync_refuses_non_https_and_cross_host_redirects() -> None:
+    handler = _NoCrossHostRedirect()
+    request = Request(
+        "https://raw.githubusercontent.com/cabforum/servercert/main/docs/BR.md"
+    )
+    with pytest.raises(ValueError, match="redirect"):
+        handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://evil.example/BR.md",
+        )
+    assert _same_host(
+        "https://raw.githubusercontent.com/a",
+        "https://raw.githubusercontent.com/b",
+    )
+    assert not _same_host(
+        "https://raw.githubusercontent.com/a",
+        "https://evil.example/a",
+    )
+    with pytest.raises(ValueError, match="HTTPS"):
+        _fetch_text("http://example.com/BR.md")
+
+
+def test_standards_sync_workflow_opts_in_with_fetch() -> None:
+    workflow = Path(".github/workflows/standards-sync.yml").read_text(encoding="utf-8")
+    assert "--fetch" in workflow

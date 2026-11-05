@@ -1,6 +1,6 @@
 # CISA Compliance Mapping
 
-This document maps governance requirements to CertGuard controls.
+This document maps governance requirements to Neakam controls.
 
 ## Mapping
 

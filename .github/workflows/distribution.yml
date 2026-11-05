@@ -30,11 +30,32 @@ jobs:
           python -m venv /tmp/certguard-smoke
           /tmp/certguard-smoke/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/certguard-smoke/bin/pki-gate \
+          /tmp/certguard-smoke/bin/neakam \
             --cert "$GITHUB_WORKSPACE/tests/certificates/valid_cert.pem" \
             --report /tmp/certguard-report.json \
             --evidence-dir /tmp/certguard-evidence
           test -s /tmp/certguard-report.json
+          /tmp/certguard-smoke/bin/pki-gate --version >/tmp/alias-stdout.txt 2>/tmp/alias-stderr.txt
+          grep -q "deprecated" /tmp/alias-stderr.txt
+          grep -q "^neakam " /tmp/alias-stdout.txt
+
+      - name: Clean venv, neakam doctor, and no-network test
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/neakam-clean
+          /tmp/neakam-clean/bin/pip install --upgrade pip
+          /tmp/neakam-clean/bin/pip install dist/*.whl pytest
+          install_dir="$(/tmp/neakam-clean/bin/python -c 'import certguard, pathlib; print(pathlib.Path(certguard.__file__).resolve())')"
+          case "$install_dir" in
+            /tmp/neakam-clean/*) ;;
+            *) echo "expected the installed package, found $install_dir"; exit 1 ;;
+          esac
+          cd /tmp
+          /tmp/neakam-clean/bin/neakam doctor
+          printf '%s\n' '[pytest]' 'addopts =' 'pythonpath =' > /tmp/pytest-neakam.ini
+          /tmp/neakam-clean/bin/pytest -q -c /tmp/pytest-neakam.ini --noconftest \
+            --import-mode=importlib \
+            "$GITHUB_WORKSPACE/tests/test_no_network.py"
 
   action-smoke:
     runs-on: ubuntu-latest

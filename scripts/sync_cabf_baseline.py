@@ -27,9 +27,12 @@ import argparse
 import hashlib
 import re
 import sys
-from datetime import datetime, timezone
+import urllib.error
+import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
-from urllib.request import Request, urlopen
+from urllib.parse import urlparse
+from urllib.request import Request
 
 import yaml
 
@@ -70,6 +73,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Read the BR document from a local file instead of fetching it.",
     )
     parser.add_argument(
+        "--fetch",
+        action="store_true",
+        help=(
+            "Opt in to downloading --source-url. Without this flag the script "
+            "reads --source-file and does not use the network."
+        ),
+    )
+    parser.add_argument(
         "--fail-on-change",
         action="store_true",
         help=(
@@ -82,9 +93,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.source_file:
         source_text = Path(args.source_file).read_text(encoding="utf-8")
         source_origin = f"file://{args.source_file}"
-    else:
-        source_text = _fetch_text(args.source_url)
+    elif args.fetch:
+        try:
+            source_text = _fetch_text(args.source_url)
+        except (ValueError, urllib.error.URLError, TimeoutError, OSError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
         source_origin = args.source_url
+    else:
+        print(
+            "Refusing to contact the network. Pass --fetch to download "
+            "--source-url, or pass --source-file.",
+            file=sys.stderr,
+        )
+        return 2
 
     source_sha256 = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     snapshot_path = Path(args.snapshot_file)
@@ -114,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         "sync": {
             # Required by Standards PR Guard (.github/workflows/standards-pr-guard.yml).
             # Keep this key. The guard rejects a snapshot that omits it.
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(UTC).isoformat(),
             "source_url": source_origin,
             "source_sha256": source_sha256,
             "previous_source_sha256": previous_sha,
@@ -158,9 +180,49 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+FETCH_TIMEOUT_SECONDS = 30
+
+
+class _NoCrossHostRedirect(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only when it stays on the same host."""
+
+    def redirect_request(  # type: ignore[override]
+        self,
+        req: Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ) -> Request | None:
+        if not _same_host(req.full_url, newurl):
+            raise ValueError("Refusing to follow a redirect to another host.")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _same_host(current_url: str, new_url: str) -> bool:
+    current = urlparse(current_url).hostname
+    target = urlparse(new_url).hostname
+    return bool(current and target and current.lower() == target.lower())
+
+
 def _fetch_text(url: str) -> str:
-    req = Request(url, headers={"User-Agent": "certguard-standards-sync/2.0"})
-    with urlopen(req, timeout=30) as response:  # nosec B310
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError("Refusing a source URL that is not HTTPS.")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Source URL is missing a host.")
+    request = Request(url, headers={"User-Agent": "neakam-standards-sync/2.0"})
+    opener = urllib.request.build_opener(_NoCrossHostRedirect)
+    with opener.open(request, timeout=FETCH_TIMEOUT_SECONDS) as response:  # nosec B310
+        final_host = urlparse(response.geturl()).hostname
+        if not _same_host(url, response.geturl()) or final_host is None:
+            raise ValueError("Refusing to follow a redirect to another host.")
+        if final_host.lower() != host.lower():
+            raise ValueError(
+                f"Refusing to contact {final_host}: it is not the host you listed."
+            )
         return response.read().decode("utf-8")
 
 

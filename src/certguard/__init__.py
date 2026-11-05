@@ -1,4 +1,4 @@
-"""CertGuard package."""
+"""Neakam implementation package (import name: certguard)."""
 
 from __future__ import annotations
 

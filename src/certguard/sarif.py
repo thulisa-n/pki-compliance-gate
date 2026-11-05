@@ -135,8 +135,8 @@ def to_sarif(
             {
                 "tool": {
                     "driver": {
-                        "name": "CertGuard",
-                        "fullName": "CertGuard Engine (PKI Compliance Gate)",
+                        "name": "Neakam",
+                        "fullName": "Neakam (PKI Compliance Gate)",
                         "version": __version__,
                         "semanticVersion": __version__,
                         "informationUri": INFORMATION_URI,
@@ -176,10 +176,10 @@ def _rule(name: str) -> dict[str, Any]:
         "name": _pascal_case(name),
         "shortDescription": {"text": _short_description(name, meta)},
         "fullDescription": {
-            "text": meta.get("rationale") or f"CertGuard control {name}."
+            "text": meta.get("rationale") or f"Neakam control {name}."
         },
         "help": {
-            "text": meta.get("recommendation") or "See the CertGuard coverage matrix.",
+            "text": meta.get("recommendation") or "See the Neakam coverage matrix.",
             "markdown": _help_markdown(name, meta),
         },
         "defaultConfiguration": {

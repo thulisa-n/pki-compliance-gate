@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import socket
 import ssl
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -13,6 +13,9 @@ from cryptography.x509.oid import ExtensionOID
 from certguard.agents.base import BaseAgent
 from certguard.models import AgentResult, CheckResult
 
+DEFAULT_TLS_TIMEOUT_SECONDS = 10.0
+MAX_TLS_TIMEOUT_SECONDS = 30.0
+
 
 class ApiTlsPostureAgent(BaseAgent):
     def __init__(self) -> None:
@@ -20,16 +23,33 @@ class ApiTlsPostureAgent(BaseAgent):
 
     def run(self, context: dict[str, Any]) -> AgentResult:
         endpoint = context.get("endpoint")
-        if not endpoint:
+        if not endpoint or not isinstance(endpoint, str):
             return AgentResult(
                 agent=self.name,
                 success=False,
                 errors=["APISEC mode requires an endpoint URL."],
             )
+        if not context.get("allow_network"):
+            return AgentResult(
+                agent=self.name,
+                success=False,
+                errors=[
+                    "Refusing to contact the network. Pass --allow-network to opt in "
+                    "to a live TLS check."
+                ],
+            )
 
         try:
             host, port = self._parse_endpoint(endpoint)
-            tls_posture = self._fetch_tls_posture(host, port)
+            allowed = self._allowed_hosts(context.get("allowed_hosts"), fallback=host)
+            if host.lower() not in allowed:
+                raise ValueError(
+                    f"Refusing to contact {host}: it is not in the hosts you listed."
+                )
+            timeout = self._timeout_seconds(
+                context.get("timeout", DEFAULT_TLS_TIMEOUT_SECONDS)
+            )
+            tls_posture = self._fetch_tls_posture(host, port, timeout=timeout)
             pem = tls_posture["certificate_pem"]
             tls_version = tls_posture["tls_version"]
             cipher_suite = tls_posture["cipher_suite"]
@@ -38,10 +58,10 @@ class ApiTlsPostureAgent(BaseAgent):
             return AgentResult(
                 agent=self.name,
                 success=False,
-                errors=[f"Failed to evaluate endpoint TLS posture: {exc}"],
+                errors=[self._public_error(exc)],
             )
 
-        expires_in_days = (cert.not_valid_after_utc - datetime.now(timezone.utc)).days
+        expires_in_days = (cert.not_valid_after_utc - datetime.now(UTC)).days
         signature = (
             cert.signature_hash_algorithm.name.lower()
             if cert.signature_hash_algorithm is not None
@@ -130,18 +150,88 @@ class ApiTlsPostureAgent(BaseAgent):
         )
 
     def _parse_endpoint(self, endpoint: str) -> tuple[str, int]:
-        parsed = urlparse(endpoint)
+        raw = endpoint.strip()
+        if "://" not in raw:
+            raw = "https://" + raw
+        parsed = urlparse(raw)
         if parsed.scheme not in {"https", "tls"}:
-            raise ValueError("Endpoint must use https:// or tls:// scheme.")
+            raise ValueError("Endpoint must use https:// or tls://.")
         host = parsed.hostname
         if not host:
-            raise ValueError("Endpoint is missing hostname.")
+            raise ValueError("Endpoint is missing a hostname.")
+        if parsed.username or parsed.password:
+            raise ValueError("Endpoint must not include credentials.")
         port = parsed.port or 443
         return host, port
 
-    def _fetch_tls_posture(self, host: str, port: int) -> dict[str, str]:
+    def _allowed_hosts(self, listed: object, *, fallback: str) -> set[str]:
+        if listed is None:
+            return {fallback.lower()}
+        if isinstance(listed, str):
+            items: list[object] = [listed]
+        elif isinstance(listed, (list, tuple, set)):
+            items = list(listed)
+        else:
+            raise ValueError("allowed hosts must be a list of hostnames.")
+        hosts = {str(item).strip().lower() for item in items if str(item).strip()}
+        if not hosts:
+            raise ValueError("allowed hosts must name at least one host.")
+        return hosts
+
+    def _timeout_seconds(self, value: object) -> float:
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            raise ValueError("TLS timeout must be a number of seconds.")
+        try:
+            timeout = float(value)
+        except ValueError as exc:
+            raise ValueError("TLS timeout must be a number of seconds.") from exc
+        if timeout <= 0 or timeout > MAX_TLS_TIMEOUT_SECONDS:
+            raise ValueError(
+                "TLS timeout must be greater than 0 and at most "
+                f"{MAX_TLS_TIMEOUT_SECONDS:g} seconds."
+            )
+        return timeout
+
+    def _public_error(self, exc: BaseException) -> str:
+        text = " ".join(str(exc).split())
+        lowered = text.lower()
+        if "-----begin" in lowered or "private key" in lowered or "licence" in lowered:
+            return "Failed to evaluate endpoint TLS posture."
+        if len(text) > 180:
+            text = text[:177] + "..."
+        return f"Failed to evaluate endpoint TLS posture: {text}"
+
+    def refuse_cross_host_redirect(
+        self,
+        current_url: str,
+        location: str,
+        allowed_hosts: set[str],
+    ) -> None:
+        """Reject a redirect that would leave the host the user listed.
+
+        The live check never speaks HTTP, so it cannot follow a redirect.
+        This is the same rule a caller hits if a ``Location`` is ever offered:
+        a different host is refused, and so is a redirect that is not on the
+        allowlist. A same-host redirect is still not followed by the fetch
+        below, which opens exactly one connection.
+        """
+        target = (urlparse(location).hostname or "").lower()
+        current = (urlparse(current_url).hostname or "").lower()
+        allowed = {item.lower() for item in allowed_hosts}
+        if not target or target not in allowed or target != current:
+            raise ValueError("Refusing to follow a redirect to another host.")
+
+    def _fetch_tls_posture(
+        self, host: str, port: int, *, timeout: float
+    ) -> dict[str, str]:
+        """Open one TLS connection to ``host`` and read the peer certificate.
+
+        There is no HTTP client, so redirects are not followed. ``timeout``
+        bounds both the TCP connect and the handshake.
+        """
         context = self._build_ssl_context()
-        with socket.create_connection((host, port), timeout=10) as tcp_sock:
+        with socket.create_connection((host, port), timeout=timeout) as tcp_sock:
+            tcp_sock.settimeout(timeout)
             with context.wrap_socket(tcp_sock, server_hostname=host) as tls_sock:
                 der_cert = tls_sock.getpeercert(binary_form=True)
                 if not der_cert:

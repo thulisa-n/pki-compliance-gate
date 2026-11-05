@@ -127,7 +127,7 @@ rfc5280:
 opa:
   # Optional OPA gate. When enabled, the engine generates Rego from
   # certificate.max_validity_days; it does not read a hand-written .rego file.
-  # policy_file is only the default path for `pki-gate --mode export-rego`.
+  # policy_file is only the default path for `neakam --mode export-rego`.
   enabled: false
   policy_file: "policies/rego/validity.rego"
 

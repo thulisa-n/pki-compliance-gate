@@ -1,4 +1,4 @@
-# PKI Compliance Gate (CertGuard Engine)
+# Neakam
 
 [![Compliance Gate](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/compliance.yml)
 [![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
@@ -6,11 +6,19 @@
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Release](https://img.shields.io/badge/release-v0.2.5-blue)
 
-**PKI Compliance Gate** evaluates an X.509 certificate (or CSR) against a YAML
-policy and returns a CI exit code plus evidence. It is not a linter and not a
-path validator. Use [zlint](https://github.com/zmap/zlint) for RFC/BR encoding
-lint, `openssl verify` for chain and revocation, and this gate for *this
-profile in this pipeline*. See [docs/COMPARE.md](docs/COMPARE.md).
+**Neakam** (PKI Compliance Gate) evaluates an X.509 certificate (or CSR)
+against a YAML policy and returns a CI exit code plus evidence. It is not a
+linter and not a path validator. Use [zlint](https://github.com/zmap/zlint) for
+RFC/BR encoding lint, `openssl verify` for chain and revocation, and this gate
+for *this profile in this pipeline*. See [docs/COMPARE.md](docs/COMPARE.md).
+
+Neakam collects no telemetry. The only network use is a live TLS check you opt
+into with `--allow-network`. See [NO_TELEMETRY.md](NO_TELEMETRY.md).
+
+The command is `neakam`. `pki-gate` and `certguard` still run, and each prints
+a one-line deprecation notice. The Python import package remains `certguard`.
+The PyPI project name remains `pki-compliance-gate` (renaming it is a
+follow-up). This repository's GitHub name is unchanged.
 
 One YAML profile is the source of truth for evaluation, CI gating, and
 generated CP/CPS Section 7 documentation.
@@ -42,14 +50,14 @@ steps:
 
 ```bash
 python3 -m pip install "pki-compliance-gate==0.2.5"
-pki-gate --cert path/to/server.crt --as-of 2026-09-18
+neakam --cert path/to/server.crt --as-of 2026-09-18
 ```
 
 **Expected reject (not a bug):** this expired fixture used to exit 0, which was
 a false negative. It now correctly exits **3** (critical: `certificate_not_expired`).
 
 ```bash
-pki-gate --cert tests/certificates/expired_cert.pem --as-of 2026-09-18
+neakam --cert tests/certificates/expired_cert.pem --as-of 2026-09-18
 ```
 
 Expected outcomes for every committed PEM live in
@@ -67,7 +75,7 @@ not guessed. Copy-paste examples: [`examples/pre-issuance/`](examples/pre-issuan
 (`rsa_key_size`). Use `tests/certificates/csrs/valid.csr` for an exit 0 demo.
 
 ```bash
-pki-gate --csr tests/certificates/csrs/weak_key.csr
+neakam --csr tests/certificates/csrs/weak_key.csr
 ```
 
 ---
@@ -81,7 +89,7 @@ pki-gate --csr tests/certificates/csrs/weak_key.csr
 - **Signature**: no SHA-1 or MD5; AlgorithmIdentifier allowlist on.
 - **Identity**: SAN required; internal DNS suffixes blocked (`.local`, `.internal`, `.intranet`); serial entropy on.
 - **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, SCT presence, EKU profile, OPA/Rego gate, zlint and `openssl asn1parse`.
-- **API TLS posture** (`--mode apisec --endpoint example.com`): live TLS version, weak-cipher, expiry and certificate checks.
+- **API TLS posture** (`--mode apisec --allow-network --endpoint https://example.com`): live TLS version, weak-cipher, expiry and certificate checks. Off unless `--allow-network` is set. The check contacts only that host, times out, and does not follow redirects.
 
 ### Coverage matrix
 
@@ -175,23 +183,41 @@ flowchart LR
 
 ---
 
+## Self-test
+
+`neakam doctor` checks that this install can run offline:
+
+- Python is 3.11 or newer
+- the package and bundled policy files load
+- bundled policies parse with `yaml.safe_load`
+- a bundled fixture certificate evaluates
+
+It does not use the network.
+
+- `0`: every check passed
+- `1`: a check failed
+- `2`: usage error
+
+`neakam doctor --json` prints the same result as JSON. `--debug` adds a
+traceback. Doctor output does not include key or licence material.
+
 ## Advanced modes
 
-The product is `pki-gate --cert`. `pki-gate --help` lists the same split as
+The product is `neakam --cert`. `neakam --help` lists the same split as
 below: first-class modes make a decision, derived helpers only render one.
 
 ### First-class modes
 
 | Mode | Example | What the code does |
 | :--- | :--- | :--- |
-| `evaluate` | `pki-gate --cert server.crt` | Full policy evaluation of a certificate or CSR. |
-| `triage` | `pki-gate --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
-| `assure` | `pki-gate --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
-| `watch` | `pki-gate --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
-| `heal` | `pki-gate --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
-| `apisec` | `pki-gate --mode apisec --endpoint example.com` | Scans a live endpoint for TLS posture. |
-| `signals` | `pki-gate --mode signals` | Reads curated external signals JSON and writes recommendations. |
-| `readiness` | `pki-gate --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
+| `evaluate` | `neakam --cert server.crt` | Full policy evaluation of a certificate or CSR. |
+| `triage` | `neakam --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
+| `assure` | `neakam --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
+| `watch` | `neakam --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
+| `heal` | `neakam --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
+| `apisec` | `neakam --mode apisec --allow-network --endpoint https://example.com` | Opt-in live TLS posture check of the host you list. |
+| `signals` | `neakam --mode signals` | Reads curated external signals JSON and writes recommendations. |
+| `readiness` | `neakam --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
 
 ### Derived helpers
 
@@ -199,15 +225,16 @@ These render an existing report or the policy YAML. They do not issue a verdict.
 
 | Mode | Example | What the code does |
 | :--- | :--- | :--- |
-| `summary` | `pki-gate --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
-| `trend` | `pki-gate --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
-| `export-cps-doc` | `pki-gate --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
-| `export-rego` | `pki-gate --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
+| `summary` | `neakam --mode summary --report-input report.json` | Writes a reviewer Markdown summary. |
+| `trend` | `neakam --mode trend --report-input report.json` | Writes a trend snapshot JSON. |
+| `export-cps-doc` | `neakam --mode export-cps-doc` | Renders the YAML policy as CP/CPS Section 7 Markdown. |
+| `export-rego` | `neakam --mode export-rego` | Emits an OPA/Rego validity gate from `certificate.max_validity_days`. |
 
 ## Repository structure
 
 ```text
-src/certguard/          Core engine, CLI, bundled policy, report schema
+src/certguard/          Implementation package (import name unchanged this release)
+src/neakam/             Import shim for the product name
 policies/               Policy YAML profiles; optional generated Rego
 corpus/                 Published expected verdicts for committed fixtures
 examples/pre-issuance/  CSR / cert-manager / step-ca wiring
@@ -220,9 +247,12 @@ action.yml              Composite GitHub Action
 ## Distribution status
 
 The GitHub Action, wheel, and sdist are published from the `v0.2.5` tag.
-Install the CLI with `pip install pki-compliance-gate==0.2.5`. Later GitHub
-releases reuse `.github/workflows/publish.yml` with PyPI trusted publishing
-(OIDC, no API token in the repository).
+Install the CLI with `pip install pki-compliance-gate==0.2.5`, then run
+`neakam`. The PyPI distribution name is still `pki-compliance-gate`; renaming
+that project, and applying the same product-name change in the private
+enterprise repository, are follow-ups. Later GitHub releases reuse
+`.github/workflows/publish.yml` with PyPI trusted publishing (OIDC, no API
+token in the repository).
 
 A commercially licensed add-on is maintained privately and is not part of
 this repository.

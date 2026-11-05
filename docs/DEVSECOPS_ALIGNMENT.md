@@ -1,6 +1,6 @@
 # DevSecOps Alignment
 
-This document maps CertGuard capabilities to practical DevSecOps outcomes and defines the next maturity steps.
+This document maps Neakam capabilities to practical DevSecOps outcomes and defines the next maturity steps.
 
 ## Current Alignment
 
@@ -11,7 +11,7 @@ This document maps CertGuard capabilities to practical DevSecOps outcomes and de
 | Continuous validation | Automated checks in `compliance.yml`, `security-scans.yml`, `codeql.yml`, `secrets-scan.yml` |
 | Risk-based decisions | Severity-based evaluate exit codes (`0/1/2/3`) in `src/main.py` |
 | Controlled exceptions | Waiver workflow with required ticket and expiry in `src/certguard/engine.py` |
-| API security checks | API TLS posture mode (`--mode apisec`) in `src/certguard/agents/api_tls_posture.py` |
+| API security checks | Opt-in API TLS posture (`--mode apisec --allow-network`) in `src/certguard/agents/api_tls_posture.py` |
 
 ## Security Gate Model
 

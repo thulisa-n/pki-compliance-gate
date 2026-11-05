@@ -15,7 +15,7 @@ Use GitHub private vulnerability reporting:
 
 https://github.com/thulisa-n/pki-compliance-gate/security/advisories/new
 
-Include the engine version (`pki-gate --version`), the policy file, a
+Include the engine version (`neakam --version`), the policy file, a
 minimized PEM or CSR if you can share one, and the report JSON (redact hostnames
 if needed).
 
