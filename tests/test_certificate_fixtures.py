@@ -49,7 +49,7 @@ def test_fixture_is_not_expiring(entry: dict) -> None:
 
 def test_intentionally_expired_set_is_documented() -> None:
     names = {p.name for p in FIXTURES_DIR.glob("*.pem")}
-    assert INTENTIONALLY_EXPIRED_FIXTURES <= names
+    assert names >= INTENTIONALLY_EXPIRED_FIXTURES
 
 
 def test_expired_fixture_exists_for_regression_coverage() -> None:

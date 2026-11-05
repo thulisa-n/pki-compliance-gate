@@ -7,6 +7,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Hash-pinned `requirements.txt` and `requirements-dev.txt`. CI installs with
+  `--require-hashes`. `scripts/update_lockfile.sh` regenerates them.
+- Golden CLI JSON and SARIF snapshots under `tests/golden/`.
+- `docs/BRANCH_PROTECTION.md` for the `main` settings to turn on by hand.
+- `python -m neakam` as a non-deprecated module entry point.
 - `neakam` console script. `pki-gate` and `certguard` remain as deprecated
   aliases and print a one-line notice to stderr.
 - `neakam doctor` offline self-test (`--json`, exit codes 0, 1, and 2).
@@ -15,6 +20,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Code Quality runs ruff, then unit tests, then the neakam certificate
+  fixtures. Bandit and pip-audit fail on medium and above. GitHub Actions are
+  pinned to commit SHAs. Workflow permissions default to `contents: read`.
+  Wheel builds set `SOURCE_DATE_EPOCH` from the commit timestamp.
 - User-facing name in the CLI, output headers, and docs is Neakam. The import
   package remains `certguard`. The PyPI distribution name is unchanged.
 

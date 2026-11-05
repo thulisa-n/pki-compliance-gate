@@ -7,7 +7,6 @@ import yaml
 
 from certguard.cli import default_policy_path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 

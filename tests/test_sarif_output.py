@@ -11,8 +11,8 @@ an exit code in a log. The invariants that matter:
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from certguard import __version__
 from certguard.agents.policy_validator import CHECK_METADATA

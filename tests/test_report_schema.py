@@ -10,8 +10,8 @@ reported 94.74%.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from certguard import REPORT_SCHEMA_VERSION, __version__
 from certguard.engine import ComplianceGateEngine

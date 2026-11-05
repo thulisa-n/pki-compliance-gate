@@ -15,7 +15,7 @@ out whether they have a 2027 problem without paying anyone.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -309,7 +309,7 @@ def _resolve_date(value: date | str | None) -> date:
         return value.date()
     if isinstance(value, str) and value.strip():
         return datetime.fromisoformat(value.strip()).date()
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def _nested(payload: dict[str, Any], dotted: str) -> Any:

@@ -1,5 +1,8 @@
 name: Compliance Gate
 
+# Engine, zlint, OPA, SBOM, and signing. Unit tests and the neakam fixture
+# matrix live in code-quality.yml so this job does not run the suite twice.
+
 on:
   push:
     branches: [main]
@@ -17,9 +20,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  id-token: write
-  attestations: write
 
 concurrency:
   group: compliance-${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +27,10 @@ concurrency:
 
 jobs:
   run-compliance:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: src
@@ -34,20 +38,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
 
       - name: Install dependencies
         run: |
-          pip install -r requirements-dev.txt
-          pip install pytest-html
+          python -m pip install --require-hashes -r requirements-dev.txt
+          python -m pip install --no-deps -e .
 
       - name: Install zlint
         run: |
@@ -64,28 +72,6 @@ jobs:
           chmod +x /usr/local/bin/opa
           opa version
 
-      - name: Regenerate time-sensitive certificate fixtures
-        run: python scripts/generate_test_certificates.py
-
-      - name: Run unit tests
-        run: |
-          mkdir -p reports/test-results
-          pytest -q \
-            --junitxml=reports/test-results/pytest-junit.xml \
-            --html=reports/test-results/pytest-report.html \
-            --self-contained-html \
-            --cov --cov-report=term-missing \
-            --cov-report=xml:reports/test-results/coverage.xml
-
-      - name: Publish pytest results in checks
-        if: ${{ always() }}
-        uses: dorny/test-reporter@v3
-        with:
-          name: Pytest Results
-          path: reports/test-results/pytest-junit.xml
-          reporter: java-junit
-          fail-on-error: true
-
       - name: Generate sample certificate
         run: |
           openssl req -x509 -newkey rsa:2048 -sha256 -days 90 -nodes \
@@ -97,7 +83,7 @@ jobs:
       - name: Run compliance engine (standard)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.protected_run != true }}
         run: |
-          python src/main.py \
+          neakam \
             --cert /tmp/certguard.pem \
             --policy policies/cabf_policy.yaml \
             --report reports/compliance_report.json \
@@ -106,7 +92,7 @@ jobs:
       - name: Run compliance engine (protected mode)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.protected_run == true }}
         run: |
-          python src/main.py \
+          neakam \
             --cert /tmp/certguard.pem \
             --policy policies/cabf_policy.yaml \
             --report reports/compliance_report.json \
@@ -116,7 +102,7 @@ jobs:
       - name: Run compliance engine with zlint + OPA enabled
         continue-on-error: true
         run: |
-          python src/main.py \
+          neakam \
             --cert /tmp/certguard.pem \
             --policy policies/profiles/ci_lint_gate.yaml \
             --report reports/compliance_report_with_lint.json \
@@ -146,14 +132,14 @@ jobs:
 
       - name: Generate reviewer summary
         run: |
-          python src/main.py \
+          neakam \
             --mode summary \
             --report-input reports/compliance_report.json \
             --summary-output reports/compliance_summary.md
 
       - name: Generate trend snapshot
         run: |
-          python src/main.py \
+          neakam \
             --mode trend \
             --report-input reports/compliance_report.json \
             --trend-output reports/compliance_trend_snapshot.json
@@ -227,7 +213,7 @@ jobs:
       # `gh attestation verify` route wherever the platform supports it.
       - name: Publish GitHub build attestation
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.repository.visibility == 'public' }}
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: reports/release_provenance.json
 
@@ -248,9 +234,6 @@ jobs:
             cp reports/release_provenance.cosign.bundle "artifacts/${GITHUB_RUN_ID}/"
             cp reports/release_provenance.identity.txt "artifacts/${GITHUB_RUN_ID}/"
           fi
-          cp reports/test-results/pytest-junit.xml "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/test-results/pytest-report.html "artifacts/${GITHUB_RUN_ID}/"
-          cp reports/test-results/coverage.xml "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/policy_checks.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/lint_results.json "artifacts/${GITHUB_RUN_ID}/"
           cp audit_evidence/waiver_results.json "artifacts/${GITHUB_RUN_ID}/"
@@ -259,93 +242,8 @@ jobs:
           cp audit_evidence/compliance_decisions.jsonl "artifacts/${GITHUB_RUN_ID}/"
 
       - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: certguard-compliance-artifacts-${{ github.run_id }}
           path: |
             artifacts/${{ github.run_id }}
-
-  fixture-matrix:
-    runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: src
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - fixture: tests/certificates/valid_cert.pem
-            expected_exit: 0
-          - fixture: tests/certificates/internal_domain_cert.pem
-            expected_exit: 2
-          - fixture: tests/certificates/long_validity_cert.pem
-            expected_exit: 2
-          - fixture: tests/certificates/no_san_cert.pem
-            expected_exit: 2
-          - fixture: tests/certificates/weak_key_cert.pem
-            expected_exit: 3
-          - fixture: tests/certificates/sha1_cert.pem
-            expected_exit: 3
-          # Regression fixtures for the two false negatives fixed in 0.2.0.
-          - fixture: tests/certificates/expired_cert.pem
-            expected_exit: 3
-          - fixture: tests/certificates/ec_p192_cert.pem
-            expected_exit: 3
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      # Committed PEM fixtures rot: every one was minted with notBefore
-      # 2026-03-16 and five of six had expired by September 2026, including the
-      # cert this matrix asserts exits 0. Regenerating here keeps the matrix
-      # honest regardless of how old the checkout is. sha1_cert.pem is not
-      # regenerated (cryptography refuses SHA-1) and is expected to be expired.
-      - name: Regenerate time-sensitive certificate fixtures
-        run: python scripts/generate_test_certificates.py
-      - name: Evaluate fixture scenario
-        run: |
-          set +e
-          python src/main.py --cert "${{ matrix.fixture }}" --output json > /tmp/matrix_result.json
-          exit_code=$?
-          echo "Fixture: ${{ matrix.fixture }}"
-          echo "Expected: ${{ matrix.expected_exit }}"
-          echo "Actual: ${exit_code}"
-          if [ "${exit_code}" -ne "${{ matrix.expected_exit }}" ]; then
-            echo "Matrix validation failed for ${{ matrix.fixture }}"
-            cat /tmp/matrix_result.json || true
-            exit 1
-          fi
-
-  strict-profile-smoke:
-    runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: src
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Regenerate time-sensitive certificate fixtures
-        run: python scripts/generate_test_certificates.py
-      - name: Evaluate strict profile baseline
-        run: |
-          set +e
-          python src/main.py \
-            --cert tests/certificates/valid_cert.pem \
-            --policy policies/profiles/crypto_agility_pqc_readiness.yaml \
-            --output json > /tmp/strict_profile_result.json
-          exit_code=$?
-          echo "Strict profile exit: ${exit_code}"
-          if [ "${exit_code}" -eq 0 ]; then
-            echo "Expected non-zero exit for strict profile without attestations/tooling."
-            cat /tmp/strict_profile_result.json || true
-            exit 1
-          fi

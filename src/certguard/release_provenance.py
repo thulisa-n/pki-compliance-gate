@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from certguard.artifact_signing import key_id, sign_bytes, verify_signature
@@ -34,7 +34,7 @@ def generate_release_provenance(
         )
 
     payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "git_commit": os.getenv("GITHUB_SHA", "local-dev"),
         "workflow": os.getenv("GITHUB_WORKFLOW", "local-dev"),
         "run_id": os.getenv("GITHUB_RUN_ID", "local-run"),
@@ -57,7 +57,7 @@ def generate_release_provenance(
             "algorithm": "ed25519",
             "key_id": key_id(public_key),
             "public_key_b64": public_key,
-            "signed_at": datetime.now(timezone.utc).isoformat(),
+            "signed_at": datetime.now(UTC).isoformat(),
             "artifact": str(output_path),
         }
         signature_path.with_suffix(signature_path.suffix + ".meta.json").write_text(

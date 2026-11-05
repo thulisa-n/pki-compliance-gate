@@ -42,7 +42,7 @@ def test_policy_loader_rejects_wrong_type(tmp_path: Path) -> None:
     policy_path = tmp_path / "invalid_type.yaml"
     policy_path.write_text(yaml.safe_dump(invalid_policy), encoding="utf-8")
 
-    with pytest.raises(PolicyValidationError, match="certificate.max_validity_days"):
+    with pytest.raises(PolicyValidationError, match=r"certificate\.max_validity_days"):
         load_policy(policy_path)
 
 
@@ -52,5 +52,7 @@ def test_policy_loader_rejects_invalid_crypto_transition_type(tmp_path: Path) ->
     policy_path = tmp_path / "invalid_crypto_transition_type.yaml"
     policy_path.write_text(yaml.safe_dump(policy), encoding="utf-8")
 
-    with pytest.raises(PolicyValidationError, match="crypto_transition.target_min_rsa_bits"):
+    with pytest.raises(
+        PolicyValidationError, match=r"crypto_transition\.target_min_rsa_bits"
+    ):
         load_policy(policy_path)

@@ -8,8 +8,8 @@ BR 6.1.5 permits only P-256, P-384 and P-521 for subscriber ECDSA keys.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pytest
 import yaml

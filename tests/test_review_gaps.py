@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import yaml
 
 from certguard.agents.policy_validator import ALL_CONTROL_NAMES, CHECK_METADATA, CONTROLS
 from certguard.artifact_signing import generate_ed25519_keypair_b64, sign_bytes
 from certguard.engine import ComplianceGateEngine
+
 POLICY_PATH = Path("policies/cabf_policy.yaml")
 
 

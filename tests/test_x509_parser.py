@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptography import x509
@@ -19,19 +19,21 @@ def _write_cert(
     san_dns: list[str] | None = None,
     days: int = 90,
     rsa_bits: int = 2048,
-    hash_algo: hashes.HashAlgorithm = hashes.SHA256(),
+    hash_algo: hashes.HashAlgorithm | None = None,
     include_san: bool = True,
     include_ski: bool = False,
     include_basic_constraints: bool = False,
     is_ca: bool = False,
     use_ec: bool = False,
 ) -> None:
+    if hash_algo is None:
+        hash_algo = hashes.SHA256()
     if use_ec:
         key = ec.generate_private_key(ec.SECP256R1())
     else:
         key = rsa.generate_private_key(public_exponent=65537, key_size=rsa_bits)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
 
     builder = (

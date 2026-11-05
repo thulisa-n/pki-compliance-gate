@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 from certguard.engine import ComplianceGateEngine
 
 POLICY_PATH = Path("policies/cabf_policy.yaml")

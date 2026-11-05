@@ -14,10 +14,11 @@ artefacts that cannot be generated (see ``SHA1_IS_UNMINTABLE``), and
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Literal
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -97,10 +98,11 @@ def _hash(name: str) -> hashes.HashAlgorithm | None:
         raise ValueError(f"Unsupported hash algorithm: {name}") from exc
 
 
-def write_certificate(path: Path, spec: CertSpec = CertSpec()) -> Path:
+def write_certificate(path: Path, spec: CertSpec | None = None) -> Path:
     """Write a PEM certificate matching ``spec`` and return its path."""
+    spec = CertSpec() if spec is None else spec
     key = _private_key(spec.key)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     not_before = now + timedelta(days=spec.starts_in_days) - timedelta(minutes=5)
     not_after = not_before + timedelta(
         days=spec.validity_days, hours=spec.validity_hours
@@ -183,7 +185,7 @@ def fixture_expiry_report(
     Used by the freshness guard so a fixture cannot silently expire again.
     """
     report: list[dict[str, object]] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     candidates = (
         [fixture_dir / n for n in names]
         if names is not None

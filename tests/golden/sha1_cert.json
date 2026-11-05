@@ -1,0 +1,525 @@
+{
+  "report_schema_version": "2.0",
+  "engine_version": "0.2.5",
+  "certificate": "tests/certificates/sha1_cert.pem",
+  "input_kind": "certificate",
+  "generated_at": "2026-06-01T00:00:00+00:00",
+  "evaluated_at": "2026-06-01T00:00:00+00:00",
+  "verdict_digest": "5d112cf17349168405084c3c7f86d22b566fda2dffc165c41a265657a9fc8981",
+  "compliant": false,
+  "risk_level": "HIGH",
+  "findings": {
+    "critical": 3,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "unknown": 0
+  },
+  "coverage": {
+    "controls_defined": 29,
+    "controls_evaluated": 11,
+    "passed": 8,
+    "failed": 3,
+    "waived": 0,
+    "not_applicable": 18
+  },
+  "checks": [
+    {
+      "name": "validity_days",
+      "status": "pass",
+      "details": "Certificate validity is 30 days (max 200)",
+      "rule_id": "CAB-BR-6.3.2",
+      "category": "VALIDITY",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 6.3.2",
+      "policy_value": 200,
+      "actual_value": 30.0,
+      "rationale": "Long validity windows increase exposure when private keys are compromised.",
+      "recommendation": "Reissue certificate with validity at or below policy threshold."
+    },
+    {
+      "name": "certificate_not_expired",
+      "status": "fail",
+      "details": "Certificate expired on 2026-04-15T21:14:10+00:00 (47 days ago as at 2026-06-01T00:00:00+00:00).",
+      "rule_id": "RFC-5280-4.1.2.5",
+      "category": "VALIDITY",
+      "severity": "critical",
+      "standard_reference": "RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2",
+      "policy_value": "notAfter must be in the future",
+      "actual_value": "2026-04-15T21:14:10+00:00",
+      "rationale": "An expired certificate is rejected by relying parties and provides no assurance.",
+      "recommendation": "Renew or replace the certificate before deploying it."
+    },
+    {
+      "name": "certificate_not_yet_valid",
+      "status": "pass",
+      "details": "Certificate notBefore time has passed.",
+      "rule_id": "RFC-5280-4.1.2.5",
+      "category": "VALIDITY",
+      "severity": "high",
+      "standard_reference": "RFC 5280 4.1.2.5",
+      "policy_value": "notBefore must be in the past",
+      "actual_value": "2026-03-16T21:14:10+00:00",
+      "rationale": "A certificate used before its notBefore time fails path validation.",
+      "recommendation": "Wait until the notBefore time or reissue with a current validity window."
+    },
+    {
+      "name": "certificate_expiry_window",
+      "status": "not_applicable",
+      "details": "Renewal window warning disabled by policy (certificate.warn_if_expires_within_days=0).",
+      "rule_id": "OPS-RENEWAL-WINDOW",
+      "category": "VALIDITY",
+      "severity": "low",
+      "standard_reference": "Operational renewal policy",
+      "policy_value": 0,
+      "actual_value": -47,
+      "rationale": "Certificates renewed inside a short window risk an outage if automation fails.",
+      "recommendation": "Renew the certificate before it enters the configured warning window."
+    },
+    {
+      "name": "san_extension",
+      "status": "pass",
+      "details": "SAN extension present",
+      "rule_id": "RFC-5280-4.2.1.6",
+      "category": "IDENTITY",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 7.1.4.2.1",
+      "policy_value": true,
+      "actual_value": true,
+      "rationale": "Modern TLS clients rely on SAN for hostname validation.",
+      "recommendation": "Issue certificate with SAN entries matching intended hostnames."
+    },
+    {
+      "name": "key_algorithm_allowed",
+      "status": "pass",
+      "details": "Public key algorithm 'rsa' is permitted.",
+      "rule_id": "CAB-BR-6.1.5",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 6.1.5",
+      "policy_value": [
+        "ec",
+        "rsa"
+      ],
+      "actual_value": "rsa",
+      "rationale": "Only approved public key algorithms carry assurance under the policy profile.",
+      "recommendation": "Reissue using a public key algorithm permitted by policy."
+    },
+    {
+      "name": "rsa_key_size",
+      "status": "pass",
+      "details": "RSA key size is 2048 bits (min 2048)",
+      "rule_id": "CAB-BR-6.1.5",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 6.1.5",
+      "policy_value": 2048,
+      "actual_value": 2048,
+      "rationale": "Weak RSA keys reduce cryptographic strength and trust assurance.",
+      "recommendation": "Generate key pair with RSA 2048+ before issuance."
+    },
+    {
+      "name": "ec_key_size",
+      "status": "not_applicable",
+      "details": "Key algorithm is 'rsa'; EC key size check not applicable.",
+      "rule_id": "CAB-BR-6.1.5",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 6.1.5",
+      "policy_value": 256,
+      "actual_value": null,
+      "rationale": "Undersized elliptic curve keys fall below the required security level.",
+      "recommendation": "Generate an EC key of at least the policy minimum size (P-256 or stronger)."
+    },
+    {
+      "name": "ec_curve_allowed",
+      "status": "not_applicable",
+      "details": "Key algorithm is 'rsa'; EC curve check not applicable.",
+      "rule_id": "CAB-BR-6.1.5",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 6.1.5",
+      "policy_value": [
+        "secp256r1",
+        "secp384r1",
+        "secp521r1"
+      ],
+      "actual_value": null,
+      "rationale": "Only NIST P-256, P-384 and P-521 are permitted for publicly trusted ECDSA keys.",
+      "recommendation": "Reissue using an approved named curve (secp256r1, secp384r1, secp521r1)."
+    },
+    {
+      "name": "signature_algorithm",
+      "status": "fail",
+      "details": "Signature algorithm is sha1 (sha1withrsaencryption); prohibited: sha1",
+      "rule_id": "CAB-BR-7.1.3",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 7.1.3",
+      "policy_value": [
+        "md5",
+        "sha1"
+      ],
+      "actual_value": "sha1",
+      "rationale": "Deprecated hash algorithms can be vulnerable to collision attacks.",
+      "recommendation": "Use SHA-256 or stronger signature algorithm."
+    },
+    {
+      "name": "signature_algorithm_oid",
+      "status": "fail",
+      "details": "Signature algorithm OID 1.2.840.113549.1.1.5 is not in the policy allowlist.",
+      "rule_id": "CAB-BR-7.1.3.2",
+      "category": "CRYPTOGRAPHY",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 7.1.3.2",
+      "policy_value": [
+        "1.2.840.10045.4.3.2",
+        "1.2.840.10045.4.3.3",
+        "1.2.840.10045.4.3.4",
+        "1.2.840.113549.1.1.11",
+        "1.2.840.113549.1.1.12",
+        "1.2.840.113549.1.1.13"
+      ],
+      "actual_value": "1.2.840.113549.1.1.5",
+      "rationale": "The Baseline Requirements constrain the signature AlgorithmIdentifier, not just the digest name.",
+      "recommendation": "Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256."
+    },
+    {
+      "name": "internal_domain_check",
+      "status": "pass",
+      "details": "No blocked internal domains detected",
+      "rule_id": "CAB-BR-7.1.4.2.1",
+      "category": "POLICY",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 7.1.4.2.1",
+      "policy_value": [
+        ".local",
+        ".internal",
+        ".intranet"
+      ],
+      "actual_value": [
+        "sha1.example.com"
+      ],
+      "rationale": "Internal names are not valid for publicly trusted certificates.",
+      "recommendation": "Replace internal SAN values with public DNS names."
+    },
+    {
+      "name": "dcv_method",
+      "status": "not_applicable",
+      "details": "DCV checks disabled by policy (dcv.required=false).",
+      "rule_id": "CAB-BR-3.2.2.4",
+      "category": "DCV",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 3.2.2.4",
+      "policy_value": [
+        "dns-01",
+        "http-01",
+        "tls-alpn-01"
+      ],
+      "actual_value": null,
+      "rationale": "Domain Control Validation must use approved methods before issuance.",
+      "recommendation": "Use an approved DCV method and record validation evidence."
+    },
+    {
+      "name": "dcv_recency",
+      "status": "not_applicable",
+      "details": "DCV recency checks disabled by policy (dcv.required=false).",
+      "rule_id": "CAB-BR-4.2.1",
+      "category": "DCV",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 4.2.1",
+      "policy_value": 30,
+      "actual_value": null,
+      "rationale": "Stale domain validation evidence can invalidate issuance decisions.",
+      "recommendation": "Re-run DCV within the allowed validation window."
+    },
+    {
+      "name": "rfc5280_end_entity_ca",
+      "status": "not_applicable",
+      "details": "RFC 5280 end-entity CA check disabled by policy.",
+      "rule_id": "RFC-5280-4.2.1.9",
+      "category": "RFC5280",
+      "severity": "high",
+      "standard_reference": "RFC 5280 4.2.1.9",
+      "policy_value": false,
+      "actual_value": true,
+      "rationale": "Subscriber certificates should not present CA basic constraints.",
+      "recommendation": "Issue end-entity certificate with BasicConstraints CA set to FALSE."
+    },
+    {
+      "name": "rfc5280_key_usage_profile",
+      "status": "not_applicable",
+      "details": "RFC 5280 key usage profile check disabled by policy.",
+      "rule_id": "RFC-5280-4.2.1.3",
+      "category": "RFC5280",
+      "severity": "high",
+      "standard_reference": "RFC 5280 4.2.1.3",
+      "policy_value": [
+        "digital_signature",
+        "key_encipherment"
+      ],
+      "actual_value": [],
+      "rationale": "Key usage extensions must align with intended certificate purpose.",
+      "recommendation": "Set key usage extension to include required subscriber usages."
+    },
+    {
+      "name": "rfc5280_subject_key_identifier",
+      "status": "not_applicable",
+      "details": "RFC 5280 SKI check disabled by policy.",
+      "rule_id": "RFC-5280-4.2.1.2",
+      "category": "RFC5280",
+      "severity": "medium",
+      "standard_reference": "RFC 5280 4.2.1.2",
+      "policy_value": false,
+      "actual_value": true,
+      "rationale": "SKI helps bind subject keys to certificate lifecycle and chain processing.",
+      "recommendation": "Include Subject Key Identifier extension for leaf profile consistency."
+    },
+    {
+      "name": "rfc5280_authority_key_identifier",
+      "status": "not_applicable",
+      "details": "RFC 5280 AKI check disabled by policy.",
+      "rule_id": "RFC-5280-4.2.1.1",
+      "category": "RFC5280",
+      "severity": "medium",
+      "standard_reference": "RFC 5280 4.2.1.1",
+      "policy_value": false,
+      "actual_value": true,
+      "rationale": "AKI supports robust issuer key linkage during path validation.",
+      "recommendation": "Include Authority Key Identifier extension for issuer linkage."
+    },
+    {
+      "name": "rfc5280_critical_extension_profile",
+      "status": "pass",
+      "details": "Critical extensions align with policy profile.",
+      "rule_id": "RFC-5280-4.2",
+      "category": "RFC5280",
+      "severity": "high",
+      "standard_reference": "RFC 5280 4.2",
+      "policy_value": [
+        "2.5.29.15",
+        "2.5.29.17",
+        "2.5.29.19",
+        "2.5.29.32"
+      ],
+      "actual_value": [
+        "2.5.29.19"
+      ],
+      "rationale": "Unexpected critical extensions can break relying-party validation behavior.",
+      "recommendation": "Restrict critical extensions to an approved extension profile."
+    },
+    {
+      "name": "rfc5280_path_issuer_subject_match",
+      "status": "not_applicable",
+      "details": "RFC 5280 issuer-subject path check disabled by policy.",
+      "rule_id": "RFC-5280-6",
+      "category": "RFC5280",
+      "severity": "high",
+      "standard_reference": "RFC 5280 6.1",
+      "policy_value": false,
+      "actual_value": null,
+      "rationale": "Issuer and subject linkage is required for path construction.",
+      "recommendation": "Provide the issuing certificate and validate issuer-subject linkage."
+    },
+    {
+      "name": "rfc5280_path_aki_ski_match",
+      "status": "not_applicable",
+      "details": "RFC 5280 AKI/SKI path check disabled by policy.",
+      "rule_id": "RFC-5280-4.2.1.1",
+      "category": "RFC5280",
+      "severity": "medium",
+      "standard_reference": "RFC 5280 4.2.1.1",
+      "policy_value": false,
+      "actual_value": null,
+      "rationale": "AKI/SKI linkage improves deterministic path validation.",
+      "recommendation": "Ensure leaf AKI matches issuer SKI."
+    },
+    {
+      "name": "issuance_hsm_attestation",
+      "status": "not_applicable",
+      "details": "Issuance HSM attestation checks disabled by policy.",
+      "rule_id": "PKCS11-HSM-ATTESTATION",
+      "category": "ISSUANCE",
+      "severity": "high",
+      "standard_reference": "PKCS#11 / FIPS operations",
+      "policy_value": false,
+      "actual_value": null,
+      "rationale": "Key custody controls require evidence of hardware-backed issuance operations.",
+      "recommendation": "Provide issuance attestation indicating HSM-backed key operations."
+    },
+    {
+      "name": "issuance_fips_level",
+      "status": "not_applicable",
+      "details": "Issuance FIPS level checks disabled by policy.",
+      "rule_id": "FIPS-140-CONTROL",
+      "category": "ISSUANCE",
+      "severity": "medium",
+      "standard_reference": "FIPS 140-2/140-3",
+      "policy_value": 2,
+      "actual_value": null,
+      "rationale": "Cryptographic module assurance levels are key audit controls.",
+      "recommendation": "Provide attested FIPS level meeting minimum policy requirement."
+    },
+    {
+      "name": "crypto_transition_validity_target",
+      "status": "not_applicable",
+      "details": "Crypto transition validity target check disabled by policy.",
+      "rule_id": "CRYPTO-AGILITY-VALIDITY",
+      "category": "CRYPTO-TRANSITION",
+      "severity": "high",
+      "standard_reference": "Crypto transition readiness profile",
+      "policy_value": 47,
+      "actual_value": 30,
+      "rationale": "Short-lived certificate profiles reduce exposure and improve rotation agility.",
+      "recommendation": "Reduce certificate validity to transition target or lower."
+    },
+    {
+      "name": "crypto_transition_rsa_target",
+      "status": "not_applicable",
+      "details": "Crypto transition RSA target check disabled by policy.",
+      "rule_id": "CRYPTO-AGILITY-RSA",
+      "category": "CRYPTO-TRANSITION",
+      "severity": "medium",
+      "standard_reference": "Crypto transition readiness profile",
+      "policy_value": 3072,
+      "actual_value": 2048,
+      "rationale": "Stronger key sizes improve resilience during algorithm transition periods.",
+      "recommendation": "Issue RSA certificates at or above the transition RSA key target."
+    },
+    {
+      "name": "crypto_transition_signature_hash",
+      "status": "not_applicable",
+      "details": "Crypto transition signature hash check disabled by policy.",
+      "rule_id": "CRYPTO-AGILITY-HASH",
+      "category": "CRYPTO-TRANSITION",
+      "severity": "high",
+      "standard_reference": "Crypto transition readiness profile",
+      "policy_value": [
+        "sha256",
+        "sha384",
+        "sha512"
+      ],
+      "actual_value": "sha1",
+      "rationale": "Approved signature hashes reduce risk from weak or deprecated digests.",
+      "recommendation": "Use signature hash algorithms from the approved transition allowlist."
+    },
+    {
+      "name": "serial_entropy",
+      "status": "pass",
+      "details": "Serial number has 158 bits (min 64).",
+      "rule_id": "CAB-BR-7.1",
+      "category": "IDENTITY",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 7.1",
+      "policy_value": 64,
+      "actual_value": 158,
+      "rationale": "Predictable serial numbers enable collision and tracking attacks; at least 64 bits of entropy is required.",
+      "recommendation": "Issue certificates with a cryptographically random serial of at least 64 bits."
+    },
+    {
+      "name": "sct_presence",
+      "status": "not_applicable",
+      "details": "SCT presence check disabled by policy (certificate.require_sct=false).",
+      "rule_id": "CAB-BR-CT-SCT",
+      "category": "TRANSPARENCY",
+      "severity": "high",
+      "standard_reference": "Certificate Transparency / CA/B Forum BR",
+      "policy_value": false,
+      "actual_value": 0,
+      "rationale": "Browser trust requires embedded Signed Certificate Timestamps.",
+      "recommendation": "Submit the precertificate to CT logs and embed the required SCTs."
+    },
+    {
+      "name": "extended_key_usage",
+      "status": "not_applicable",
+      "details": "EKU profile check disabled by policy (certificate.require_eku=false).",
+      "rule_id": "CAB-BR-7.1.2",
+      "category": "IDENTITY",
+      "severity": "high",
+      "standard_reference": "CA/B Forum BR 7.1.2 / RFC 5280 4.2.1.12",
+      "policy_value": [
+        "1.3.6.1.5.5.7.3.1"
+      ],
+      "actual_value": [],
+      "rationale": "EKU binds a certificate to an intended purpose such as TLS server authentication.",
+      "recommendation": "Include the required extendedKeyUsage values for the certificate profile."
+    }
+  ],
+  "parser_data": {
+    "input_kind": "certificate",
+    "subject": "CN=sha1.example.com",
+    "issuer": "CN=sha1.example.com",
+    "common_name": "sha1.example.com",
+    "not_before": "2026-03-16T21:14:10+00:00",
+    "not_after": "2026-04-15T21:14:10+00:00",
+    "evaluated_at": "2026-06-01T00:00:00+00:00",
+    "validity_days": 30,
+    "validity_seconds": 2592000,
+    "is_expired": true,
+    "is_not_yet_valid": false,
+    "days_until_expiry": -47,
+    "san_dns": [
+      "sha1.example.com"
+    ],
+    "signature_algorithm": "sha1",
+    "signature_algorithm_oid": "1.2.840.113549.1.1.5",
+    "signature_algorithm_name": "sha1withrsaencryption",
+    "key_algorithm": "rsa",
+    "key_size_bits": 2048,
+    "ec_curve": null,
+    "is_rsa": true,
+    "rsa_key_size": 2048,
+    "serial_number": "376f529f4ecddc3395755aa5d8caf698784dec02",
+    "serial_number_bits": 158,
+    "basic_constraints_ca": true,
+    "key_usage": [],
+    "extended_key_usage": [],
+    "has_subject_key_identifier": true,
+    "has_authority_key_identifier": true,
+    "subject_key_identifier": "f6ddfd79c574c7ad5b87ed089250e6d0ce645216",
+    "authority_key_identifier": "f6ddfd79c574c7ad5b87ed089250e6d0ce645216",
+    "critical_extension_oids": [
+      "2.5.29.19"
+    ],
+    "sct_count": 0
+  },
+  "lint": {
+    "status": "skipped",
+    "details": "All lint controls skipped.",
+    "controls": {
+      "zlint": {
+        "status": "skipped",
+        "details": "zlint disabled in policy"
+      },
+      "asn1parse": {
+        "status": "skipped",
+        "details": "asn1parse disabled in policy"
+      }
+    }
+  },
+  "failed_controls": [
+    {
+      "name": "certificate_not_expired",
+      "rule_id": "RFC-5280-4.1.2.5",
+      "severity": "critical",
+      "standard_reference": "RFC 5280 4.1.2.5 / CA/B Forum BR 6.3.2",
+      "recommendation": "Renew or replace the certificate before deploying it."
+    },
+    {
+      "name": "signature_algorithm",
+      "rule_id": "CAB-BR-7.1.3",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 7.1.3",
+      "recommendation": "Use SHA-256 or stronger signature algorithm."
+    },
+    {
+      "name": "signature_algorithm_oid",
+      "rule_id": "CAB-BR-7.1.3.2",
+      "severity": "critical",
+      "standard_reference": "CA/B Forum BR 7.1.3.2",
+      "recommendation": "Sign with an allowed algorithm OID such as sha256WithRSAEncryption or ecdsa-with-SHA256."
+    }
+  ],
+  "waived_controls": [],
+  "policy_version": "2.0.0"
+}

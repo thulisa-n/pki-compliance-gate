@@ -1,5 +1,10 @@
 name: Security Scans
 
+# Bandit and pip-audit both fail the job on medium and above. pip-audit itself
+# has no severity filter; scripts/pip_audit_gate.py applies it and fails closed
+# when an advisory has no score. This job starts with the other PR workflows
+# so it does not wait on the test chain.
+
 on:
   push:
     branches: [main]
@@ -18,35 +23,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      - name: Install scanner dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install bandit pip-audit
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements-dev.txt
 
-      - name: Run Bandit (SAST)
+      - name: Run Bandit (medium and above)
         run: |
           mkdir -p artifacts/security
           set -o pipefail
-          bandit -r src -q | tee artifacts/security/bandit-report.txt
+          bandit -r src -q --severity-level medium | tee artifacts/security/bandit-report.txt
 
-      - name: Run pip-audit (dependency vulnerabilities)
+      - name: Run pip-audit (medium and above)
         run: |
-          set -o pipefail
-          # Temporary exception until an upstream pygments fix is published.
-          pip-audit -r requirements.txt --ignore-vuln CVE-2026-4539 \
-            | tee artifacts/security/pip-audit-report.txt
+          python scripts/pip_audit_gate.py \
+            --requirement requirements.txt \
+            --requirement requirements-dev.txt \
+            --output artifacts/security/pip-audit-report.txt
 
       - name: Upload security scan artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: security-scan-artifacts-${{ github.run_id }}
           path: artifacts/security
