@@ -46,30 +46,27 @@ class DoctorCheck:
 
 def run_doctor(argv: list[str] | None = None) -> int:
     """Run the self-test and return 0, 1, or 2."""
-    args, usage = _parse_args(argv)
-    if usage is not None:
-        return usage
-    assert args is not None
+    parsed = _parse_args(argv)
+    if isinstance(parsed, int):
+        return parsed
     try:
-        checks = _run_checks(debug=bool(args.debug))
+        checks = _run_checks(debug=bool(parsed.debug))
     except Exception as exc:
-        if args.debug:
+        if parsed.debug:
             _write_traceback(exc)
         else:
             print("ERROR: doctor failed", file=sys.stderr)
         return EXIT_CHECK_FAILED
 
     ok = all(check.ok for check in checks)
-    _emit(checks, as_json=bool(args.json), version=__version__)
+    _emit(checks, as_json=bool(parsed.json), version=__version__)
     if not ok:
         print("ERROR: doctor found a failed check", file=sys.stderr)
         return EXIT_CHECK_FAILED
     return EXIT_OK
 
 
-def _parse_args(
-    argv: list[str] | None,
-) -> tuple[argparse.Namespace | None, int | None]:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace | int:
     parser = argparse.ArgumentParser(
         prog="neakam doctor",
         description=(
@@ -88,12 +85,12 @@ def _parse_args(
         help="Include a traceback if a check crashes. Key and licence material stays redacted.",
     )
     try:
-        return parser.parse_args(argv), None
+        return parser.parse_args(argv)
     except SystemExit as exc:
         code = exc.code
         if code in (0, None):
-            return None, EXIT_OK
-        return None, EXIT_USAGE
+            return EXIT_OK
+        return EXIT_USAGE
 
 
 def _run_checks(*, debug: bool) -> list[DoctorCheck]:
