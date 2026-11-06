@@ -12,7 +12,7 @@ import pytest
 import yaml
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import NameOID
 
@@ -164,7 +164,6 @@ def issue_chain(
     intermediate_expired: bool = False,
     root_ca: bool | None = True,
     leaf_aki: object = _AUTO,
-    leaf: str = "ec256",
 ) -> dict[str, object]:
     """Mint a leaf plus a chain bundle of intermediate (optional) and root."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -204,12 +203,7 @@ def issue_chain(
         issuer_key = intermediate_key
         issuer_name = intermediate_name
         bundle.insert(0, _pem(intermediate))
-    if leaf == "rsa1024":
-        leaf_key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
-    elif leaf == "rsa2048":
-        leaf_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    else:
-        leaf_key = _ec_key()
+    leaf_key = _ec_key()
     leaf_not_before = now - timedelta(minutes=5)
     leaf_cert = _build_cert(
         subject=_name(san[0]),
