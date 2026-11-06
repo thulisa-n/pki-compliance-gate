@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-06
+
 ### Fixed
 
 - `neakam --mode apisec` reports a TLS certificate verification failure as a

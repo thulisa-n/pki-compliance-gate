@@ -7,8 +7,8 @@
         "driver": {
           "name": "Neakam",
           "fullName": "Neakam (PKI Compliance Gate)",
-          "version": "0.2.6",
-          "semanticVersion": "0.2.6",
+          "version": "0.2.7",
+          "semanticVersion": "0.2.7",
           "informationUri": "https://github.com/thulisa-n/pki-compliance-gate",
           "rules": [
             {
@@ -895,7 +895,7 @@
       ],
       "results": [],
       "properties": {
-        "engineVersion": "0.2.6",
+        "engineVersion": "0.2.7",
         "reportSchemaVersion": "2.0",
         "policyVersion": "2.0.0",
         "riskLevel": "LOW",
