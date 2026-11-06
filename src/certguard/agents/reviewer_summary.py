@@ -68,6 +68,16 @@ class ReviewerSummaryAgent(BaseAgent):
             f"- Risk Level: `{report.get('risk_level', 'unknown')}`",
             f"- Findings: `{_format_findings(report.get('findings'))}`",
             f"- Coverage: `{_format_coverage(report.get('coverage'))}`",
+        ]
+        trust_scope = report.get("trust_scope")
+        if isinstance(trust_scope, dict):
+            lines.append(
+                f"- Trust scope: `{trust_scope.get('effective', '')}` "
+                f"(requested `{trust_scope.get('requested', '')}`, "
+                f"source `{trust_scope.get('source', '')}`)"
+            )
+            lines.append(f"- Trust scope reason: {trust_scope.get('reason', '')}")
+        lines += [
             "",
             "## Check Results",
             "",

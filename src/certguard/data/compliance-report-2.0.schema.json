@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/thulisa-n/pki-compliance-gate/blob/main/src/certguard/data/compliance-report-2.0.schema.json",
   "title": "CertGuard compliance report",
-  "description": "Report schema 2.0. Additive fields (verdict_digest, input_kind) are optional for older producers and required of this engine.",
+  "description": "Report schema 2.0. Additive fields (verdict_digest, input_kind, trust_scope) are optional for older producers and required of this engine.",
   "type": "object",
   "additionalProperties": true,
   "required": [
@@ -104,6 +104,23 @@
         }
       }
     },
-    "waived_controls": { "type": "array" }
+    "waived_controls": { "type": "array" },
+    "trust_scope": {
+      "type": ["object", "null"],
+      "description": "Requested and effective trust scope for CA/B Forum public-TLS controls, and why that scope was selected. Paths are local. Nothing is fetched.",
+      "required": ["requested", "effective", "source", "reason"],
+      "properties": {
+        "requested": { "type": "string", "enum": ["public", "private", "auto"] },
+        "effective": { "type": "string", "enum": ["public", "private"] },
+        "source": { "type": "string", "enum": ["cli", "policy", "default"] },
+        "reason": { "type": "string" },
+        "public_roots": { "type": ["string", "null"] },
+        "chain": { "type": ["string", "null"] },
+        "root_spki_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
   }
 }

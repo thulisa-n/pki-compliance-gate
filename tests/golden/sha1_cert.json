@@ -5,7 +5,7 @@
   "input_kind": "certificate",
   "generated_at": "2026-06-01T00:00:00+00:00",
   "evaluated_at": "2026-06-01T00:00:00+00:00",
-  "verdict_digest": "5d112cf17349168405084c3c7f86d22b566fda2dffc165c41a265657a9fc8981",
+  "verdict_digest": "9ff700d7bb4c87def7f4255d748bbfc032205ed1b8b74179f1791216d9ac0009",
   "compliant": false,
   "risk_level": "HIGH",
   "findings": {
@@ -521,5 +521,14 @@
     }
   ],
   "waived_controls": [],
-  "policy_version": "2.0.0"
+  "policy_version": "2.0.0",
+  "trust_scope": {
+    "requested": "public",
+    "effective": "public",
+    "source": "policy",
+    "reason": "trust scope is public; CA/B Forum Baseline Requirements for publicly-trusted TLS are assessed",
+    "public_roots": null,
+    "chain": null,
+    "root_spki_sha256": null
+  }
 }

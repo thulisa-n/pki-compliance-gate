@@ -300,6 +300,38 @@ def parse_args() -> argparse.Namespace:
         help="Optional issuer certificate path for RFC 5280 path-linkage checks",
     )
     parser.add_argument(
+        "--trust-scope",
+        choices=["public", "private", "auto"],
+        default=None,
+        help=(
+            "Trust scope for CA/B Forum public-TLS controls. "
+            "public assesses them. private reports them as not_applicable. "
+            "auto selects private only when --chain verifies offline to a root "
+            "that is not in the public-trust root set; otherwise public, and "
+            "the report says why. An explicit value overrides policy trust.scope. "
+            "When omitted, trust.scope is used, or public if the policy does not "
+            "set it. Nothing is fetched."
+        ),
+    )
+    parser.add_argument(
+        "--public-trust-roots",
+        default=None,
+        help=(
+            "File or directory of public-trust root certificates (PEM or DER) "
+            "or SPKI SHA-256 hashes, for --trust-scope auto. Overrides policy "
+            "trust.public_roots. When omitted, the policy path is used. "
+            "Nothing is fetched."
+        ),
+    )
+    parser.add_argument(
+        "--chain",
+        default=None,
+        help=(
+            "PEM bundle or directory of intermediate and root certificates for "
+            "--trust-scope auto. The leaf is --cert. Nothing is fetched."
+        ),
+    )
+    parser.add_argument(
         "--issuance-attestation",
         help="Path to JSON attestation for issuance controls (HSM/FIPS)",
     )
@@ -379,6 +411,14 @@ def _run_parsed(args: argparse.Namespace) -> int:
         return 2
 
 
+def _trust_scope_arguments(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "cli_trust_scope": args.trust_scope,
+        "cli_public_roots": args.public_trust_roots,
+        "chain_path": Path(args.chain) if args.chain else None,
+    }
+
+
 def _run_evaluate(args: argparse.Namespace) -> int:
     if args.cert and args.csr:
         raise ValueError("evaluate accepts exactly one of --cert or --csr, not both.")
@@ -405,6 +445,7 @@ def _run_evaluate(args: argparse.Namespace) -> int:
         require_signed_waivers=args.require_signed_waivers or None,
         evaluated_at=args.as_of,
         input_kind="csr" if args.csr else None,
+        **_trust_scope_arguments(args),
     )
     if args.output == "json":
         print(json.dumps(report.to_dict(), indent=2))
@@ -464,6 +505,13 @@ def _print_report(
         print(f"Evaluated at: {report.evaluated_at}")
     if report.verdict_digest:
         print(f"Verdict digest: {report.verdict_digest}")
+    if isinstance(report.trust_scope, dict):
+        print(
+            f"Trust scope: {report.trust_scope.get('effective')} "
+            f"(requested {report.trust_scope.get('requested')}, "
+            f"source {report.trust_scope.get('source')})"
+        )
+        print(f"Trust scope reason: {report.trust_scope.get('reason')}")
 
     findings = ", ".join(
         f"{severity}={report.findings.get(severity, 0)}"
@@ -590,6 +638,7 @@ def _run_heal(args: argparse.Namespace) -> int:
         issuer_cert_path=Path(args.issuer_cert) if args.issuer_cert else None,
         waiver_path=Path(args.waiver_file) if args.waiver_file else None,
         require_signed_waivers=args.require_signed_waivers or None,
+        **_trust_scope_arguments(args),
     )
 
     assurance = ComplianceAssuranceAgent().run({"report": healed_report.to_dict()})

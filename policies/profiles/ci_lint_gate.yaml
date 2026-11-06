@@ -99,3 +99,7 @@ crypto_transition:
     - "sha256"
     - "sha384"
     - "sha512"
+
+trust:
+  scope: public
+  public_roots: ""

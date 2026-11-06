@@ -18,6 +18,7 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `opa`
 - `issuance`
 - `crypto_transition`
+- `trust`
 
 ## Key fields
 
@@ -51,5 +52,14 @@ The compliance engine behavior is controlled by `cabf_policy.yaml`.
 - `crypto_transition.target_max_validity_days` (`int`)
 - `crypto_transition.target_min_rsa_bits` (`int`)
 - `crypto_transition.approved_signature_algorithms` (`list[str]`)
+- `trust.scope` (`public`, `private`, or `auto`; default `public`)
+- `trust.public_roots` (`str`, file or directory path; empty means unset)
+
+`trust.scope` selects which CA/B Forum public-TLS controls are assessed.
+`public` assesses them. `private` reports them as `not_applicable`. `auto`
+selects `private` only when a supplied chain verifies offline to a root that
+is not in `trust.public_roots` (or `--public-trust-roots`). An explicit
+`--trust-scope` overrides this key. Nothing is fetched. See the README
+section "Trust scope".
 
 The loader performs validation and raises an explicit error when required keys are missing or typed incorrectly.

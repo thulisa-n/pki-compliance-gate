@@ -211,6 +211,29 @@ def test_main_cli_paths_make_no_outbound_attempt(
         if argv[:2] == ["--mode", "apisec"]:
             assert code == 2, argv
 
+    roots = tmp_path / "public-roots.txt"
+    roots.write_text("ab" * 32 + "\n", encoding="utf-8")
+    auto = _invoke(
+        [
+            "--cert",
+            str(CERT),
+            *common,
+            "--trust-scope",
+            "auto",
+            "--chain",
+            str(CERT),
+            "--public-trust-roots",
+            str(roots),
+            "--report",
+            str(tmp_path / "auto.json"),
+            "--evidence-dir",
+            str(tmp_path / "auto-evidence"),
+            "--output",
+            "json",
+        ]
+    )
+    assert auto == 0
+
     assert attempts == []
 
 

@@ -150,3 +150,11 @@ crypto_transition:
 
 governance:
   require_signed_waivers: false
+
+# public: assess CA/B Forum public-TLS controls.
+# private: report those controls as not_applicable.
+# auto: private only when a supplied chain verifies to a root that is not in
+# public_roots. Unclear results stay public. Nothing is fetched.
+trust:
+  scope: public
+  public_roots: ""

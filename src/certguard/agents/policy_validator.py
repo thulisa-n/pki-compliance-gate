@@ -6,6 +6,27 @@ from typing import Any
 from certguard.agents.base import BaseAgent
 from certguard.controls import CONTROL_POLICY_PATHS, registry_from_metadata
 from certguard.models import AgentResult, CheckResult, Status
+from certguard.trust_scope import PUBLIC_TLS_NA_REASON
+
+#: CA/B Forum Baseline Requirements and Certificate Transparency controls that
+#: apply to publicly-trusted TLS. Private trust scope reports every name in
+#: this set as ``not_applicable``.
+#:
+#: Kept in force for every trust scope: expiry and renewal window, SAN, EKU,
+#: key algorithm, key size, curves, signature algorithm and signature OID,
+#: RFC 5280 structure, issuance attestation, and the crypto-transition overlay.
+#: Those are either RFC 5280 structure, cryptographic hygiene, or an opt-in
+#: local profile rather than a public-TLS Baseline Requirements control.
+PUBLIC_TLS_ONLY_CONTROLS: frozenset[str] = frozenset(
+    {
+        "validity_days",
+        "internal_domain_check",
+        "serial_entropy",
+        "sct_presence",
+        "dcv_method",
+        "dcv_recency",
+    }
+)
 
 #: Controls that can be assessed from a CSR. Issued-certificate facts
 #: (validity window, serial, SCT, path profile) are recorded as
@@ -25,6 +46,10 @@ CSR_APPLICABLE_CONTROLS: frozenset[str] = frozenset(
 CSR_NA_DETAILS = (
     "Not assessed on a CSR: this control requires an issued certificate."
 )
+
+
+def _trust_scope_is_private(trust_scope: Any) -> bool:
+    return isinstance(trust_scope, dict) and trust_scope.get("effective") == "private"
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
@@ -306,6 +331,19 @@ class PolicyValidatorAgent(BaseAgent):
                 check
                 if check.name in CSR_APPLICABLE_CONTROLS
                 else self._na(check.name, CSR_NA_DETAILS)
+                for check in checks
+            ]
+
+        if _trust_scope_is_private(context.get("trust_scope")):
+            checks = [
+                self._na(
+                    check.name,
+                    PUBLIC_TLS_NA_REASON,
+                    policy_value=check.policy_value,
+                    actual_value=check.actual_value,
+                )
+                if check.name in PUBLIC_TLS_ONLY_CONTROLS
+                else check
                 for check in checks
             ]
 

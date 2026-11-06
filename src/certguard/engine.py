@@ -21,6 +21,7 @@ from certguard.evaluation_time import resolve_evaluated_at
 from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy, policy_digest
 from certguard.rego import render_validity_rego
+from certguard.trust_scope import PUBLIC_TLS_NA_REASON, decide_trust_scope
 
 
 class ComplianceGateEngine:
@@ -44,6 +45,9 @@ class ComplianceGateEngine:
         evidence_signing_key: str | None = None,
         evaluated_at: datetime | str | None = None,
         input_kind: str | None = None,
+        cli_trust_scope: str | None = None,
+        cli_public_roots: str | None = None,
+        chain_path: Path | None = None,
     ) -> tuple[bool, ComplianceReport]:
         report, artifacts = self.assess(
             cert_path=cert_path,
@@ -54,6 +58,9 @@ class ComplianceGateEngine:
             require_signed_waivers=require_signed_waivers,
             evaluated_at=evaluated_at,
             input_kind=input_kind,
+            cli_trust_scope=cli_trust_scope,
+            cli_public_roots=cli_public_roots,
+            chain_path=chain_path,
         )
         self.persist(
             report=report,
@@ -76,6 +83,9 @@ class ComplianceGateEngine:
         require_signed_waivers: bool | None = None,
         evaluated_at: datetime | str | None = None,
         input_kind: str | None = None,
+        cli_trust_scope: str | None = None,
+        cli_public_roots: str | None = None,
+        chain_path: Path | None = None,
     ) -> tuple[ComplianceReport, dict[str, Any]]:
         """Evaluate without writing files.
 
@@ -107,6 +117,15 @@ class ComplianceGateEngine:
                 raise ValueError("; ".join(issuer_result.errors))
             issuer_parser_data = issuer_result.data
 
+        trust_scope = decide_trust_scope(
+            self.policy,
+            leaf_path=cert_path,
+            cli_scope=cli_trust_scope,
+            cli_public_roots=cli_public_roots,
+            chain_path=chain_path,
+            evaluated_at=evaluated_at_dt,
+            input_kind=str(parser_result.data.get("input_kind") or "certificate"),
+        )
         policy_result = self.policy_agent.run(
             {
                 "policy": self.policy,
@@ -114,6 +133,7 @@ class ComplianceGateEngine:
                 "dcv_attestation": dcv_attestation,
                 "issuer_parser_data": issuer_parser_data,
                 "issuance_attestation": issuance_attestation,
+                "trust_scope": trust_scope.to_dict(),
             }
         )
         opa_result = (
@@ -126,7 +146,9 @@ class ComplianceGateEngine:
                 },
             }
             if parser_result.data.get("input_kind") == "csr"
-            else self._run_opa_if_enabled(parser_result.data)
+            else self._run_opa_if_enabled(
+                parser_result.data, trust_scope=trust_scope.to_dict()
+            )
         )
         policy_checks = list(policy_result.checks)
         if opa_result["check"] is not None:
@@ -162,6 +184,7 @@ class ComplianceGateEngine:
             parser_data=parser_result.data,
             lint=lint_result,
             policy_version=self.policy.get("metadata", {}).get("version", "unknown"),
+            trust_scope=trust_scope.to_dict(),
         )
         artifacts = {
             "policy_checks": policy_checks,
@@ -402,7 +425,11 @@ class ComplianceGateEngine:
 
         return True, "Decision log integrity verified."
 
-    def _run_opa_if_enabled(self, parser_data: dict[str, Any]) -> dict[str, Any]:
+    def _run_opa_if_enabled(
+        self,
+        parser_data: dict[str, Any],
+        trust_scope: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         opa_cfg = self.policy.get("opa", {})
         if not opa_cfg.get("enabled", False):
             return {
@@ -411,6 +438,26 @@ class ComplianceGateEngine:
                 "summary": {
                     "status": "skipped",
                     "details": "OPA policy evaluation disabled in policy.",
+                },
+            }
+        # The generated gate repeats certificate.max_validity_days, which is a
+        # CA/B Forum public-TLS limit. Private trust scope does not run it.
+        if isinstance(trust_scope, dict) and trust_scope.get("effective") == "private":
+            return {
+                "check": CheckResult(
+                    name="opa_policy_gate",
+                    status="not_applicable",
+                    details=PUBLIC_TLS_NA_REASON,
+                    rule_id="OPA-POLICY",
+                    category="POLICY",
+                    severity="high",
+                    standard_reference="OPA/Rego policy-as-code",
+                ),
+                "rego": None,
+                "summary": {
+                    "status": "not_applicable",
+                    "details": PUBLIC_TLS_NA_REASON,
+                    "source": "certificate.max_validity_days",
                 },
             }
 

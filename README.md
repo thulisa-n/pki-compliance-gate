@@ -8,7 +8,7 @@
 
 **Neakam** (PKI Compliance Gate) evaluates an X.509 certificate (or CSR)
 against a YAML policy and returns a CI exit code plus evidence. It is not a
-linter and not a path validator. Use [zlint](https://github.com/zmap/zlint) for
+linter and not a full path validator. Use [zlint](https://github.com/zmap/zlint) for
 RFC/BR encoding lint, `openssl verify` for chain and revocation, and this gate
 for *this profile in this pipeline*. See [docs/COMPARE.md](docs/COMPARE.md).
 
@@ -88,6 +88,7 @@ neakam --csr tests/certificates/csrs/weak_key.csr
 - **Key material**: RSA >= 2048; ECDSA >= 256 bits on P-256/P-384/P-521 only; RSA and EC are the only permitted algorithms.
 - **Signature**: no SHA-1 or MD5; AlgorithmIdentifier allowlist on.
 - **Identity**: SAN required; internal DNS suffixes blocked (`.local`, `.internal`, `.intranet`); serial entropy on.
+- **Trust scope**: `public` (`trust.scope`). CA/B Forum controls that apply only to publicly-trusted TLS are assessed. `private` and `auto` report those controls as `not_applicable`. See [Trust scope](#trust-scope).
 - **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, SCT presence, EKU profile, OPA/Rego gate, zlint and `openssl asn1parse`.
 - **API TLS posture** (`--mode apisec --allow-network --endpoint https://example.com`): live TLS version, weak-cipher, expiry and certificate checks. Off unless `--allow-network` is set. The check contacts only that host, times out, and does not follow redirects.
 
@@ -129,11 +130,63 @@ counted as a pass.
 
 Stated plainly so the matrix above is not mistaken for full BR conformance.
 None of the following are implemented: revocation checking (CRL/OCSP), OCSP
-must-staple, chain building and full path validation, CN-in-SAN consistency,
+must-staple, full RFC 5280 path validation, CN-in-SAN consistency,
 wildcard placement rules, and reserved or internal **IP addresses** in SANs
 (only DNS suffixes are checked). SCT presence, EKU profiles, and serial-number
 entropy exist as policy controls; SCT and EKU stay **off** on the default
-profile.
+profile. Trust scope `auto` walks a supplied chain to one self-signed CA root.
+It does not fetch certificates and it does not check revocation.
+
+## Trust scope
+
+The gate supports three trust scopes for CA/B Forum controls that apply only
+to publicly-trusted TLS. The default is `public`, so a run that sets neither
+the flag nor the policy key keeps the current results.
+
+| Input | Values |
+| :--- | :--- |
+| CLI | `--trust-scope {public,private,auto}` |
+| Policy | `trust.scope` (same three values) |
+
+An explicit `--trust-scope` overrides `trust.scope`. When the flag is omitted
+and the policy key is omitted, the scope is `public` (`source: default`).
+
+| Scope | What the engine does |
+| :--- | :--- |
+| `public` | Assesses the public-TLS controls. |
+| `private` | Reports those controls as `not_applicable`. The control detail is `CA/B Forum Baseline Requirements apply to publicly-trusted TLS; trust scope is private`. |
+| `auto` | `private` only when `--chain` verifies offline to a single self-signed CA root and that root's SPKI SHA-256 is **not** in the public-trust root set. Otherwise `public`, and the report states why. |
+
+The public-trust root set is `--public-trust-roots`, or `trust.public_roots`
+when the flag is omitted. It is a file or a directory of PEM or DER root
+certificates, or of SPKI SHA-256 hashes (`hex`, `sha256:<hex>`, or
+`sha256/<base64>`). An explicit `--public-trust-roots` overrides the policy
+path. The gate reads only that local path. It does not fetch roots,
+certificates, or revocation data.
+
+`auto` stays `public` when any of these is true: no chain, no root set, an
+empty or unreadable root set, a chain that does not verify, more than one
+issuer candidate, a loop, an issuer that is not a CA, an issuer or root
+outside its validity window, or a CSR.
+
+Public-TLS-only controls:
+
+- `validity_days` (BR 6.3.2 maximum validity)
+- `internal_domain_check` (BR 7.1.4.2.1 internal names)
+- `serial_entropy` (BR 7.1 serial entropy)
+- `sct_presence` (Certificate Transparency)
+- `dcv_method` and `dcv_recency` (BR 3.2.2.4 and 4.2.1)
+- the optional OPA validity gate, which repeats `certificate.max_validity_days`
+
+These stay in force for every trust scope: expiry and renewal window, SAN,
+EKU, key size, curves, signature algorithms (including the OID allowlist),
+RFC 5280 structure, issuance attestation, and the crypto-transition overlay.
+zlint and `openssl asn1parse`, when the policy enables them, are unchanged.
+
+JSON (`trust_scope`), text output, the reviewer summary, the job summary, and
+SARIF run properties (`trustScope`) record `requested`, `effective`, `source`,
+and `reason`. The verdict digest includes that decision and omits filesystem
+paths.
 
 ### Evidence and integrity
 

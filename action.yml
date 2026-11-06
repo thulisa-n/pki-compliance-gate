@@ -56,6 +56,26 @@ inputs:
       readiness/watch schedule dates. Pin this for a reproducible verdict_digest.
     required: false
     default: ''
+  trust-scope:
+    description: >-
+      public, private, or auto. Overrides policy trust.scope when set.
+      private reports CA/B Forum public-TLS controls as not_applicable.
+      auto selects private only from a local chain and public-trust root set.
+      Nothing is fetched.
+    required: false
+    default: ''
+  public-trust-roots:
+    description: >-
+      File or directory of public-trust root certificates or SPKI SHA-256 hashes.
+      Used with trust-scope auto. Nothing is fetched.
+    required: false
+    default: ''
+  chain:
+    description: >-
+      PEM bundle or directory of intermediate and root certificates for
+      trust-scope auto. Nothing is fetched.
+    required: false
+    default: ''
 
 outputs:
   exit_code:
@@ -103,6 +123,9 @@ runs:
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         INPUT_FAIL_ON_WAIVED: ${{ inputs.fail-on-waived }}
         INPUT_AS_OF: ${{ inputs.as-of }}
+        INPUT_TRUST_SCOPE: ${{ inputs.trust-scope }}
+        INPUT_PUBLIC_TRUST_ROOTS: ${{ inputs.public-trust-roots }}
+        INPUT_CHAIN: ${{ inputs.chain }}
       run: |
         policy="${INPUT_POLICY:-${{ github.action_path }}/policies/cabf_policy.yaml}"
         args=(
@@ -141,6 +164,15 @@ runs:
         fi
         if [ -n "$INPUT_AS_OF" ]; then
           args+=(--as-of "$INPUT_AS_OF")
+        fi
+        if [ -n "$INPUT_TRUST_SCOPE" ]; then
+          args+=(--trust-scope "$INPUT_TRUST_SCOPE")
+        fi
+        if [ -n "$INPUT_PUBLIC_TRUST_ROOTS" ]; then
+          args+=(--public-trust-roots "$INPUT_PUBLIC_TRUST_ROOTS")
+        fi
+        if [ -n "$INPUT_CHAIN" ]; then
+          args+=(--chain "$INPUT_CHAIN")
         fi
 
         set +e
