@@ -65,6 +65,20 @@ def test_security_scans_fail_on_medium() -> None:
     assert "requirements-dev.txt" in text
 
 
+def test_compliance_cosign_uses_the_bundle_and_checks_identity() -> None:
+    """New cosign writes only a bundle. Verification must not expect .crt or .sig."""
+    text = (WORKFLOWS / "compliance.yml").read_text(encoding="utf-8")
+    assert "--output-certificate" not in text
+    assert "--output-signature" not in text
+    assert "release_provenance.cosign.crt" not in text
+    assert "release_provenance.cosign.sig" not in text
+    assert "--bundle reports/release_provenance.cosign.bundle" in text
+    assert "--certificate-identity" in text
+    assert "--certificate-oidc-issuer https://token.actions.githubusercontent.com" in text
+    assert "--certificate " not in text
+    assert "--signature " not in text
+
+
 def test_workflows_do_not_echo_secrets() -> None:
     echo_secret = re.compile(r"echo\b.*secrets\.", re.I)
     for path, text in _workflow_text():

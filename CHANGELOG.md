@@ -36,6 +36,12 @@ This project follows [Semantic Versioning](https://semver.org/).
 - User-facing name in the CLI, output headers, and docs is Neakam. The import
   package remains `certguard`. The PyPI distribution name is unchanged.
 
+### Fixed
+
+- Keyless provenance signing writes the cosign bundle only. Verification uses
+  that bundle with the workflow OIDC identity and issuer. Separate certificate
+  and signature files are no longer produced.
+
 ## [0.2.5] - 2026-11-04
 
 ### Fixed
