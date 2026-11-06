@@ -53,7 +53,7 @@ class ReviewerSummaryAgent(BaseAgent):
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         checks = report.get("checks", [])
-        compliant = bool(report.get("compliant"))
+        policy_result = "PASS" if report.get("compliant") else "FAIL"
         cert = report.get("certificate", "unknown")
         generated_at = report.get("generated_at", "unknown")
         lint_status = (report.get("lint") or {}).get("status", "unknown")
@@ -63,7 +63,7 @@ class ReviewerSummaryAgent(BaseAgent):
             "",
             f"- Certificate: `{cert}`",
             f"- Generated At: `{generated_at}`",
-            f"- Final Result: `{'COMPLIANT' if compliant else 'NON-COMPLIANT'}`",
+            f"- Policy result: `{policy_result}`",
             f"- Lint Status: `{lint_status}`",
             f"- Risk Level: `{report.get('risk_level', 'unknown')}`",
             f"- Findings: `{_format_findings(report.get('findings'))}`",

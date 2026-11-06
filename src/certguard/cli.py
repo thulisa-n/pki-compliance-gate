@@ -270,7 +270,10 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Opt in to a live TLS connection for --mode apisec. "
             "Connects only to hosts named by --endpoint, with --network-timeout, "
-            "and does not follow redirects. Other modes ignore this flag."
+            "and does not follow redirects. If certificate verification fails, "
+            "one more connection to the same host and IP may read the presented "
+            "certificate with verification disabled. That certificate is not "
+            "trusted. Other modes ignore this flag."
         ),
     )
     parser.add_argument(
@@ -497,7 +500,7 @@ def _print_report(
     print("Neakam compliance gate")
     print("Certificate:" if report.input_kind != "csr" else "CSR:", report.certificate)
     print("Input:", report.input_kind)
-    print("Compliant:", "YES" if compliant else "NO")
+    print("Policy result:", "PASS" if compliant else "FAIL")
     print(f"Risk Level: {report.risk_level}")
     print(f"Engine Version: {report.engine_version}")
     print(f"Policy Version: {report.policy_version}")
@@ -642,7 +645,7 @@ def _run_heal(args: argparse.Namespace) -> int:
     )
 
     assurance = ComplianceAssuranceAgent().run({"report": healed_report.to_dict()})
-    print("Recheck compliant:", "YES" if compliant else "NO")
+    print("Policy result:", "PASS" if compliant else "FAIL")
     print("Assurance:", "YES" if assurance.success else "NO")
     print(f"Healed report written to {args.healed_report}")
     return 0 if (compliant and assurance.success) else 1
@@ -739,19 +742,65 @@ def _run_apisec(args: argparse.Namespace) -> int:
                 "allowed_hosts": allowed_hosts,
             }
         )
-        for error in result.errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        print("Agent:", result.agent)
-        print("Success:", "YES" if result.success else "NO")
-        print(f"Endpoint: {result.data.get('endpoint', endpoint)}")
-        print(f"TLS Version: {result.data.get('tls_version')}")
-        print(f"Cipher Suite: {result.data.get('cipher_suite')}")
-        print(f"Risk Level: {result.data.get('risk_level')}")
-        for check in result.checks:
-            print(f"- {check.name}: {check.status.upper()} ({check.details})")
-        if not result.success:
-            exit_code = 2
+        _print_apisec_result(result, endpoint)
+        exit_code = max(exit_code, _apisec_exit_code(result))
     return exit_code
+
+
+def _print_apisec_result(result: Any, endpoint: str) -> None:
+    """Text for one opted-in TLS check.
+
+    A finished evaluation prints ``Policy result``. An operational failure
+    (DNS, timeout, connection refused, and anything else that is not a
+    certificate finding) prints ``Status: ERROR`` and a defined risk level.
+    """
+    for error in result.errors:
+        print(f"ERROR: {error}", file=sys.stderr)
+    print("Agent:", result.agent)
+    print(f"Endpoint: {result.data.get('endpoint') or endpoint}")
+    operational = result.data.get("evaluation_status") == "error" or (
+        result.errors and not result.checks
+    )
+    tls_version = result.data.get("tls_version") or "unavailable"
+    cipher_suite = result.data.get("cipher_suite") or "unavailable"
+    risk_level = result.data.get("risk_level") or "UNKNOWN"
+    if operational:
+        print("Status: ERROR")
+        print(f"TLS Version: {tls_version}")
+        print(f"Cipher Suite: {cipher_suite}")
+        print(f"Risk Level: {risk_level}")
+        return
+    print("Policy result:", "PASS" if result.success else "FAIL")
+    print(f"TLS Version: {tls_version}")
+    print(f"Cipher Suite: {cipher_suite}")
+    print(f"Risk Level: {risk_level}")
+    inspection = result.data.get("certificate_inspection")
+    if inspection:
+        print(f"Certificate inspection: {inspection}")
+    for check in result.checks:
+        print(f"- {check.name}: {check.status.upper()} ({check.details})")
+
+
+def _apisec_exit_code(result: Any) -> int:
+    """Map one apisec result onto the documented exit codes.
+
+    Control findings use the evaluate-mode convention: 0 none, 1 low only,
+    2 medium or high, 3 critical. Operational errors use 2, the existing CLI
+    and input-error code. A result that has both uses the higher code.
+    ``Status: ERROR`` distinguishes an operational exit 2 from a high finding.
+    """
+    failed = [check for check in result.checks if check.status == "fail"]
+    finding = 0
+    if failed:
+        severities = {(check.severity or "medium").lower() for check in failed}
+        if "critical" in severities:
+            finding = 3
+        elif "high" in severities or "medium" in severities:
+            finding = 2
+        else:
+            finding = 1
+    operational = 2 if result.errors else 0
+    return max(finding, operational)
 
 
 def _run_signals(args: argparse.Namespace) -> int:

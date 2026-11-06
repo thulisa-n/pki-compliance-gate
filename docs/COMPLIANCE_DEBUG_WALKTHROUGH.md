@@ -70,5 +70,5 @@ python src/main.py --mode heal \
 Expected:
 
 - remediation plan generated
-- healed state marked compliant
+- healed state reports Policy result: PASS
 - assurance check passes

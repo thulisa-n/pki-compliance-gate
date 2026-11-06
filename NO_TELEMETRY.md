@@ -20,11 +20,12 @@ neakam --mode apisec --allow-network --endpoint https://api.example.com
 
 That check:
 
-- opens one TLS connection to each host you list with `--endpoint` (repeat the flag to list more than one)
+- opens a TLS connection to each host you list with `--endpoint` (repeat the flag to list more than one)
 - uses a timeout (`--network-timeout`, default 10 seconds, maximum 30)
 - reads the peer certificate, negotiated TLS version, and cipher suite
 - does not follow redirects to any other host, and does not speak HTTP
 - does not send certificate contents, policy, or a telemetry payload anywhere
+- if certificate verification fails, may open one more connection to the same host and the same IP, with verification disabled, and only to read the presented certificate (expiry, key size, and signature algorithm). The name is not resolved again. That certificate is not trusted.
 
 `--allow-network` does nothing in other modes. Passing it with `--cert` does
 not open a connection.

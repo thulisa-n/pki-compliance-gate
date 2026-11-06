@@ -121,7 +121,7 @@ def to_sarif(
     invocation: dict[str, Any] = {
         "executionSuccessful": report.compliant,
         "exitCodeDescription": (
-            "0 compliant; 1 low-severity only; 2 medium/high or lint failure; "
+            "0 no failing checks; 1 low-severity only; 2 medium/high or lint failure; "
             "3 critical failure"
         ),
     }

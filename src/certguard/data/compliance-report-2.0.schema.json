@@ -30,6 +30,11 @@
     "generated_at": { "type": "string", "minLength": 1 },
     "evaluated_at": { "type": "string" },
     "compliant": { "type": "boolean" },
+    "policy_result": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"],
+      "description": "PASS when compliant is true, FAIL otherwise. Additive alias; compliant remains."
+    },
     "risk_level": { "type": "string" },
     "verdict_digest": {
       "type": "string",

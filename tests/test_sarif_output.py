@@ -64,6 +64,8 @@ def test_compliant_certificate_yields_no_results(
     assert compliant is True
     assert log["runs"][0]["results"] == []
     assert log["runs"][0]["invocations"][0]["executionSuccessful"] is True
+    description = log["runs"][0]["invocations"][0]["exitCodeDescription"]
+    assert "compliant" not in description.lower()
 
 
 def test_passes_and_not_applicable_never_become_findings(

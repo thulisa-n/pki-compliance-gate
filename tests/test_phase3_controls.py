@@ -50,5 +50,6 @@ def test_reviewer_summary_agent_writes_markdown(tmp_path: Path) -> None:
     assert result.success is True
     content = output_path.read_text(encoding="utf-8")
     assert "Compliance Summary" in content
-    assert "COMPLIANT" in content
+    assert "Policy result: `PASS`" in content
+    assert "COMPLIANT" not in content
     assert "validity_days" in content

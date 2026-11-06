@@ -145,6 +145,8 @@ def test_report_records_engine_and_schema_version(
 
     assert payload["engine_version"] == __version__
     assert payload["report_schema_version"] == REPORT_SCHEMA_VERSION
+    assert payload["compliant"] is True
+    assert payload["policy_result"] == "PASS"
     assert payload["policy_version"]
     assert payload["verdict_digest"]
     assert payload["input_kind"] == "certificate"

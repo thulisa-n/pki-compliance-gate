@@ -47,6 +47,7 @@ class TrendSnapshotAgent(BaseAgent):
             "trigger": trigger,
             "certificate": report.get("certificate"),
             "compliant": bool(report.get("compliant")),
+            "policy_result": "PASS" if report.get("compliant") else "FAIL",
             "risk_level": report.get("risk_level"),
             "findings": report.get("findings"),
             "coverage": report.get("coverage"),

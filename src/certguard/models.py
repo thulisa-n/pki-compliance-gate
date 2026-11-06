@@ -180,6 +180,8 @@ class ComplianceReport:
             "evaluated_at": self.evaluated_at,
             "verdict_digest": self.verdict_digest,
             "compliant": self.compliant,
+            # Alias for customers. ``compliant`` stays for existing readers.
+            "policy_result": "PASS" if self.compliant else "FAIL",
             "risk_level": self.risk_level,
             "findings": self.findings,
             "coverage": self.coverage,
