@@ -7,6 +7,7 @@
   "evaluated_at": "2026-06-01T00:00:00+00:00",
   "verdict_digest": "311e25d57cd0d27e57e545045979d4f6e373792d39db9efed8db2d9a523a7532",
   "compliant": false,
+  "policy_result": "FAIL",
   "risk_level": "HIGH",
   "findings": {
     "critical": 3,

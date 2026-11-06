@@ -31,7 +31,8 @@ def test_summary_states_verdict_risk_and_coverage(
     _, report = _evaluate(make_cert(key="ec192"), tmp_path)
     markdown = github_output.render_job_summary(report, policy_path=POLICY_PATH)
 
-    assert "NON-COMPLIANT" in markdown
+    assert "**Policy result:** FAIL" in markdown
+    assert "COMPLIANT" not in markdown
     assert "**Risk:** HIGH" in markdown
     assert "of 29 controls evaluated" in markdown
     assert "ec_curve_allowed" in markdown

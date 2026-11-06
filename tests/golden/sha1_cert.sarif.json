@@ -887,7 +887,7 @@
       "invocations": [
         {
           "executionSuccessful": false,
-          "exitCodeDescription": "0 compliant; 1 low-severity only; 2 medium/high or lint failure; 3 critical failure",
+          "exitCodeDescription": "0 no failing checks; 1 low-severity only; 2 medium/high or lint failure; 3 critical failure",
           "properties": {
             "policy": "policies/cabf_policy.yaml"
           }

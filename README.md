@@ -90,7 +90,7 @@ neakam --csr tests/certificates/csrs/weak_key.csr
 - **Identity**: SAN required; internal DNS suffixes blocked (`.local`, `.internal`, `.intranet`); serial entropy on.
 - **Trust scope**: `public` (`trust.scope`). CA/B Forum controls that apply only to publicly-trusted TLS are assessed. `private` and `auto` report those controls as `not_applicable`. See [Trust scope](#trust-scope).
 - **Optional overlays** (off by default): DCV attestation, RFC 5280 extension and path profile, HSM/FIPS issuance attestation, crypto-transition targets, SCT presence, EKU profile, OPA/Rego gate, zlint and `openssl asn1parse`.
-- **API TLS posture** (`--mode apisec --allow-network --endpoint https://example.com`): live TLS version, weak-cipher, expiry and certificate checks. Off unless `--allow-network` is set. The check contacts only that host, times out, and does not follow redirects.
+- **API TLS posture** (`--mode apisec --allow-network --endpoint https://example.com`): live TLS version, weak-cipher, expiry and certificate checks. Off unless `--allow-network` is set. The check contacts only that host, times out, and does not follow redirects. A certificate verification failure (expired, not yet valid, hostname mismatch, self-signed, or unknown issuer / incomplete chain) is a finding on `endpoint_certificate_trust`, not a tool error. Neakam may then open one more connection to the same host and IP, with verification disabled, only to read expiry, key size, and signature algorithm. That certificate is not trusted. DNS failure, timeout, and connection refused stay errors.
 
 ### Coverage matrix
 
@@ -205,6 +205,14 @@ CI on `push` to `main`.
 - `2`: medium/high failures, lint failure, or CLI usage/input errors
 - `3`: at least one critical check failure
 
+`neakam --mode apisec` uses the same codes for control findings. A certificate
+verification failure is a high-severity finding, so it exits `2` (or `3` when a
+critical control, such as a SHA-1 signature, also fails). DNS failure, timeout,
+and connection refused are operational errors. They use exit code `2`, the
+existing code for CLI and input errors, and the text says `Status: ERROR` with
+`Risk Level: UNKNOWN`. `Policy result: FAIL` is an evaluation that found
+failures. `Status: ERROR` means the endpoint was not evaluated.
+
 `--fail-on-waived` counts waived findings as failures, for audit runs where an
 approved exception must still block.
 
@@ -217,9 +225,9 @@ now carry `findings` bucketed by severity and a `coverage` block stating how
 much was actually assessed:
 
 ```text
-Compliant: NO
+Policy result: FAIL
 Risk Level: HIGH
-Findings: critical=2
+Control findings: critical=2
 Coverage: 12 of 29 controls evaluated (10 pass, 2 fail, 0 waived, 17 not applicable)
 ```
 
@@ -265,10 +273,10 @@ below: first-class modes make a decision, derived helpers only render one.
 | :--- | :--- | :--- |
 | `evaluate` | `neakam --cert server.crt` | Full policy evaluation of a certificate or CSR. |
 | `triage` | `neakam --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
-| `assure` | `neakam --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag matches checks and lint. |
+| `assure` | `neakam --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag (and `policy_result`) matches checks and lint. |
 | `watch` | `neakam --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
 | `heal` | `neakam --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
-| `apisec` | `neakam --mode apisec --allow-network --endpoint https://example.com` | Opt-in live TLS posture check of the host you list. |
+| `apisec` | `neakam --mode apisec --allow-network --endpoint https://example.com` | Opt-in live TLS posture check of the host you list. Certificate verification failures are findings. |
 | `signals` | `neakam --mode signals` | Reads curated external signals JSON and writes recommendations. |
 | `readiness` | `neakam --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
 

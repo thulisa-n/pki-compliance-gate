@@ -7,6 +7,7 @@
   "evaluated_at": "2026-06-01T00:00:00+00:00",
   "verdict_digest": "0dcfb01466ec0dd2126c0548dd4bf83e5e8371f415141b8b85a982806e0c931c",
   "compliant": true,
+  "policy_result": "PASS",
   "risk_level": "LOW",
   "findings": {
     "critical": 0,

@@ -79,7 +79,7 @@ inputs:
 
 outputs:
   exit_code:
-    description: 'Compliance gate status code (0: compliant, 1: low, 2: med/high, 3: critical)'
+    description: 'Gate status code (0: pass, 1: low, 2: medium/high or usage error, 3: critical)'
     value: ${{ steps.gate.outputs.exit_code }}
   report_path:
     description: 'Path to generated JSON compliance report'
@@ -88,7 +88,7 @@ outputs:
     description: 'Path to generated SARIF file, empty when SARIF output is disabled'
     value: ${{ steps.gate.outputs.sarif_path }}
   compliant:
-    description: 'true when no controls failed'
+    description: 'true when no controls failed (JSON field name kept for compatibility)'
     value: ${{ steps.gate.outputs.compliant }}
   risk_level:
     description: 'LOW, MEDIUM or HIGH'

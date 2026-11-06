@@ -8,6 +8,58 @@ from types import SimpleNamespace
 from certguard.cli import _exit_code_from_report
 
 
+def test_text_output_says_policy_result(tmp_path: Path) -> None:
+    report_file = tmp_path / "report.json"
+    evidence_dir = tmp_path / "evidence"
+    process = subprocess.run(
+        [
+            sys.executable,
+            "src/main.py",
+            "--cert",
+            "tests/golden/frozen_valid.pem",
+            "--policy",
+            "policies/cabf_policy.yaml",
+            "--as-of",
+            "2026-06-01",
+            "--output",
+            "text",
+            "--report",
+            str(report_file),
+            "--evidence-dir",
+            str(evidence_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert process.returncode == 0, process.stderr
+    assert "Policy result: PASS" in process.stdout
+    assert "Compliant:" not in process.stdout
+
+    rejected = subprocess.run(
+        [
+            sys.executable,
+            "src/main.py",
+            "--cert",
+            "tests/certificates/sha1_cert.pem",
+            "--policy",
+            "policies/cabf_policy.yaml",
+            "--output",
+            "text",
+            "--report",
+            str(tmp_path / "sha1.json"),
+            "--evidence-dir",
+            str(tmp_path / "sha1-evidence"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode == 3, rejected.stderr
+    assert "Policy result: FAIL" in rejected.stdout
+    assert "Compliant:" not in rejected.stdout
+
+
 def test_exit_code_zero_for_compliant_fixture(tmp_path: Path) -> None:
     report_file = tmp_path / "report.json"
     evidence_dir = tmp_path / "evidence"

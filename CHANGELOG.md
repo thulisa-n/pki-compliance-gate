@@ -5,6 +5,26 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `neakam --mode apisec` reports a TLS certificate verification failure as a
+  finding, not a tool error. Expired, not-yet-valid, hostname mismatch,
+  self-signed, and unknown-issuer or incomplete-chain results fail
+  `endpoint_certificate_trust` (plus `endpoint_certificate_expiry` or
+  `endpoint_hostname_match` when those apply) at high risk. A second handshake
+  to the same vetted host and IP may read the presented certificate with
+  verification disabled, only to report expiry, key size, and signature
+  algorithm. That certificate is not trusted. DNS failure, timeout, and
+  connection refused stay errors, with `Status: ERROR` and
+  `Risk Level: UNKNOWN` (exit code 2, the existing CLI error code).
+
+### Changed
+
+- Human-readable text, Markdown, and the GitHub job summary (Markdown rendered
+  as HTML) say `Policy result: PASS` or `Policy result: FAIL`. JSON keeps
+  `compliant` and adds `policy_result`. SARIF field names are unchanged. The
+  SARIF exit-code description no longer uses the word "compliant".
+
 ## [0.2.6] - 2026-11-06
 
 ### Added

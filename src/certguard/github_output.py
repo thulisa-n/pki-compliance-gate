@@ -43,7 +43,7 @@ def render_job_summary(
     report: ComplianceReport, *, policy_path: str | Path | None = None
 ) -> str:
     """Markdown for `$GITHUB_STEP_SUMMARY`."""
-    verdict = "COMPLIANT" if report.compliant else "NON-COMPLIANT"
+    verdict = "PASS" if report.compliant else "FAIL"
     findings = ", ".join(
         f"{severity} {report.findings.get(severity, 0)}"
         for severity in SEVERITY_ORDER
@@ -54,7 +54,7 @@ def render_job_summary(
     lines = [
         "## Neakam compliance gate",
         "",
-        f"**Result:** {verdict} &nbsp;&nbsp; **Risk:** {report.risk_level}",
+        f"**Policy result:** {verdict} &nbsp;&nbsp; **Risk:** {report.risk_level}",
         "",
         "| | |",
         "| :--- | :--- |",
