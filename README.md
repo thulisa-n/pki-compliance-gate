@@ -4,7 +4,7 @@
 [![Security Scans](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml/badge.svg)](https://github.com/thulisa-n/pki-compliance-gate/actions/workflows/security-scans.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Release](https://img.shields.io/badge/release-v0.2.5-blue)
+![Release](https://img.shields.io/badge/release-v0.2.6-blue)
 
 **Neakam** (PKI Compliance Gate) evaluates an X.509 certificate (or CSR)
 against a YAML policy and returns a CI exit code plus evidence. It is not a
@@ -27,7 +27,7 @@ generated CP/CPS Section 7 documentation.
 
 ## Evaluate a certificate
 
-Pin an immutable release tag (there is no moving `v1` tag). `v0.2.5` is the
+Pin an immutable release tag (there is no moving `v1` tag). `v0.2.6` is the
 current source version.
 
 > **Upgrading from 0.1.x is a breaking change.** Expiry and EC key policy are
@@ -40,7 +40,7 @@ current source version.
 steps:
   - uses: actions/checkout@v4
   - name: Run PKI Compliance Gate
-    uses: thulisa-n/pki-compliance-gate@v0.2.5
+    uses: thulisa-n/pki-compliance-gate@v0.2.6
     with:
       cert: path/to/server.crt
       as-of: '2026-09-18'
@@ -49,7 +49,7 @@ steps:
 **PyPI**
 
 ```bash
-python3 -m pip install "pki-compliance-gate==0.2.5"
+python3 -m pip install "pki-compliance-gate==0.2.6"
 neakam --cert path/to/server.crt --as-of 2026-09-18
 ```
 
@@ -307,8 +307,8 @@ action.yml              Composite GitHub Action
 
 ## Distribution status
 
-The GitHub Action, wheel, and sdist are published from the `v0.2.5` tag.
-Install the CLI with `pip install pki-compliance-gate==0.2.5`, then run
+The GitHub Action, wheel, and sdist are published from the `v0.2.6` tag.
+Install the CLI with `pip install pki-compliance-gate==0.2.6`, then run
 `neakam`. The PyPI distribution name is still `pki-compliance-gate`; renaming
 that project, and applying the same product-name change in the private
 enterprise repository, are follow-ups. Later GitHub releases reuse

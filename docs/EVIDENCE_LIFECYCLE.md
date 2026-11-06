@@ -27,8 +27,6 @@ CI bundles evidence under a run-specific path:
 - `artifacts/<github_run_id>/sbom.cdx.json`
 - `artifacts/<github_run_id>/release_provenance.json`
 - `artifacts/<github_run_id>/release_provenance.json.digest`
-- `artifacts/<github_run_id>/release_provenance.cosign.sig`
-- `artifacts/<github_run_id>/release_provenance.cosign.crt`
 - `artifacts/<github_run_id>/release_provenance.cosign.bundle`
 - GitHub native attestation entry (repository Attestations tab) for `release_provenance.json`
 
@@ -64,5 +62,5 @@ This provides deterministic traceability from evidence to workflow execution con
    - `IDENTITY="$(cat release_provenance.identity.txt)"`
    - `gh attestation verify release_provenance.json --repo OWNER/REPO --cert-identity "$IDENTITY"`
 9. Verify release provenance via cosign keyless identity validation:
-   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate release_provenance.cosign.crt --signature release_provenance.cosign.sig --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$IDENTITY" release_provenance.json`
+   - `cosign verify-blob --bundle release_provenance.cosign.bundle --certificate-oidc-issuer https://token.actions.githubusercontent.com --certificate-identity "$IDENTITY" release_provenance.json`
 10. Record reviewer note in PR or issue using `compliance_summary.md`.

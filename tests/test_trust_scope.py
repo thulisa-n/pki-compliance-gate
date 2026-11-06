@@ -951,9 +951,9 @@ def test_docs_and_changelog_describe_trust_scope() -> None:
     assert "trust.scope" in policy_doc
     assert "--trust-scope" in policy_doc
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
-    assert "--trust-scope" in unreleased
-    assert "trust.scope" in unreleased
+    released = changelog.split("## [0.2.6]", 1)[1].split("\n## [", 1)[0]
+    assert "--trust-scope" in released
+    assert "trust.scope" in released
 
 
 def test_trust_scope_module_does_not_reference_the_network() -> None:

@@ -1,11 +1,11 @@
 {
   "report_schema_version": "2.0",
-  "engine_version": "0.2.5",
+  "engine_version": "0.2.6",
   "certificate": "tests/certificates/sha1_cert.pem",
   "input_kind": "certificate",
   "generated_at": "2026-06-01T00:00:00+00:00",
   "evaluated_at": "2026-06-01T00:00:00+00:00",
-  "verdict_digest": "9ff700d7bb4c87def7f4255d748bbfc032205ed1b8b74179f1791216d9ac0009",
+  "verdict_digest": "311e25d57cd0d27e57e545045979d4f6e373792d39db9efed8db2d9a523a7532",
   "compliant": false,
   "policy_result": "FAIL",
   "risk_level": "HIGH",
