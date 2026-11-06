@@ -103,6 +103,13 @@ SECTION_MAP: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (
         ),
     ),
     (
+        "Trust scope",
+        (
+            ("Trust scope", "trust.scope", "plain"),
+            ("Public-trust root set", "trust.public_roots", "path_or_unset"),
+        ),
+    ),
+    (
         "External policy engine",
         (
             ("OPA/Rego gate enabled", "opa.enabled", "bool"),
@@ -128,6 +135,7 @@ _FORMATTERS: dict[str, Callable[[Any], str]] = {
     "bool": lambda v: f"`{'REQUIRED' if v else 'not enforced'}`",
     "plain": lambda v: f"`{v}`",
     "code": lambda v: f"`{v}`",
+    "path_or_unset": lambda v: "`unset`" if not v else f"`{v}`",
     "list": lambda v: (
         ", ".join(f"`{item}`" for item in v) if v else "`none`"
     ),

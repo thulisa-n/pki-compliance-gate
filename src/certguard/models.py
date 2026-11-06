@@ -102,6 +102,7 @@ class ComplianceReport:
     input_kind: str = "certificate"
     evaluated_at: str | None = None
     verdict_digest: str | None = None
+    trust_scope: dict[str, Any] | None = None
 
     @classmethod
     def new(
@@ -112,6 +113,7 @@ class ComplianceReport:
         parser_data: dict[str, Any],
         lint: dict[str, Any],
         policy_version: str,
+        trust_scope: dict[str, Any] | None = None,
     ) -> ComplianceReport:
         failed_controls = [
             _control_summary(check) for check in checks if check.status == "fail"
@@ -161,6 +163,7 @@ class ComplianceReport:
             failed_controls=failed_controls,
             waived_controls=waived_controls,
             policy_version=policy_version,
+            trust_scope=trust_scope,
         )
         from certguard.verdict import verdict_digest
 
@@ -186,6 +189,7 @@ class ComplianceReport:
             "failed_controls": self.failed_controls,
             "waived_controls": self.waived_controls,
             "policy_version": self.policy_version,
+            "trust_scope": self.trust_scope,
         }
 
     def has_failures(self) -> bool:

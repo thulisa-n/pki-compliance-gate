@@ -26,6 +26,7 @@ def canonical_verdict(report: ComplianceReport) -> dict[str, Any]:
         "risk_level": report.risk_level,
         "findings": report.findings,
         "coverage": report.coverage,
+        "trust_scope": _trust_scope_digest(report),
         "checks": [
             {
                 "actual_value": check.actual_value,
@@ -37,6 +38,20 @@ def canonical_verdict(report: ComplianceReport) -> dict[str, Any]:
             }
             for check in sorted(report.checks, key=lambda item: item.name)
         ],
+    }
+
+
+def _trust_scope_digest(report: ComplianceReport) -> dict[str, Any] | None:
+    """Scope decision without filesystem paths, so the digest stays portable."""
+    scope = report.trust_scope
+    if not isinstance(scope, dict):
+        return None
+    return {
+        "effective": scope.get("effective"),
+        "reason": scope.get("reason"),
+        "requested": scope.get("requested"),
+        "root_spki_sha256": scope.get("root_spki_sha256"),
+        "source": scope.get("source"),
     }
 
 

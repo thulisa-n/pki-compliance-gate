@@ -103,6 +103,8 @@ _REQUIRED_KEYS: tuple[tuple[str, str, type], ...] = (
     ("crypto_transition", "target_max_validity_days", int),
     ("crypto_transition", "target_min_rsa_bits", int),
     ("crypto_transition", "approved_signature_algorithms", list),
+    ("trust", "scope", str),
+    ("trust", "public_roots", str),
 )
 
 _STRING_LISTS: tuple[tuple[str, str], ...] = (
@@ -137,6 +139,10 @@ def _validate_policy(policy: dict[str, Any]) -> None:
             raise PolicyValidationError(f"Missing required policy section: {section}")
         if not isinstance(policy[section], dict):
             raise PolicyValidationError(f"Policy section '{section}' must be an object.")
+
+    trust_section = policy.get("trust")
+    if not isinstance(trust_section, dict):
+        raise PolicyValidationError("Policy section 'trust' must be an object.")
 
     for section, key, expected_type in _REQUIRED_KEYS:
         _require_key_type(policy[section], key, expected_type, section)
@@ -177,6 +183,11 @@ def _validate_policy(policy: dict[str, Any]) -> None:
         raise PolicyValidationError(
             "Policy key 'certificate.warn_if_expires_within_days' must be zero "
             "(disabled) or a positive number of days."
+        )
+
+    if policy["trust"]["scope"] not in {"public", "private", "auto"}:
+        raise PolicyValidationError(
+            "Policy key 'trust.scope' must be one of: public, private, auto."
         )
 
 
@@ -260,6 +271,20 @@ def _apply_defaults(policy: dict[str, Any]) -> None:
     policy["crypto_transition"].setdefault(
         "approved_signature_algorithms", ["sha256", "sha384", "sha512"]
     )
+
+    trust_section = policy.get("trust")
+    if isinstance(trust_section, dict):
+        explicit_scope = "scope" in trust_section
+        trust_section.setdefault("scope", "public")
+        trust_section.setdefault("public_roots", "")
+    elif trust_section is None:
+        explicit_scope = False
+        policy["trust"] = {"scope": "public", "public_roots": ""}
+    else:
+        # Leave a non-object section for validation to reject.
+        explicit_scope = False
+    policy.setdefault("_meta", {})
+    policy["_meta"]["trust_scope_explicit"] = explicit_scope
 
 
 def _require_key_type(

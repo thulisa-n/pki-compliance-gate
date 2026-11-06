@@ -913,6 +913,15 @@
           "failed": 0,
           "waived": 0,
           "not_applicable": 18
+        },
+        "trustScope": {
+          "requested": "public",
+          "effective": "public",
+          "source": "policy",
+          "reason": "trust scope is public; CA/B Forum Baseline Requirements for publicly-trusted TLS are assessed",
+          "public_roots": null,
+          "chain": null,
+          "root_spki_sha256": null
         }
       }
     }

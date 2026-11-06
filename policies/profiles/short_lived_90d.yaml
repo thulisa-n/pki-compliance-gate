@@ -95,3 +95,7 @@ opa:
 issuance:
   require_hsm_attestation: true
   min_fips_level: 2
+
+trust:
+  scope: public
+  public_roots: ""

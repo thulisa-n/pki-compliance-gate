@@ -66,6 +66,13 @@ def render_job_summary(
         f"| Lint | {report.lint.get('status', 'unknown')} |",
         f"| Policy | `{policy_path or 'unknown'}` (v{report.policy_version}) |",
         f"| Engine | {report.engine_version} |",
+    ]
+    if isinstance(report.trust_scope, dict):
+        lines.append(
+            f"| Trust scope | {report.trust_scope.get('effective', '')} "
+            f"(requested {report.trust_scope.get('requested', '')}) |"
+        )
+    lines += [
         "",
     ]
 
@@ -99,8 +106,7 @@ def render_job_summary(
     if not_applicable:
         lines += [
             "<details><summary>"
-            f"{len(not_applicable)} control(s) defined but not enabled by this "
-            "policy (not assessed, never counted as a pass)"
+            f"{len(not_applicable)} control(s) not assessed, never counted as a pass"
             "</summary>",
             "",
         ]

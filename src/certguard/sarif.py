@@ -154,6 +154,7 @@ def to_sarif(
                     # Coverage travels with the SARIF log so a reader can see
                     # how much was assessed, not just what failed.
                     "coverage": report.coverage,
+                    "trustScope": report.trust_scope,
                 },
             }
         ],

@@ -7,6 +7,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Trust scope for CA/B Forum controls that apply only to publicly-trusted TLS.
+  `--trust-scope {public,private,auto}` and policy key `trust.scope` (default
+  `public`). `private` reports those controls as `not_applicable`. `auto`
+  selects private only when a supplied chain verifies offline to a root whose
+  SPKI SHA-256 is absent from a local public-trust root set
+  (`--public-trust-roots` or `trust.public_roots`). Nothing is fetched. JSON,
+  text, reviewer summary, and SARIF record the requested scope, the effective
+  scope, the source, and the reason.
 - Hash-pinned `requirements.txt` and `requirements-dev.txt`. CI installs with
   `--require-hashes`. `scripts/update_lockfile.sh` regenerates them.
 - Golden CLI JSON and SARIF snapshots under `tests/golden/`.
