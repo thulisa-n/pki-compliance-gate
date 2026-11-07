@@ -33,6 +33,8 @@ def test_text_output_says_policy_result(tmp_path: Path) -> None:
         check=False,
     )
     assert process.returncode == 0, process.stderr
+    assert process.stdout.startswith("Neakam policy gate\n")
+    assert "Neakam compliance gate" not in process.stdout
     assert "Policy result: PASS" in process.stdout
     assert "Compliant:" not in process.stdout
 

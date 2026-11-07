@@ -52,7 +52,7 @@ def render_job_summary(
     coverage = report.coverage
 
     lines = [
-        "## Neakam compliance gate",
+        "## Neakam policy gate",
         "",
         f"**Policy result:** {verdict} &nbsp;&nbsp; **Risk:** {report.risk_level}",
         "",

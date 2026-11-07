@@ -124,7 +124,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="neakam",
         description=(
-            "Neakam compliance gate. Evaluates a certificate or CSR offline. "
+            "Neakam policy gate. Evaluates a certificate or CSR offline. "
             "Live TLS checks require --allow-network. "
             "Run `neakam doctor` to self-test this install. "
             "Neakam collects no telemetry."
@@ -342,7 +342,7 @@ def parse_args() -> argparse.Namespace:
         "--external-signals",
         dest="external_signals",
         default="examples/external_signals.json",
-        help="Path to JSON file containing curated external standards/security signals",
+        help="Path to a signals JSON file you supply",
     )
     parser.add_argument(
         "--signals-output",
@@ -497,7 +497,7 @@ def _print_report(
     failure could still present as ~95%. Findings by severity plus an explicit
     coverage line say what actually happened.
     """
-    print("Neakam compliance gate")
+    print("Neakam policy gate")
     print("Certificate:" if report.input_kind != "csr" else "CSR:", report.certificate)
     print("Input:", report.input_kind)
     print("Policy result:", "PASS" if compliant else "FAIL")

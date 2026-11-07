@@ -140,7 +140,9 @@ def test_help_uses_the_neakam_name(
         main()
     assert exc.value.code == 0
     captured = capsys.readouterr()
-    assert "Neakam compliance gate" in captured.out
+    assert "Neakam policy gate" in captured.out
+    assert "a signals JSON file you supply" in captured.out
+    assert "curated external standards/security signals" not in captured.out
     assert "neakam doctor" in captured.out
     assert "--allow-network" in captured.out
     assert captured.err == ""
