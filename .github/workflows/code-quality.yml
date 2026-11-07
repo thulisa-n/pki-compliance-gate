@@ -72,10 +72,6 @@ jobs:
           python -m pip install --require-hashes -r requirements-dev.txt
           python -m pip install --no-deps -e .
 
-      - name: Install enterprise test dependencies
-        if: ${{ github.repository == 'thulisa-n/pki-compliance-gate-enterprise' }}
-        run: pip install -r requirements-enterprise.txt
-
       - name: Regenerate time-sensitive certificate fixtures
         run: python scripts/generate_test_certificates.py
 

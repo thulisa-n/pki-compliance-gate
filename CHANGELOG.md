@@ -5,6 +5,25 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Text reports, `neakam --help`, and the GitHub job summary header say
+  `Neakam policy gate`. JSON and SARIF field names are unchanged, including
+  the `compliant` key.
+- README calls the written report a policy report. The flow diagram calls the
+  evidence output "Evidence files + digest manifest". The `signals` mode reads
+  a signals JSON file you supply. The `assure` mode recomputes `policy_result`
+  and the legacy `compliant` field. `compliant` means "passed this policy",
+  not a compliance claim; `policy_result` is preferred.
+- `--external-signals` help text says the path is a signals JSON file you
+  supply. The flag name is unchanged.
+- Contributor guidance states that paid or proprietary content is out of scope
+  for this repository. The repository-boundary test still fails on the same
+  paths, imports, profiles, and dependency names. Code Quality installs only
+  this repository's locked dependencies.
+- The Compliance Gate workflow name, its badge, the repository name, and the
+  `pki-gate` deprecation notice are unchanged.
+
 ## [0.2.7] - 2026-11-06
 
 ### Fixed

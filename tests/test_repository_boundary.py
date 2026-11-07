@@ -5,7 +5,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_REPOSITORY = "thulisa-n/pki-compliance-gate"
-ENTERPRISE_REPOSITORY = "thulisa-n/pki-compliance-gate-enterprise"
 ENTERPRISE_ROOTS = (
     ".enterprise-repository",
     "docs/private",
@@ -32,12 +31,20 @@ CURATED_PROFILES = frozenset(
 
 
 def _repository_kind() -> str:
+    """Return ``public`` for this repository.
+
+    A tree that carries the ``.enterprise-repository`` marker is classified
+    separately so the same path, import, profile, and dependency patterns
+    still fail when they appear where they are out of scope.
+    """
     repository = os.getenv("GITHUB_REPOSITORY")
     if repository == PUBLIC_REPOSITORY:
         return "public"
-    if repository == ENTERPRISE_REPOSITORY:
-        return "enterprise"
-    return "enterprise" if (REPO_ROOT / ".enterprise-repository").exists() else "public"
+    return (
+        "proprietary"
+        if (REPO_ROOT / ".enterprise-repository").exists()
+        else "public"
+    )
 
 
 def test_commercial_layer_matches_repository_boundary() -> None:
@@ -46,10 +53,13 @@ def test_commercial_layer_matches_repository_boundary() -> None:
     }
 
     if _repository_kind() == "public":
-        assert not present, f"Enterprise-only paths leaked into public core: {present}"
+        assert not present, (
+            "Paid or proprietary content is out of scope for this repository: "
+            f"{present}"
+        )
     else:
         assert present == set(ENTERPRISE_ROOTS), (
-            f"Private repository is missing enterprise paths: "
+            "Paid or proprietary paths required by the marker are incomplete: "
             f"{set(ENTERPRISE_ROOTS) - present}"
         )
 
@@ -68,7 +78,10 @@ def test_public_dependencies_exclude_enterprise_frameworks() -> None:
         for dependency in forbidden
         if any(dependency in content.lower() for content in dependency_files)
     }
-    assert not leaked, f"Enterprise-only dependencies leaked into public core: {leaked}"
+    assert not leaked, (
+        "Paid or proprietary content is out of scope for this repository: "
+        f"{leaked}"
+    )
 
 
 def test_public_policy_directory_holds_only_public_profiles() -> None:
@@ -126,6 +139,6 @@ def test_public_readme_does_not_name_private_paths() -> None:
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     leaked = [path for path in PUBLIC_README_FORBIDDEN_PATHS if path in readme]
     assert not leaked, (
-        "public README names private-only paths this repository does not contain: "
+        "Paid or proprietary content is out of scope for this repository: "
         f"{leaked}"
     )

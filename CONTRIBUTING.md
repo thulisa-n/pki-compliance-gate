@@ -78,23 +78,21 @@ By contributing you certify [DCO 1.1](https://developercertificate.org/).
 - Keep docs aligned with runtime behavior (CLI flags, exit codes, workflow names).
 - Ensure GitHub Actions checks are green before merge.
 
-## Public and enterprise boundary
+## Repository boundary
 
-This repository is the open-source core. Core work starts from `origin/main` on
-a `public/*` branch and is pushed only to the `origin` remote. The private
-enterprise repository may merge or cherry-pick reviewed public commits.
+Paid or proprietary content is out of scope for this repository. Work starts
+from `origin/main` on a `public/*` branch and is pushed only to the `origin`
+remote.
 
-Do not push these commercial surfaces to the public remote:
+Do not add these paths, or code that belongs only with them:
 
 - `src/certguard_enterprise/`
 - `requirements-enterprise.txt`
-- enterprise API and document-publisher tests
+- API and document-publisher tests
 - customer, tenant, billing, hosted-service, or proprietary workflow code
 
-The repository-boundary test fails public CI if known enterprise paths or
-framework dependencies reappear. If a feature is useful to both editions,
-implement its generic contract in public first and add commercial orchestration
-in the private namespace.
+The repository-boundary test fails CI if those paths, their imports, or the
+framework dependencies they imply appear in this repository.
 
 ## CI Workflow Inventory
 

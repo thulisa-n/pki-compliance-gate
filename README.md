@@ -190,7 +190,7 @@ paths.
 
 ### Evidence and integrity
 
-Each run writes a compliance report, per-control evidence, and an
+Each run writes a policy report, per-control evidence, and an
 `evidence_manifest.json` that records a **SHA-256 digest of every evidence
 file**, the engine version, and the digest of the policy bytes that produced
 the verdict. The report also carries `verdict_digest`: SHA-256 of the canonical
@@ -237,8 +237,8 @@ Coverage: 12 of 29 controls evaluated (10 pass, 2 fail, 0 waived, 17 not applica
 flowchart LR
     A[PEM certificate or CSR] --> B[X509 parser]
     B --> C[YAML policy engine]
-    C --> D[Compliance report]
-    C --> E[Audit evidence]
+    C --> D[Policy report]
+    C --> E[Evidence files + digest manifest]
     D --> F[CI exit code 0..3]
 ```
 
@@ -273,12 +273,14 @@ below: first-class modes make a decision, derived helpers only render one.
 | :--- | :--- | :--- |
 | `evaluate` | `neakam --cert server.crt` | Full policy evaluation of a certificate or CSR. |
 | `triage` | `neakam --mode triage --report-input report.json` | Turns report findings into severity-ranked next actions. |
-| `assure` | `neakam --mode assure --report-input report.json` | Independently recomputes whether the report's `compliant` flag (and `policy_result`) matches checks and lint. |
+| `assure` | `neakam --mode assure --report-input report.json` | Independently recomputes `policy_result` and the legacy `compliant` field from checks and lint. |
 | `watch` | `neakam --mode watch` | Diffs the loaded policy against `policies/standards_baseline.yaml`. |
 | `heal` | `neakam --mode heal --healed-cert new_cert.pem` | Writes a remediation plan; re-evaluates only if `--healed-cert` is provided. |
 | `apisec` | `neakam --mode apisec --allow-network --endpoint https://example.com` | Opt-in live TLS posture check of the host you list. Certificate verification failures are findings. |
-| `signals` | `neakam --mode signals` | Reads curated external signals JSON and writes recommendations. |
+| `signals` | `neakam --mode signals` | Reads a signals JSON file you supply and writes recommendations. |
 | `readiness` | `neakam --mode readiness --as-of 2027-03-15` | Assesses the loaded policy against the dated CA/B validity schedule. |
+
+`compliant` is a legacy JSON field meaning "passed this policy", not a compliance claim. `policy_result` is preferred.
 
 ### Derived helpers
 
@@ -310,13 +312,9 @@ action.yml              Composite GitHub Action
 The GitHub Action, wheel, and sdist are published from the `v0.2.7` tag.
 Install the CLI with `pip install pki-compliance-gate==0.2.7`, then run
 `neakam`. The PyPI distribution name is still `pki-compliance-gate`; renaming
-that project, and applying the same product-name change in the private
-enterprise repository, are follow-ups. Later GitHub releases reuse
+that project is a follow-up. Later GitHub releases reuse
 `.github/workflows/publish.yml` with PyPI trusted publishing (OIDC, no API
 token in the repository).
-
-A commercially licensed add-on is maintained privately and is not part of
-this repository.
 
 ---
 

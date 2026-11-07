@@ -86,7 +86,7 @@ def test_write_job_summary_appends_to_the_env_path(
 
     assert first == summary
     # $GITHUB_STEP_SUMMARY is append-only by contract.
-    assert summary.read_text(encoding="utf-8").count("## Neakam compliance gate") == 2
+    assert summary.read_text(encoding="utf-8").count("## Neakam policy gate") == 2
 
 
 def test_write_job_summary_is_a_noop_outside_actions(
