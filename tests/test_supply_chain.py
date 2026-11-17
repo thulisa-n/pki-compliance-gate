@@ -79,6 +79,14 @@ def test_compliance_cosign_uses_the_bundle_and_checks_identity() -> None:
     assert "--signature " not in text
 
 
+def test_workflows_do_not_auto_merge() -> None:
+    """Dependabot and standards-sync pull requests wait for a manual merge."""
+    assert not (WORKFLOWS / "auto-merge.yml").exists()
+    for path, text in _workflow_text():
+        assert "gh pr merge" not in text, path.name
+        assert "pr merge --auto" not in text, path.name
+
+
 def test_workflows_do_not_echo_secrets() -> None:
     echo_secret = re.compile(r"echo\b.*secrets\.", re.I)
     for path, text in _workflow_text():

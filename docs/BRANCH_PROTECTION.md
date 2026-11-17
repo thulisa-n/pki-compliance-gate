@@ -9,11 +9,16 @@ Open **Settings → Rules → Rulesets** (or **Settings → Branches**) for `mai
 ## Protected `main`
 
 - Require a pull request before merging.
+- Require one approving review.
 - Require status checks to pass before merging.
 - Require branches to be up to date before merging.
 - Block force pushes.
 - Block deletions.
 - Do not allow bypassing the rule, including for administrators.
+
+Branch protection on `main` should require the CI checks below and that one
+approval. Dependabot updates and standards-sync pull requests are merged by
+hand after review. No workflow in this repository runs `gh pr merge --auto`.
 
 ## Required checks
 
@@ -43,8 +48,9 @@ ruff, then unit tests, then the fixture jobs.
 
 - Allow squash merging.
 - Disable merge commits and rebase merges so `main` stays a linear history.
-- The auto-merge workflow for Dependabot and the standards-sync pull request
-  already requests squash.
+- Reviewers squash-merge by hand after the required checks pass and one
+  approval is recorded. Dependabot and standards-sync pull requests wait for
+  that review. They are not auto-merged.
 
 ## Signed commits
 

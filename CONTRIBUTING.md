@@ -23,7 +23,10 @@ bash scripts/update_lockfile.sh
 ```
 
 Dependabot (`.github/dependabot.yml`) opens weekly pull requests for those pip
-files and for GitHub Actions pinned to a commit SHA.
+files and for GitHub Actions pinned to a commit SHA. Those pull requests, and
+the standards-sync pull request, are merged by hand after review. Branch
+protection on `main` should require the CI checks and one approval. See
+[docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md).
 
 ## Run Tests
 
