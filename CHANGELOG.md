@@ -7,6 +7,13 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Dependabot updates and standards-sync pull requests are merged by hand after
+  review. The auto-merge workflow is removed. Branch protection on `main`
+  should require the CI checks and one approval.
+- The Compliance Gate still builds the CycloneDX SBOM with
+  `cyclonedx-py requirements`. cyclonedx-bom 8.0.1 accepts those flags. A unit
+  test checks the bill is JSON, `bomFormat` is CycloneDX, `specVersion` is
+  set, and the component list includes the runtime dependencies.
 - Text reports, `neakam --help`, and the GitHub job summary header say
   `Neakam policy gate`. JSON and SARIF field names are unchanged, including
   the `compliant` key.
