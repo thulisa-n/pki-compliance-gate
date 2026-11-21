@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-11-21
+
 ### Changed
 
 - Dependabot updates and standards-sync pull requests are merged by hand after
@@ -36,8 +38,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Passing `evidence_signing_key` to `ComplianceGateEngine.evaluate` or
   `ComplianceGateEngine.persist` emits a `DeprecationWarning`:
   `evidence_signing_key is deprecated and will be removed in a future release.`
-  The evidence manifest is still signed in this release. Omitting the argument
-  is unchanged. No CLI flag or policy setting supplies this key.
+  The evidence manifest is still signed in this release. Evidence manifest
+  signing is moving out of the core package in a future release. Omitting the
+  argument is unchanged. No CLI flag or policy setting supplies this key.
 
 ## [0.2.7] - 2026-11-06
 
