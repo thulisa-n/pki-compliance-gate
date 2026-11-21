@@ -31,6 +31,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 - The Compliance Gate workflow name, its badge, the repository name, and the
   `pki-gate` deprecation notice are unchanged.
 
+### Deprecated
+
+- Passing `evidence_signing_key` to `ComplianceGateEngine.evaluate` or
+  `ComplianceGateEngine.persist` emits a `DeprecationWarning`:
+  `evidence_signing_key is deprecated and will be removed in a future release.`
+  The evidence manifest is still signed in this release. Omitting the argument
+  is unchanged. No CLI flag or policy setting supplies this key.
+
 ## [0.2.7] - 2026-11-06
 
 ### Fixed

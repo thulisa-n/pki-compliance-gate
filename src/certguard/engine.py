@@ -7,6 +7,7 @@ import os
 # Controlled use for zlint CLI integration.
 import subprocess  # nosec B404
 import tempfile
+import warnings
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +23,26 @@ from certguard.models import CheckResult, ComplianceReport
 from certguard.policy import load_policy, policy_digest
 from certguard.rego import render_validity_rego
 from certguard.trust_scope import PUBLIC_TLS_NA_REASON, decide_trust_scope
+
+_EVIDENCE_SIGNING_KEY_DEPRECATION = (
+    "evidence_signing_key is deprecated and will be removed in a future release."
+)
+
+
+def _warn_deprecated_evidence_signing_key(evidence_signing_key: str | None) -> None:
+    """Warn when a caller passes ``evidence_signing_key``.
+
+    ``None`` means the argument was omitted. Any other value, including an
+    empty string, counts as passed. Signing behavior is unchanged.
+    """
+    if evidence_signing_key is None:
+        return
+    # stacklevel=3: warnings.warn -> this helper -> engine method -> caller.
+    warnings.warn(
+        _EVIDENCE_SIGNING_KEY_DEPRECATION,
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class ComplianceGateEngine:
@@ -49,6 +70,7 @@ class ComplianceGateEngine:
         cli_public_roots: str | None = None,
         chain_path: Path | None = None,
     ) -> tuple[bool, ComplianceReport]:
+        _warn_deprecated_evidence_signing_key(evidence_signing_key)
         report, artifacts = self.assess(
             cert_path=cert_path,
             dcv_attestation=dcv_attestation,
@@ -70,6 +92,7 @@ class ComplianceGateEngine:
             cert_path=cert_path,
             waiver_path=waiver_path,
             evidence_signing_key=evidence_signing_key,
+            _signing_key_warned=True,
         )
         return report.compliant, report
 
@@ -204,7 +227,11 @@ class ComplianceGateEngine:
         cert_path: Path,
         waiver_path: Path | None = None,
         evidence_signing_key: str | None = None,
+        *,
+        _signing_key_warned: bool = False,
     ) -> None:
+        if not _signing_key_warned:
+            _warn_deprecated_evidence_signing_key(evidence_signing_key)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         evidence_dir.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
@@ -244,6 +271,7 @@ class ComplianceGateEngine:
             cert_path=cert_path,
             waiver_path=waiver_path,
             evidence_signing_key=evidence_signing_key,
+            _signing_key_warned=True,
         )
 
     def _write_evidence_manifest(
@@ -254,6 +282,8 @@ class ComplianceGateEngine:
         cert_path: Path,
         waiver_path: Path | None,
         evidence_signing_key: str | None = None,
+        *,
+        _signing_key_warned: bool = False,
     ) -> None:
         """Record every evidence file with its SHA-256 digest.
 
@@ -262,6 +292,8 @@ class ComplianceGateEngine:
         changed. Digests plus the engine and policy versions make the bundle
         self-describing and independently checkable.
         """
+        if not _signing_key_warned:
+            _warn_deprecated_evidence_signing_key(evidence_signing_key)
         manifest_path = evidence_dir / "evidence_manifest.json"
         listed = [
             report_path,
