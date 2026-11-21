@@ -1,11 +1,11 @@
 {
   "report_schema_version": "2.0",
-  "engine_version": "0.2.7",
+  "engine_version": "0.2.8",
   "certificate": "tests/golden/frozen_valid.pem",
   "input_kind": "certificate",
   "generated_at": "2026-06-01T00:00:00+00:00",
   "evaluated_at": "2026-06-01T00:00:00+00:00",
-  "verdict_digest": "90f58562955dfa07a76d18f82b50a4b593e22e361f6305dd540f07aaa740f19d",
+  "verdict_digest": "2bdb8549f145dff28d4333d6983cba0ceae22c8f0bcb2526b582fa200f61351c",
   "compliant": true,
   "policy_result": "PASS",
   "risk_level": "LOW",
